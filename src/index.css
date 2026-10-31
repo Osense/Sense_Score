@@ -1,0 +1,55 @@
+:root {
+  --bg: #f5f6fa;
+  --panel: #ffffff;
+  --text: #2b2f3a;
+  --muted: #6b7280;
+  --border: #dfe2ea;
+  --accent: #5b6cff;
+  --accent-bg: rgba(91, 108, 255, 0.12);
+  --row-white: #fbfbfd;
+  --row-black: #eceef5;
+  --out-scale: rgba(30, 34, 50, 0.22);
+  --in-scale: rgba(91, 108, 255, 0.1);
+  --root-row: rgba(91, 108, 255, 0.22);
+  --bar-line: #aab0c0;
+  --beat-line: #d3d7e2;
+  --sub-line: rgba(0, 0, 0, 0.05);
+  --key-white: #ffffff;
+  --key-black: #2b2f3a;
+  --key-text: #444;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  font: 15px/1.45 system-ui, 'Segoe UI', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14151b;
+    --panel: #1d1f27;
+    --text: #e6e8ef;
+    --muted: #9aa0b0;
+    --border: #2f3240;
+    --accent: #8b97ff;
+    --accent-bg: rgba(139, 151, 255, 0.18);
+    --row-white: #1a1c24;
+    --row-black: #15171e;
+    --out-scale: rgba(0, 0, 0, 0.42);
+    --in-scale: rgba(139, 151, 255, 0.08);
+    --root-row: rgba(139, 151, 255, 0.22);
+    --bar-line: #626880;
+    --beat-line: #353949;
+    --sub-line: rgba(255, 255, 255, 0.04);
+    --key-white: #d8dbe6;
+    --key-black: #0f1015;
+    --key-text: #333;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--bg); }
+button, select, input { font: inherit; color: inherit; }
