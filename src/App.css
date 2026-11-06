@@ -41,6 +41,9 @@ input[type='number'] { width: 64px; }
 
 .transport button.big { font-size: 20px; width: 46px; height: 40px; padding: 0; }
 .transport button.play { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tempo-control { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.tempo-control input { width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+.tempo-control button { min-width: 44px; min-height: 44px; padding: 4px 10px; font-size: 22px; }
 .time { font-variant-numeric: tabular-nums; min-width: 150px; font-weight: 600; }
 
 /* ---------- 메인 ---------- */

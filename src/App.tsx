@@ -3,6 +3,7 @@ import './App.css'
 import { PianoRoll } from './components/PianoRoll'
 import { StaffEditor } from './components/StaffEditor'
 import { Toolbar } from './components/Toolbar'
+import { TempoControl } from './components/TempoControl'
 import { ArrangePage, type ScaffoldPhase } from './components/ArrangePage'
 import { DeliverPage } from './components/DeliverPage'
 import { HelpModal } from './components/HelpModal'
@@ -748,17 +749,7 @@ export default function App() {
           </button>
           <TimeDisplay getTick={getTick} song={song} speed={settings.speed} />
           <span className="sep" />
-          <label className="inline" title="1분에 몇 박인지 (클수록 빠름)">
-            템포
-            <input
-              type="number"
-              min={30}
-              max={300}
-              value={song.bpm}
-              onFocus={hist.checkpoint}
-              onChange={(e) => setSong({ bpm: Math.min(300, Math.max(30, +e.target.value || 100)) }, false)}
-            />
-          </label>
+          <TempoControl value={song.bpm} onChange={(bpm) => setSong({ bpm }, false)} onCheckpoint={hist.checkpoint} />
           <label className="inline" title="한 마디가 몇 박인지">
             박자
             <select value={song.beatsPerBar} onChange={(e) => setSong({ beatsPerBar: +e.target.value })}>
