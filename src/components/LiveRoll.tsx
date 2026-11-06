@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { inScale } from '../music'
 import { KINDS, rangesOf } from '../sections'
-import { PPQ, type Note, type ScaleType, type Song } from '../types'
+import { PPQ, type KeyHighlights, type Note, type ScaleType, type Song } from '../types'
 import { layoutKeys } from './HKeyboard'
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
   whiteCount: number
   root: number
   scale: ScaleType | 'none'
+  display: KeyHighlights
   getTick: () => number
   /** 지금 녹음 중인 음표(누르고 있는 것 포함) */
   getLive: () => Note[]
@@ -35,7 +36,7 @@ export function LiveRoll(p: Props) {
     let raf = 0
     const css = (name: string, fb: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fb
     const draw = () => {
-      const { song, trackId, base, whiteCount, root, scale, getTick, getLive } = latest.current
+      const { song, trackId, base, whiteCount, root, scale, display, getTick, getLive } = latest.current
       const canvas = cv.current
       const box = wrap.current
       if (canvas && box) {
@@ -64,12 +65,14 @@ export function LiveRoll(p: Props) {
         g.fillRect(0, 0, W, H)
         g.fillStyle = css('--row-black', '#eceef5')
         for (const k of blacks) g.fillRect(k.x * W, 0, k.w * W, H)
-        // 추천 음계는 건반과 같은 색으로 칠한다 (으뜸음 노랑 / 음계 안 파랑 / 음계 밖 회색)
+        // Match the keyboard's optional, muted guides; leave other lanes neutral.
         if (scale !== 'none') {
           for (const k of [...whites, ...blacks]) {
             const inSc = inScale(k.pitch, root, scale)
             const isRoot = (((k.pitch - root) % 12) + 12) % 12 === 0
-            g.fillStyle = isRoot ? 'rgba(245,158,11,0.30)' : inSc ? 'rgba(59,130,246,0.16)' : 'rgba(100,100,110,0.16)'
+            if (display.showKeyRoot && isRoot) g.fillStyle = css('--key-root-row', 'rgba(150,131,102,0.12)')
+            else if (display.showKeyScale && inSc) g.fillStyle = css('--key-scale-row', 'rgba(111,132,153,0.07)')
+            else continue
             g.fillRect(k.x * W, 0, k.w * W, H)
           }
         }

@@ -4,6 +4,7 @@ import { PianoRoll } from './components/PianoRoll'
 import { StaffEditor } from './components/StaffEditor'
 import { Toolbar } from './components/Toolbar'
 import { TempoControl } from './components/TempoControl'
+import { KeyDisplayControls } from './components/KeyDisplayControls'
 import { ArrangePage, type ScaffoldPhase } from './components/ArrangePage'
 import { DeliverPage } from './components/DeliverPage'
 import { HelpModal } from './components/HelpModal'
@@ -933,6 +934,7 @@ export default function App() {
               {!active.drum && <small className="range-badge">음역 {rangeLabel(rangeOf(active.program))}</small>}
             </span>
             </div>
+            {mode === 'keys' && !active.drum && <KeyDisplayControls settings={settings} onSettings={setSettings} />}
             {mode === 'keys' ? (
               <PianoRoll
                 key={`k${active.id}`}

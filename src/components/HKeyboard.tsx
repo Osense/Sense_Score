@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { inScale, isBlack, NOTE_NAMES_KO } from '../music'
-import type { ScaleType } from '../types'
+import type { KeyHighlights, ScaleType } from '../types'
 
 /** 흰 건반 pc 뒤에 검은 건반이 있는지 (도, 레, 파, 솔, 라 뒤) */
 const BLACK_AFTER = new Set([0, 2, 5, 7, 9])
@@ -33,6 +33,7 @@ interface Props {
   high: number
   root: number
   scale: ScaleType | 'none'
+  display: KeyHighlights
   /** 음계 안의 건반만 누를 수 있게 */
   lock: boolean
   down: Set<number>
@@ -71,10 +72,9 @@ export function HKeyboard(p: Props) {
     const cls = [
       k.black ? 'hk-black' : 'hk-white',
       p.down.has(k.pitch) ? 'down' : '',
-      inSc ? 'in-scale' : '',
-      p.scale !== 'none' && ((k.pitch - p.root) % 12 + 12) % 12 === 0 ? 'root' : '',
-      p.scale !== 'none' && !inSc ? 'outside' : '',
-      p.chordPcs.has(k.pitch % 12) ? 'chord' : '',
+      p.display.showKeyScale && inSc ? 'in-scale' : '',
+      p.display.showKeyRoot && p.scale !== 'none' && ((k.pitch - p.root) % 12 + 12) % 12 === 0 ? 'root' : '',
+      p.display.showKeyChord && p.chordPcs.has(k.pitch % 12) ? 'chord' : '',
       playable(k.pitch) ? '' : 'off',
     ].join(' ')
     return {

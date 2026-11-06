@@ -50,12 +50,17 @@ export interface Settings {
   countIn: boolean
   scaleRoot: number // 0-11
   scaleType: ScaleType | 'none'
+  showKeyRoot: boolean
+  showKeyScale: boolean
+  showKeyChord: boolean
   snap: number // tick
   trainer: { on: boolean; from: number; to: number; step: number }
   scoreView: 'scroll' | 'page' // 악보 보기: 가로 스크롤 / 페이지
   scoreMulti: boolean // 모든 트랙을 한 악보에 겹쳐 보기
   scoreBars: 0 | 2 | 4 | 8 // 페이지 보기에서 한 줄 마디 수 (0=자동, 기본 4)
 }
+
+export type KeyHighlights = Pick<Settings, 'showKeyRoot' | 'showKeyScale' | 'showKeyChord'>
 
 export type Tool = 'pen' | 'eraser' | 'hand' | 'select'
 

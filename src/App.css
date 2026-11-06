@@ -644,45 +644,54 @@ kbd { font: 600 12px ui-monospace, Consolas, monospace; border: 1px solid var(--
 
 /* ---------- 건반 색: 추천 음계가 한눈에 보이게 ---------- */
 :root {
-  --k-scale: #cfe3ff;
-  --k-scale-edge: #2563eb;
-  --k-root: #fde68a;
-  --k-root-edge: #d97706;
-  --k-chord: #16a34a;
-  --k-out: #dcdde3;
+  --k-scale: #f0f3f6;
+  --k-scale-edge: #8a9cab;
+  --k-root: #f2eee7;
+  --k-root-edge: #9b8769;
+  --k-chord: #7e9187;
+  --key-scale-row: rgba(111,132,153,0.07);
+  --key-root-row: rgba(150,131,102,0.12);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --k-scale: #3b66a8;
-    --k-scale-edge: #7db3ff;
-    --k-root: #b8861b;
-    --k-root-edge: #ffd25e;
-    --k-chord: #4ade80;
-    --k-out: #8e92a2;
+    --k-scale: #d2d8df;
+    --k-scale-edge: #8395a7;
+    --k-root: #dfd8cb;
+    --k-root-edge: #b4a182;
+    --k-chord: #97aba0;
+    --key-scale-row: rgba(141,157,175,0.07);
+    --key-root-row: rgba(180,161,130,0.12);
   }
 }
-/* 음계 밖: 회색으로 눌러 두고, 음계 안은 파랑, 으뜸음은 노랑 */
-.hk-white.outside { background: var(--k-out); color: #666; }
-.hk-white.in-scale { background: var(--k-scale); color: #0b2a66; box-shadow: inset 0 -12px 0 var(--k-scale-edge); }
+/* Keep piano keys neutral, with small, muted guide marks. */
+.hk-white.in-scale { background: var(--k-scale); color: #394653; box-shadow: inset 0 -3px 0 var(--k-scale-edge); }
 .hk-white.in-scale::after { content: none; }
-.hk-white.root { background: var(--k-root); color: #4a3000; box-shadow: inset 0 -12px 0 var(--k-root-edge); }
+.hk-white.root { background: var(--k-root); color: #514a40; box-shadow: inset 0 -5px 0 var(--k-root-edge); }
 .hk-white.root .hk-name { font-weight: 800; opacity: 1; }
-.hk-black.outside { background: #3a3c46; }
-.hk-black.in-scale { background: #1e40af; box-shadow: none; }
-.hk-black.root { background: #b45309; }
+.hk-black.in-scale { background: #202329; box-shadow: inset 0 -3px 0 var(--k-scale-edge); }
+.hk-black.root { background: #252321; box-shadow: inset 0 -5px 0 var(--k-root-edge); }
 /* 지금 반주 화음의 음: 초록 테두리 + 점 (이 음을 노리면 반주와 잘 어울려요) */
-.hk-white.chord, .hk-black.chord { outline: 3px solid var(--k-chord); outline-offset: -3px; z-index: 3; }
-.hk-white.chord::before, .hk-black.chord::before { content: ''; position: absolute; top: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--k-chord); }
+.hk-white.chord, .hk-black.chord { outline: 1px solid var(--k-chord); outline-offset: -2px; }
+.hk-white.chord::before, .hk-black.chord::before { content: ''; position: absolute; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: var(--k-chord); }
 .hk-black.chord::before { top: 6px; }
 .hk-white.down, .hk-black.down { background: var(--accent); color: #fff; box-shadow: none; }
 .hk-white.off, .hk-black.off { opacity: 0.3; }
 
-.kb-legend { flex: 1; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
-.kb-legend .lg { display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin-right: -6px; border: 1px solid rgba(0, 0, 0, 0.25); }
-.kb-legend .lg.root { background: var(--k-root); box-shadow: inset 0 -4px 0 var(--k-root-edge); }
-.kb-legend .lg.scale { background: var(--k-scale); box-shadow: inset 0 -4px 0 var(--k-scale-edge); }
-.kb-legend .lg.chord { background: var(--panel); outline: 2px solid var(--k-chord); outline-offset: -2px; }
-.kb-legend .lg.out { background: var(--k-out); }
+.key-display-controls { display: flex; align-items: center; flex-wrap: wrap; flex: none; gap: 4px 16px; padding: 4px 12px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+.key-display-controls label { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; cursor: pointer; color: var(--text); }
+.key-display-controls input { accent-color: #788a9a; }
+.key-display-controls small { flex-basis: 100%; }
+.kb-bar { flex-wrap: wrap; }
+.kb-bar .key-display-controls { flex: 1 1 300px; justify-content: center; background: none; border: 0; padding: 0; }
+.key-swatch { width: 10px; height: 10px; border-radius: 2px; background: var(--k-scale-edge); }
+.key-swatch.root { background: var(--k-root-edge); }
+.key-swatch.chord { background: var(--k-chord); }
+.row.in-scale, .row.black.in-scale { background: var(--key-scale-row); filter: none; }
+.row.root, .row.black.root { background: var(--key-root-row); }
+.row.chord { box-shadow: inset 3px 0 var(--k-chord); }
+.key.in-scale.white, .key.in-scale.black { box-shadow: inset -3px 0 var(--k-scale-edge); }
+.key.root.white, .key.root.black { box-shadow: inset -5px 0 var(--k-root-edge); }
+.key.chord::before { content: ''; position: absolute; left: 5px; width: 4px; height: 4px; border-radius: 50%; background: var(--k-chord); }
 p.kb-hint { margin: 0; text-align: center; font-size: 12.5px; color: var(--muted); flex: none; }
 
 /* ---------- 연주 보정 패널 ---------- */

@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_CORRECTION, PRESETS, type Correction } from '../correct'
 import { nearestInScale } from '../editActions'
 import { fitPitch, rangeLabel, rangeOf } from '../instruments'
-import { inScale, NOTE_NAMES_KO } from '../music'
+import { inScale } from '../music'
+import { useChordPcs } from '../useChordPcs'
 import { KINDS } from '../sections'
 import { PPQ, type Note, type Settings, type Song } from '../types'
 import { HKeyboard } from './HKeyboard'
 import { LiveRoll } from './LiveRoll'
+import { KeyDisplayControls } from './KeyDisplayControls'
 
 interface Props {
   song: Song
@@ -69,7 +71,7 @@ export function MelodyPage(p: Props) {
   const [corr, setCorr] = useState<Correction>(DEFAULT_CORRECTION)
   const [presetId, setPresetId] = useState('clean')
   const [down, setDown] = useState<Set<number>>(new Set())
-  const [chordPcs, setChordPcs] = useState<Set<number>>(new Set())
+  const chordPcs = useChordPcs(song, p.getTick, settings.showKeyChord)
   const [midiName, setMidiName] = useState<string | null>(null)
   const kbWrap = useRef<HTMLDivElement>(null)
   const snapMap = useRef(new Map<number, number>()) // 누른 건반 → 실제로 소리 난 음(보정된 경우)
@@ -87,28 +89,6 @@ export function MelodyPage(p: Props) {
     const ro = new ResizeObserver(() => setWhiteCount(Math.max(8, Math.min(36, Math.floor(el.clientWidth / 44)))))
     ro.observe(el)
     return () => ro.disconnect()
-  }, [])
-
-  // 지금 울리는 반주 화음의 구성음을 건반에 알려 준다 (멜로디가 그 음을 노리면 잘 어울려요)
-  const latest = useRef(p)
-  useEffect(() => {
-    latest.current = p
-  })
-  useEffect(() => {
-    let last = ''
-    const id = window.setInterval(() => {
-      const { song: s, getTick } = latest.current
-      const t = getTick()
-      const ct = s.tracks.find((x) => x.role === 'chords') ?? s.tracks.find((x) => !x.drum && (x.name.includes('코드') || x.name.includes('반주')))
-      const pcs = new Set<number>()
-      for (const n of ct?.notes ?? []) if (n.start <= t && t < n.start + n.dur) pcs.add(n.pitch % 12)
-      const key = [...pcs].sort().join(',')
-      if (key !== last) {
-        last = key
-        setChordPcs(pcs)
-      }
-    }, 120)
-    return () => clearInterval(id)
   }, [])
 
   const shift = useCallback(
@@ -316,22 +296,11 @@ export function MelodyPage(p: Props) {
         </span>
       </div>
 
-      <LiveRoll song={song} trackId={track?.id ?? ''} base={base} whiteCount={whiteCount} root={settings.scaleRoot} scale={settings.scaleType} getTick={p.getTick} getLive={p.getLive} />
+      <LiveRoll song={song} trackId={track?.id ?? ''} base={base} whiteCount={whiteCount} root={settings.scaleRoot} scale={settings.scaleType} display={settings} getTick={p.getTick} getLive={p.getLive} />
 
       <div className="kb-bar">
         <button onClick={() => shift(-1)} title="한 옥타브 아래 (Z)">◀ 옥타브</button>
-        <span className="kb-legend" aria-label="건반 색 설명">
-          {scaleOn ? (
-            <>
-              <i className="lg root" /> 으뜸음({NOTE_NAMES_KO[settings.scaleRoot]})
-              <i className="lg scale" /> 추천 음계
-              <i className="lg chord" /> 지금 화음의 음
-              <i className="lg out" /> 음계 밖
-            </>
-          ) : (
-            <span>음계를 정하면 어울리는 건반이 색으로 표시돼요 (직접 쓰기의 음계 도우미)</span>
-          )}
-        </span>
+        <KeyDisplayControls settings={settings} onSettings={p.onSettings} />
         <button onClick={() => shift(1)} title="한 옥타브 위 (X)">옥타브 ▶</button>
       </div>
       <div className="kb-wrap" ref={kbWrap}>
@@ -342,6 +311,7 @@ export function MelodyPage(p: Props) {
           high={range.high}
           root={settings.scaleRoot}
           scale={settings.scaleType}
+          display={settings}
           lock={assist === 'lock'}
           down={down}
           chordPcs={chordPcs}

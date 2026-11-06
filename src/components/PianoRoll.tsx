@@ -6,6 +6,7 @@ import { ContextMenu } from './ContextMenu'
 import { copyToClip, hasClip, menuGroups, planPaste, trackOp, type ActionId } from '../editActions'
 import { useLongPress } from '../useLongPress'
 import { rangeOf } from '../instruments'
+import { useChordPcs } from '../useChordPcs'
 
 const RULER_H = 36
 const EDGE = 8
@@ -38,6 +39,7 @@ type Drag =
 export function PianoRoll(p: Props) {
   const { song, track, settings, zoom, tool } = p
   const drum = track.drum
+  const chordPcs = useChordPcs(song, p.getTick, !drum && settings.showKeyChord)
   const rowH = drum ? 34 : 16
   const keyW = drum ? 104 : 64
   const ppb = 56 * zoom
@@ -456,13 +458,14 @@ export function PianoRoll(p: Props) {
         } else {
           if (isBlack(pitch)) cls += ' black'
           if (!playable(pitch)) cls += ' off-range'
-          if (sc !== 'none') cls += inScale(pitch, settings.scaleRoot, sc) ? ' in-scale' : ' out-scale'
-          if (sc !== 'none' && (pitch - settings.scaleRoot) % 12 === 0) cls += ' root'
+          if (settings.showKeyScale && sc !== 'none' && inScale(pitch, settings.scaleRoot, sc)) cls += ' in-scale'
+          if (settings.showKeyRoot && sc !== 'none' && (pitch - settings.scaleRoot) % 12 === 0) cls += ' root'
+          if (settings.showKeyChord && chordPcs.has(pitch % 12)) cls += ' chord'
         }
         return <div key={pitch} className={cls} style={style} />
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lanes, rowH, drum, sc, settings.scaleRoot, inst.low, inst.high],
+    [lanes, rowH, drum, sc, settings.scaleRoot, settings.showKeyScale, settings.showKeyRoot, settings.showKeyChord, chordPcs, inst.low, inst.high],
   )
 
   const bgStyle: React.CSSProperties = {
@@ -495,7 +498,7 @@ export function PianoRoll(p: Props) {
     return (
       <div
         key={pitch}
-        className={`key ${isBlack(pitch) ? 'black' : 'white'} ${inSc ? 'in-scale' : ''} ${playable(pitch) ? '' : 'off'}`}
+        className={`key ${isBlack(pitch) ? 'black' : 'white'} ${settings.showKeyScale && inSc ? 'in-scale' : ''} ${settings.showKeyRoot && sc !== 'none' && (pitch - settings.scaleRoot) % 12 === 0 ? 'root' : ''} ${settings.showKeyChord && chordPcs.has(pitch % 12) ? 'chord' : ''} ${playable(pitch) ? '' : 'off'}`}
         style={{ height: rowH }}
         onPointerDown={() => playable(pitch) && p.onPreview(pitch)}
         title={pitchLabel(pitch)}

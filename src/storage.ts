@@ -37,6 +37,9 @@ export const defaultSettings = (song: Song): Settings => ({
   countIn: false,
   scaleRoot: 0,
   scaleType: 'none',
+  showKeyRoot: true,
+  showKeyScale: true,
+  showKeyChord: false,
   snap: PPQ / 4, // 16분음표
   trainer: { on: false, from: 60, to: 100, step: 5 },
   scoreView: 'scroll',
@@ -96,7 +99,7 @@ export function parseProject(raw: string): { song: Song; settings: Settings } {
     !['none', 'major', 'minor', 'pentatonic', 'minorPent', 'blues'].includes(st.scaleType) ||
     !['scroll', 'page'].includes(st.scoreView) || ![0, 2, 4, 8].includes(st.scoreBars) ||
     !num(st.loopStart, 0, 256 * 16 * PPQ) || !num(st.loopEnd, 0, 256 * 16 * PPQ) ||
-    !['loop', 'metronome', 'countIn', 'scoreMulti'].every((k) => typeof st[k] === 'boolean') ||
+    !['loop', 'metronome', 'countIn', 'scoreMulti', 'showKeyRoot', 'showKeyScale', 'showKeyChord'].every((k) => typeof st[k] === 'boolean') ||
     !st.trainer || typeof st.trainer.on !== 'boolean' || !num(st.trainer.from, 20, 400) ||
     !num(st.trainer.to, 20, 400) || !num(st.trainer.step, 1, 100)) throw new Error('Invalid settings')
   return { song: normalizeSong(s), settings: st }
