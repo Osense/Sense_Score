@@ -17,7 +17,7 @@ export class AudioEngine {
   private chProgram: number[] = Array(16).fill(0)
   private chDrum: boolean[] = Array(16).fill(false)
   private chVol: number[] = Array(16).fill(-1)
-  private active = new Map<string, { osc: OscillatorNode[]; gain: GainNode }[]>()
+  private active = new Map<string, { osc: OscillatorNode[]; gain: GainNode; amp: number; start: number; attack: number; decay: number }[]>()
   private sf?: WorkletSynthesizer
   soundfontName: string | null = null
 
@@ -112,8 +112,15 @@ export class AudioEngine {
     if (!v) return
     const g = v.gain.gain
     const rel = this.release(this.chProgram[ch])
+    // Release from the current envelope level; a fixed gain makes quiet notes jump louder.
+    const elapsed = Math.max(0, when - v.start)
+    const inAttack = elapsed < v.attack
+    const level = inAttack
+      ? 0.0001 + (v.amp - 0.0001) * elapsed / v.attack
+      : v.amp * (v.decay ? 0.25 ** Math.min(1, (elapsed - v.attack) / v.decay) : 1)
     g.cancelScheduledValues(when)
-    g.setValueAtTime(0.2, when)
+    if (inAttack) g.linearRampToValueAtTime(Math.max(0.0001, level), when)
+    else g.setValueAtTime(Math.max(0.0001, level), when)
     g.exponentialRampToValueAtTime(0.0001, when + rel)
     v.osc.forEach((o) => o.stop(when + rel + 0.02))
   }
@@ -219,9 +226,9 @@ export class AudioEngine {
   private tone(ch: number, pitch: number, vel: number, when: number) {
     const p = this.chProgram[ch]
     const freq = 440 * 2 ** ((pitch - 69) / 12)
-    // 베이스는 낮은 소리라 작은 스피커에서는 거의 안 들린다 → 크게 키우고, 중음(배음)을 강조한다
+    // Keep bass audible on tablet speakers without overpowering the melody.
     const bass = p >= 32 && p < 40
-    const amp = (vel / 127) * 0.3 * (bass ? 2.4 : 1)
+    const amp = (vel / 127) * 0.3 * (bass ? 1.2 : 1)
     let types: OscillatorType[] = ['triangle']
     let attack = 0.005
     let decay = 0 // 0 = 지속음
@@ -240,7 +247,7 @@ export class AudioEngine {
     gain.gain.linearRampToValueAtTime(amp, when + attack)
     if (decay) gain.gain.exponentialRampToValueAtTime(amp * 0.25, when + attack + decay)
     if (bass) {
-      // 너무 낮은 울림은 깎고(하이패스), 800~1000Hz 근처 중음을 돋운 뒤(피킹), 거친 고음은 다듬는다(로패스)
+      // Remove sub-bass rumble and add only a gentle midrange lift for small speakers.
       const hp = this.ctx.createBiquadFilter()
       hp.type = 'highpass'
       hp.frequency.value = 50
@@ -248,7 +255,7 @@ export class AudioEngine {
       pk.type = 'peaking'
       pk.frequency.value = 900
       pk.Q.value = 0.8
-      pk.gain.value = 9
+      pk.gain.value = 3
       const lp = this.ctx.createBiquadFilter()
       lp.type = 'lowpass'
       lp.frequency.value = Math.min(cutoff + freq, 12000)
@@ -277,7 +284,7 @@ export class AudioEngine {
         lfo.connect(depth).connect(o.frequency)
       }
       const og = this.ctx.createGain()
-      og.gain.value = i === 0 ? 1 : bass ? 0.7 : 0.2 // 베이스는 한 옥타브 위 배음을 많이 섞어 중음을 살린다
+      og.gain.value = i === 0 ? 1 : bass ? 0.4 : 0.2
       o.connect(og).connect(gain)
       o.start(when)
       return o
@@ -285,7 +292,7 @@ export class AudioEngine {
     if (lfo) osc.push(lfo)
     const key = `${ch}:${pitch}`
     const list = this.active.get(key) ?? []
-    list.push({ osc, gain })
+    list.push({ osc, gain, amp, start: when, attack, decay })
     this.active.set(key, list)
   }
 

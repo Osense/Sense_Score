@@ -32,7 +32,7 @@ export function buildTemplate(a: Answers): { song: Song; settings: Settings } {
   const want: { key: 'melody' | 'chords' | 'bass' | 'drums'; name: string; program: number; vol: number }[] = [
     { key: 'melody', name: '멜로디', program: 0, vol: 0.85 },
     { key: 'chords', name: '코드 반주', program: 48, vol: 0.5 },
-    { key: 'bass', name: '베이스', program: 33, vol: 1 },
+    { key: 'bass', name: '베이스', program: 33, vol: 0.65 },
     { key: 'drums', name: '드럼', program: 0, vol: 0.7 },
   ]
   const picked = want.filter((w) => a[w.key])

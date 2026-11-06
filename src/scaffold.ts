@@ -368,7 +368,7 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
       if (!found.role) found.role = role
       return found
     }
-    const t: Track = { ...newTrack(tracks.length, role === 'drums'), name: ROLE_NAMES[role], role, program: role === 'chords' ? 48 : role === 'bass' ? 33 : 0, volume: role === 'chords' ? 0.5 : role === 'bass' ? 1 : 0.7 }
+    const t: Track = { ...newTrack(tracks.length, role === 'drums'), name: ROLE_NAMES[role], role, program: role === 'chords' ? 48 : role === 'bass' ? 33 : 0, volume: role === 'chords' ? 0.5 : role === 'bass' ? 0.65 : 0.7 }
     tracks.push(t)
     return t
   }
@@ -448,8 +448,6 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
     }
   })
 
-  // 베이스는 저음이라 작게 들리기 쉬우니 음량을 넉넉히 올려 둔다
-  if (bassT.volume < 0.95) bassT.volume = 0.95
   for (const t of [chordsT, bassT, drumsT]) t.notes.sort((a, b) => a.start - b.start)
   return { ...song, tracks }
 }
