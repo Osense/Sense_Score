@@ -9,6 +9,10 @@ React + TypeScript 기반 태블릿용 음악 작업실. 곡 구성, 건반 녹�
 정적 HTTPS 호스팅에 `dist/` 전체를 배포합니다. 상대 경로를 사용하므로 하위 경로에도 배포할 수 있습니다.
 Sites 배포 설정은 `.openai/hosting.json`에 있습니다.
 
+공개 서비스: https://osense.github.io/Sense_Score/
+`main`에 푸시하면 `.github/workflows/pages.yml`이 빌드 후 GitHub Pages에 자동 배포합니다.
+Pages 주소의 저장소는 기존 개발 주소·Sites 주소와 별개입니다. 이전 곡은 프로젝트 백업·복원으로 옮겨 주세요.
+
 ## 기기 내 저장
 
 - 곡과 편집 설정을 변경 후 600ms 뒤 해당 사이트의 브라우저 localStorage에 자동 저장합니다. 탭이 숨겨지거나 페이지를 떠날 때도 즉시 저장합니다. 저장 실패 시 오류 표시와 재시도를 제공합니다.
