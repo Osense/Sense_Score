@@ -1,32 +1,26 @@
-# React + TypeScript + Vite
+﻿# Sense Score · 작곡 놀이터
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + TypeScript 기반 태블릿용 음악 작업실. 곡 구성, 건반 녹음, 피아노 롤·악보 편집, 믹스, MIDI 내보내기를 제공합니다.
 
-Currently, two official plugins are available:
+## 실행과 배포
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+`npm ci` 후 `npm run dev`로 개발 서버를 실행합니다.
+`npm run build`로 빌드하고 `npm run preview`로 확인합니다.
+정적 HTTPS 호스팅에 `dist/` 전체를 배포합니다. 상대 경로를 사용하므로 하위 경로에도 배포할 수 있습니다.
+Sites 배포 설정은 `.openai/hosting.json`에 있습니다.
 
-## React Compiler
+## 기기 내 저장
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 곡과 편집 설정을 변경 후 600ms 뒤 해당 사이트의 브라우저 localStorage에 자동 저장합니다. 탭이 숨겨지거나 페이지를 떠날 때도 즉시 저장합니다. 저장 실패 시 오류 표시와 재시도를 제공합니다.
+- 프로젝트 백업은 곡·트랙·음표·설정을 `.sense.json`으로 다운로드합니다. 백업 복원으로 다시 엽니다. MIDI는 음악 교환용이며 프로젝트 설정 전체를 보존하지 않습니다.
+- 브라우저·기기·사이트 주소마다 저장소가 다릅니다. 브라우저 데이터 삭제, 비공개 모드 종료, 저장 공간 정리로 데이터가 사라질 수 있으므로 중요한 곡은 파일로 백업하세요. 자동저장은 현재 곡 하나를 보관합니다.
+- 악기 합성, MIDI 처리, 녹음, 평가는 기기에서 실행됩니다. 작업 내용을 서버에 업로드하는 API나 분석 도구는 없습니다. 공유 기능은 사용자가 요청할 때 곡을 URL의 # 부분에 넣습니다.
+- 사운드폰트는 실행 중 메모리에만 보관합니다. 앱을 다시 열면 로컬 파일을 다시 불러와야 합니다. 내려받은 녹음 파일은 프로젝트와 별도로 보관하세요.
+- 첫 온라인 접속에서 앱 캐시가 완료되면 같은 주소를 오프라인으로 다시 열 수 있습니다. 브라우저의 서비스 워커·캐시 지원이 필요합니다. 업데이트는 기존 앱 탭을 모두 닫고 다시 열면 적용됩니다.
+- 로컬 개발 주소에 저장된 곡을 호스팅 주소에서 열려면 프로젝트 백업·복원을 사용하세요.
 
-## Expanding the Oxlint configuration
+## 태블릿
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+터치 조작 영역은 최소 44px입니다. 세로 화면에서 도구와 편집기는 나란히 배치하고 트랙 패널은 아래에 둡니다. 상단 버튼과 하단 단계 탭은 가로 스크롤할 수 있습니다. 손바닥 도구로 편집 화면을 이동하고 길게 눌러 편집 메뉴를 엽니다.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Chrome 터치 환경에서 768×1024, 1024×768, 1280×800의 6개 작업 화면, 터치 음표 입력, 자동저장·새로고침 복원, 백업 복원, 저장 용량 오류 표시, 오프라인 재실행을 검증했습니다. iPad Safari 실기기 검증은 별도로 필요합니다.

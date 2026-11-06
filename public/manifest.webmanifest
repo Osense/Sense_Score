@@ -1,0 +1,11 @@
+{
+  "name": "Sense Score · 작곡 놀이터",
+  "short_name": "Sense Score",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6fa",
+  "theme_color": "#5b6cff",
+  "icons": [{ "src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

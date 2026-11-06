@@ -19,7 +19,7 @@ import { AudioEngine } from './engine/audio'
 import { Player } from './engine/player'
 import { useHistory } from './history'
 import { exportMidi, importMidi } from './midi'
-import { defaultSettings, defaultSong, loadSaved, newTrack, save } from './storage'
+import { defaultSettings, defaultSong, loadSaved, newTrack, parseProject, save } from './storage'
 import { diatonicChords, DRUM_PARTS, SCALES } from './music'
 import { fitGroup, fitPitch, rangeLabel, rangeOf } from './instruments'
 import { codeFromHash, decodeSong, encodeSong, shareUrl } from './share'
@@ -98,7 +98,9 @@ export default function App() {
   const finishTakeRef = useRef<() => void>(() => {})
   const recorderRef = useRef<Recorder | null>(null)
   const [msg, setMsg] = useState('')
-  const [dirty, setDirty] = useState<'saved' | 'saving'>('saved')
+  const [dirty, setDirty] = useState<'saved' | 'saving' | 'error'>('saving')
+  const latestSave = useRef({ song, settings })
+  latestSave.current = { song, settings }
 
   const audioRef = useRef<{ engine: AudioEngine; player: Player } | null>(null)
   const audio = useCallback(() => {
@@ -139,11 +141,25 @@ export default function App() {
   useEffect(() => {
     setDirty('saving')
     const t = setTimeout(() => {
-      save(song, settings)
-      setDirty('saved')
+      setDirty(save(song, settings) ? 'saved' : 'error')
     }, 600)
     return () => clearTimeout(t)
   }, [song, settings])
+
+  // Tablet browsers may suspend the page without firing beforeunload.
+  useEffect(() => {
+    const flush = () => {
+      const current = latestSave.current
+      setDirty(save(current.song, current.settings) ? 'saved' : 'error')
+    }
+    const onHidden = () => { if (document.visibilityState === 'hidden') flush() }
+    document.addEventListener('visibilitychange', onHidden)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', onHidden)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [])
 
   /* ---------- 편집 ---------- */
   /** 트랙 전체를 고치고, 음표가 곡 끝을 넘으면 마디를 늘린다 (여러 트랙을 한 번에 고치는 악보 편집용) */
@@ -492,6 +508,7 @@ export default function App() {
 
   /* ---------- 파일 ---------- */
   const fileRef = useRef<HTMLInputElement>(null)
+  const projectRef = useRef<HTMLInputElement>(null)
   const sfRef = useRef<HTMLInputElement>(null)
   const [sfName, setSfName] = useState<string | null>(null)
 
@@ -513,6 +530,29 @@ export default function App() {
   const saveMidi = () => {
     download(exportMidi(song), `${song.title || '내 곡'}.mid`, 'audio/midi')
     flash('.mid 파일로 저장했어요.')
+  }
+
+  const backupProject = () => {
+    download(JSON.stringify({ format: 'sense-score', version: 1, song, settings }, null, 2),
+      `${song.title || '내 곡'}.sense.json`, 'application/json')
+    void navigator.storage?.persist?.().catch(() => false)
+    flash('곡과 설정을 기기에 백업했어요.')
+  }
+
+  const restoreProject = async (file: File) => {
+    try {
+      const data = parseProject(await file.text())
+      if (!confirm('현재 곡을 백업 파일의 곡으로 바꿀까요? 필요한 곡은 먼저 백업해 주세요.')) return
+      stop()
+      hist.reset(data.song)
+      setSettingsState(data.settings)
+      setActiveId(data.song.tracks[0].id)
+      setPlans({})
+      setWs('compose')
+      flash('프로젝트 백업을 복원했어요.')
+    } catch {
+      flash('올바른 Sense Score 프로젝트 파일을 선택해 주세요.')
+    }
   }
 
   const loadSf = async (f: File) => {
@@ -664,8 +704,19 @@ export default function App() {
         <button onClick={newSong}>📄 새 곡</button>
         <button onClick={() => fileRef.current?.click()}>📂 열기(.mid)</button>
         <button className="primary" onClick={saveMidi} title="Ctrl+S">💾 저장(.mid)</button>
-        <span className="saved">{dirty === 'saved' ? '자동 저장됨 ✓' : '저장 중…'}</span>
+        <button onClick={backupProject}>프로젝트 백업</button>
+        <button onClick={() => projectRef.current?.click()}>백업 복원</button>
       </header>
+      <div className={`local-status ${dirty === 'error' ? 'error' : ''}`} role="status" aria-live="polite">
+        <span>{dirty === 'saved' ? '이 기기에 자동 저장됨 ✓' : dirty === 'error' ? '자동 저장 실패 — 저장 공간·브라우저 설정을 확인하고 프로젝트를 백업해 주세요.' : '이 기기에 저장 중…'}</span>
+        <small>작업 내용은 서버에 전송되지 않아요. 브라우저 데이터 삭제 전에는 프로젝트를 백업해 주세요.</small>
+        {dirty === 'error' && <button onClick={() => setDirty(save(song, settings) ? 'saved' : 'error')}>저장 재시도</button>}
+      </div>
+      <input ref={projectRef} type="file" accept=".json,application/json" hidden onChange={(e) => {
+        const f = e.target.files?.[0]
+        if (f) void restoreProject(f)
+        e.target.value = ''
+      }} />
       <input
         ref={fileRef}
         type="file"
