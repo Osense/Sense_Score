@@ -22,13 +22,15 @@ interface Props {
   onCompose: (id: string) => void
   onWrite: () => void
   onMessage: (text: string) => void
+  /** 처음 열 하위 화면 */
+  initialView?: View
 }
 
 type View = 'listen' | 'rate' | 'share'
 
 /** 마지막 단계: 듣기 · 평가 · 공유 */
-export function DeliverPage({ song, settings, playing, exporting, getTick, onPlayAll, onStop, onSeek, onExportMidi, onExportAudio, makeLink, onCompose, onWrite, onMessage }: Props) {
-  const [view, setView] = useState<View>('listen')
+export function DeliverPage({ song, settings, playing, exporting, getTick, onPlayAll, onStop, onSeek, onExportMidi, onExportAudio, makeLink, onCompose, onWrite, onMessage, initialView = 'listen' }: Props) {
+  const [view, setView] = useState<View>(initialView)
   const [link, setLink] = useState('')
   const barTicks = song.beatsPerBar * PPQ
   const totalTicks = song.bars * barTicks
@@ -81,7 +83,7 @@ export function DeliverPage({ song, settings, playing, exporting, getTick, onPla
   const nativeShare = async () => {
     const url = link || (await createLink())
     if (!url) return
-    const text = `🎵 「${song.title || '내 곡'}」 ★${ev.stars} ${ev.total}점 — 내가 만든 곡을 들어 봐!`
+    const text = `「${song.title || '내 곡'}」 ★${ev.stars} ${ev.total}점 — 내가 만든 곡을 들어 봐!`
     if (navigator.share) {
       try {
         await navigator.share({ title: song.title || '내 곡', text, url })
@@ -97,7 +99,7 @@ export function DeliverPage({ song, settings, playing, exporting, getTick, onPla
     <div className="page deliver">
       <header className="page-head">
         <div>
-          <h2>🎬 완성 — {song.title || '이름 없는 곡'}</h2>
+          <h2>완성 — {song.title || '이름 없는 곡'}</h2>
           <p>곡 전체를 들어 보고, 평가를 받고, 친구와 나눠 보세요.</p>
         </div>
         <div className="head-stats">
@@ -109,7 +111,7 @@ export function DeliverPage({ song, settings, playing, exporting, getTick, onPla
       </header>
 
       <div className="sub-tabs" role="tablist">
-        {([['listen', '🎧 듣기'], ['rate', '⭐ 평가'], ['share', '📤 공유']] as const).map(([id, label]) => (
+        {([['listen', '듣기'], ['rate', '평가'], ['share', '공유']] as const).map(([id, label]) => (
           <button key={id} role="tab" aria-selected={view === id} className={view === id ? 'on' : ''} onClick={() => setView(id)}>
             {label}
           </button>
@@ -119,8 +121,8 @@ export function DeliverPage({ song, settings, playing, exporting, getTick, onPla
       {view === 'listen' && (
         <>
           <div className="play-hero">
-            <button className="hero-play" onClick={onPlayAll}>{playing ? '⏹ 멈추기' : '▶ 처음부터 전체 재생'}</button>
-            {playing && <button onClick={onStop}>⏸ 정지</button>}
+            <button className="hero-play" onClick={onPlayAll}>{playing ? '멈추기' : '▶ 처음부터 전체 재생'}</button>
+            {playing && <button onClick={onStop}>정지</button>}
             <span ref={nowRef} className="now" />
           </div>
           <div
@@ -192,14 +194,14 @@ export function DeliverPage({ song, settings, playing, exporting, getTick, onPla
                   <i style={{ width: `${c.score ?? 0}%`, background: c.score === null ? 'var(--border)' : c.score >= 75 ? '#3ecf8e' : c.score >= 50 ? '#f5b83d' : '#ff7a59' }} />
                 </div>
                 <p className="crit-detail">{c.detail}</p>
-                <p className="crit-learn">📖 {c.learn}</p>
-                {c.tip && <p className="crit-tip">👉 {c.tip}</p>}
+                <p className="crit-learn">{c.learn}</p>
+                {c.tip && <p className="crit-tip">{c.tip}</p>}
               </li>
             ))}
           </ul>
           <div className="row-btns">
-            <button className="primary" onClick={onWrite}>✏️ 직접 쓰기에서 고치러 가기</button>
-            <button onClick={() => copy(evaluationText(song, ev), '평가 결과를 복사했어요!')}>📋 평가 결과 복사</button>
+            <button className="primary" onClick={onWrite}>직접 쓰기에서 고치러 가기</button>
+            <button onClick={() => copy(evaluationText(song, ev), '평가 결과를 복사했어요!')}>평가 결과 복사</button>
           </div>
         </>
       )}
@@ -207,11 +209,11 @@ export function DeliverPage({ song, settings, playing, exporting, getTick, onPla
       {view === 'share' && (
         <div className="share-grid">
           <section className="share-card">
-            <h3>🔗 링크로 보내기</h3>
+            <h3>링크로 보내기</h3>
             <p>곡이 링크 안에 통째로 들어 있어요. 받은 친구가 링크를 열면 시작 화면에서 바로 곡을 열 수 있어요.</p>
             <div className="row-btns">
               <button className="primary" onClick={() => void createLink()}>링크 만들기</button>
-              <button onClick={() => void nativeShare()}>📤 공유하기</button>
+              <button onClick={() => void nativeShare()}>공유하기</button>
             </div>
             {link && (
               <div className="link-box">
@@ -219,10 +221,10 @@ export function DeliverPage({ song, settings, playing, exporting, getTick, onPla
                 <button onClick={() => copy(link, '링크를 복사했어요!')}>복사</button>
               </div>
             )}
-            {local && <p className="note-text">⚠️ 지금은 내 컴퓨터에서만 열리는 주소({location.host})예요. 친구가 열려면 이 앱이 인터넷에 올라가 있어야 해요.</p>}
+            {local && <p className="note-text">지금은 내 컴퓨터에서만 열리는 주소({location.host})예요. 친구가 열려면 이 앱이 인터넷에 올라가 있어야 해요.</p>}
           </section>
           <section className="share-card">
-            <h3>🎧 소리 파일로 저장</h3>
+            <h3>소리 파일로 저장</h3>
             <p>재생하지 않고 바로 만들어요 (곡 길이 약 {Math.floor(secs / 60)}분 {secs % 60}초). MP3는 작아서 메신저로 보내기 좋고, WAV는 크지만 음질 손실이 없어요.</p>
             <div className="row-btns">
               {(['mp3', 'wav'] as const).map((f) => (
@@ -233,12 +235,12 @@ export function DeliverPage({ song, settings, playing, exporting, getTick, onPla
             </div>
           </section>
           <section className="share-card">
-            <h3>💾 MIDI 파일</h3>
+            <h3>MIDI 파일</h3>
             <p>다른 음악 프로그램에서도 열 수 있는 악보 파일이에요. 선생님께 제출하거나 보관할 때 좋아요.</p>
             <button onClick={onExportMidi}>.mid 저장</button>
           </section>
           <section className="share-card">
-            <h3>📋 평가 결과 복사</h3>
+            <h3>평가 결과 복사</h3>
             <p>별점과 점수를 글로 복사해서 소감과 함께 보낼 수 있어요.</p>
             <button onClick={() => copy(evaluationText(song, ev), '평가 결과를 복사했어요!')}>복사하기</button>
           </section>

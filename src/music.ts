@@ -44,7 +44,7 @@ export function diatonicChords(root: number, type: ScaleType | 'none') {
   })
 }
 
-export const TRACK_COLORS = ['#4f8cff', '#ff7a59', '#3ecf8e', '#f5b83d', '#b072ff', '#ff5f9e', '#2ec4d6', '#9acd32']
+export const TRACK_COLORS = ['#e0605c', '#6f8fb3', '#c99a45', '#7fa77f', '#9c7bb5', '#5f9e98', '#c97b63', '#a8999a']
 
 /* ---------- 드럼 파트 ---------- */
 export interface DrumPart {

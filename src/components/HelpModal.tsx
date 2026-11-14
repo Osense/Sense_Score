@@ -29,7 +29,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
     <div className="modal-back" onPointerDown={onClose}>
       <div className="modal" onPointerDown={(e) => e.stopPropagation()} role="dialog" aria-label="사용법">
         <button className="modal-x" onClick={onClose} aria-label="닫기">✕</button>
-        <h2>직접 쓰기 모드 사용법 🛠</h2>
+        <h2>직접 쓰기 모드 사용법 </h2>
         <p className="lead">왼쪽 도구 모음에서 도구를 고르거나, 키보드 숫자 1~4를 눌러요. 마우스 우클릭이나 Shift 없이 손가락·펜으로도 모두 할 수 있어요.</p>
         <div className="help-grid">
           {TOOLS.map((t, i) => (
@@ -48,9 +48,9 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         </div>
         <h3>편집 화면</h3>
         <ul className="help-list">
-          <li><b>🎹 건반 편집</b> 피아노 건반처럼 세로가 음 높이, 가로가 시간이에요. 드럼은 킥·스네어 같은 파트가 줄로 나와요 (키보드 Q W E R T A S D F로 소리 들어보기).</li>
-          <li><b>🎤 멜로디 쓰기(별도 탭)</b> 가로 건반을 연주하면서 ⏺ 녹음을 누르면 연주가 그대로 MIDI 음표로 기록돼요. 컴퓨터 키보드(A S D F…)나 MIDI 키보드도 쓸 수 있어요.</li>
-          <li><b>🎼 악보 편집</b> 오선보에 음표를 찍어요. 📜 스크롤 / 📄 페이지 / 🎼 다중 악보로 볼 수 있어요.</li>
+          <li><b>건반 편집</b> 피아노 건반처럼 세로가 음 높이, 가로가 시간이에요. 드럼은 킥·스네어 같은 파트가 줄로 나와요 (키보드 Q W E R T A S D F로 소리 들어보기).</li>
+          <li><b>멜로디 쓰기(별도 탭)</b> 가로 건반을 연주하면서 녹음을 누르면 연주가 그대로 MIDI 음표로 기록돼요. 컴퓨터 키보드(A S D F…)나 MIDI 키보드도 쓸 수 있어요.</li>
+          <li><b>악보 편집</b> 오선보에 음표를 찍어요. 스크롤 / 페이지 / 다중 악보로 볼 수 있어요.</li>
           <li><b>편집 메뉴</b> 음표를 <b>우클릭</b>하거나 손가락으로 <b>꾹 누르면</b> 복사·잘라내기·붙여넣기·복제, 길이(2배·반·쪼개기·합치기), 음높이(옥타브·반음·음계에 맞추기), 세기 정리 메뉴가 나와요. 빈 곳에서 열면 그 자리에 붙여넣을 수 있어요. (Ctrl+C / X / V / D)</li>
           <li><b>파트 칩</b> 위쪽 파트 이름을 누르면 그 부분만 반복 재생하며 작곡할 수 있어요.</li>
           <li><b>최소 칸</b> 음표를 놓을 수 있는 가장 작은 칸이에요. 16분음표로 두면 한 박을 4등분해 찍어요.</li>

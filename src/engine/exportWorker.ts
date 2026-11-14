@@ -4,7 +4,8 @@ import { createMp3Encoder } from 'wasm-media-encoders'
 import { SoundBankLoader, SpessaSynthProcessor } from 'spessasynth_core'
 
 export interface NoteEvent { ch: number; pitch: number; vel: number; on: number; off: number }
-export interface ChannelSetup { ch: number; program: number; drum: boolean; volume: number }
+export interface ChannelSetup { ch: number; program: number; drum: boolean; volume: number; bend: boolean; bendRange: number }
+export interface BendEvent { ch: number; t: number; value: number }
 
 export type ExportJob =
   | { type: 'encode'; format: 'mp3' | 'wav'; sampleRate: number; left: Float32Array; right: Float32Array }
@@ -16,6 +17,7 @@ export type ExportJob =
       soundfont: ArrayBuffer
       channels: ChannelSetup[]
       events: NoteEvent[]
+      bends: BendEvent[]
       duration: number
     }
 
@@ -39,14 +41,18 @@ async function renderSoundfont(job: Extract<ExportJob, { type: 'soundfont' }>, p
     synth.midiChannels[c.ch]?.setDrums(c.drum)
     synth.programChange(c.ch, c.program)
     synth.controllerChange(c.ch, 7 as never, Math.round(c.volume * 127))
+    if (c.bend) // 벤드 폭(RPN 0)
+      for (const [cc, v] of [[101, 0], [100, 0], [6, Math.round(c.bendRange)], [38, 0]]) synth.controllerChange(c.ch, cc as never, v)
   }
   // 음 켜기/끄기를 시각 순서로 펼친다 (같은 시각이면 끄기 먼저 → 같은 음 연타가 끊기지 않음)
-  const msgs: { s: number; on: boolean; e: NoteEvent }[] = []
+  type Msg = { s: number; kind: 0 | 1 | 2; e?: NoteEvent; b?: BendEvent } // 0=끄기 1=벤드 2=켜기 (같은 시각이면 이 순서)
+  const msgs: Msg[] = []
   for (const e of job.events) {
-    msgs.push({ s: Math.round(e.on * sr), on: true, e })
-    msgs.push({ s: Math.round(e.off * sr), on: false, e })
+    msgs.push({ s: Math.round(e.on * sr), kind: 2, e })
+    msgs.push({ s: Math.round(e.off * sr), kind: 0, e })
   }
-  msgs.sort((a, b) => a.s - b.s || Number(a.on) - Number(b.on))
+  for (const b of job.bends) msgs.push({ s: Math.round(b.t * sr), kind: 1, b })
+  msgs.sort((a, b) => a.s - b.s || a.kind - b.kind)
   const BLOCK = 128
   const report = sr * 4
   let k = 0
@@ -54,8 +60,9 @@ async function renderSoundfont(job: Extract<ExportJob, { type: 'soundfont' }>, p
     const end = pos + BLOCK
     while (k < msgs.length && msgs[k].s < end) {
       const m = msgs[k++]
-      if (m.on) synth.noteOn(m.e.ch, m.e.pitch, m.e.vel)
-      else synth.noteOff(m.e.ch, m.e.pitch)
+      if (m.kind === 1) synth.pitchWheel(m.b!.ch, Math.max(0, Math.min(16383, Math.round(8192 + m.b!.value * 8192))))
+      else if (m.kind === 2) synth.noteOn(m.e!.ch, m.e!.pitch, m.e!.vel)
+      else synth.noteOff(m.e!.ch, m.e!.pitch)
     }
     synth.process(left, right, pos, Math.min(BLOCK, total - pos))
     if (pos % report < BLOCK) progress(pos / total)

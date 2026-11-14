@@ -1,16 +1,16 @@
-import { PPQ, uid, type Note, type Section, type SectionKind, type Song } from './types'
+import { bendAt, PPQ, uid, type Bend, type Note, type Section, type SectionKind, type Song } from './types'
 
 export const KINDS: Record<SectionKind, { label: string; color: string; hint: string }> = {
-  a: { label: 'A', color: '#4f8cff', hint: '곡의 얼굴이 되는 첫 번째 가락(주제)' },
-  b: { label: 'B', color: '#ff7a59', hint: 'A와 다른 분위기로 이야기를 이어 가는 가락(대비)' },
-  intro: { label: '인트로', color: '#8b95a7', hint: '곡의 시작! 분위기를 살짝 보여줘요' },
-  verse: { label: '벌스', color: '#4f8cff', hint: '이야기를 풀어가는 부분 (노래의 1절, 2절)' },
-  prechorus: { label: '프리코러스', color: '#2ec4d6', hint: '후렴으로 올라가기 전에 긴장감을 만드는 부분' },
-  chorus: { label: '코러스', color: '#ff7a59', hint: '가장 신나고 기억에 남는 후렴' },
-  bridge: { label: '브릿지', color: '#b072ff', hint: '분위기를 확 바꾸는 부분' },
-  interlude: { label: '간주', color: '#3ecf8e', hint: '노래 사이에 연주만 나오는 부분' },
-  outro: { label: '아웃트로', color: '#f5b83d', hint: '곡을 마무리하는 부분' },
-  free: { label: '자유', color: '#9aa0b0', hint: '정해진 역할 없이 마음대로' },
+  a: { label: 'A', color: '#6f8fb3', hint: '곡의 얼굴이 되는 첫 번째 가락(주제)' },
+  b: { label: 'B', color: '#e0605c', hint: 'A와 다른 분위기로 이야기를 이어 가는 가락(대비)' },
+  intro: { label: '인트로', color: '#7d6a6c', hint: '곡의 시작! 분위기를 살짝 보여줘요' },
+  verse: { label: '벌스', color: '#6f8fb3', hint: '이야기를 풀어가는 부분 (노래의 1절, 2절)' },
+  prechorus: { label: '프리코러스', color: '#5f9e98', hint: '후렴으로 올라가기 전에 긴장감을 만드는 부분' },
+  chorus: { label: '코러스', color: '#e0605c', hint: '가장 신나고 기억에 남는 후렴' },
+  bridge: { label: '브릿지', color: '#9c7bb5', hint: '분위기를 확 바꾸는 부분' },
+  interlude: { label: '간주', color: '#7fa77f', hint: '노래 사이에 연주만 나오는 부분' },
+  outro: { label: '아웃트로', color: '#c99a45', hint: '곡을 마무리하는 부분' },
+  free: { label: '자유', color: '#8a7a7c', hint: '정해진 역할 없이 마음대로' },
 }
 
 export const KIND_ORDER: SectionKind[] = ['a', 'b', 'intro', 'verse', 'prechorus', 'chorus', 'bridge', 'interlude', 'outro', 'free']
@@ -177,7 +177,7 @@ export function applySections(song: Song, plan: PlanItem[]): Song {
   const old = rangesOf(song)
   const usedIds = new Set<string>()
   const usedNotes = new Set<string>()
-  const tracks = song.tracks.map((t) => ({ ...t, notes: [] as Note[] }))
+  const tracks = song.tracks.map((t) => ({ ...t, notes: [] as Note[], ...(t.bends ? { bends: [] as Bend[] } : {}) }))
   const sections: Section[] = []
   let cursor = 0
   for (const item of plan) {
@@ -195,11 +195,32 @@ export function applySections(song: Song, plan: PlanItem[]): Song {
           usedNotes.add(nid)
           tracks[ti].notes.push({ ...n, id: nid, start: cursor + rel, dur: Math.min(n.dur, len - rel) })
         }
+        // 벤드도 파트와 함께 옮긴다. 파트 시작 시점에 걸려 있던 값으로 시작한다
+        const out = tracks[ti].bends
+        if (t.bends && out) {
+          out.push({ tick: cursor, value: bendAt(t, r.start) })
+          for (const b of t.bends) if (b.tick > r.start && b.tick < r.start + len && b.tick < r.end) out.push({ tick: cursor + b.tick - r.start, value: b.value })
+          out.push({ tick: cursor + len, value: 0 })
+        }
       })
+    } else {
+      for (const t of tracks) t.bends?.push({ tick: cursor, value: 0 })
     }
     cursor += len
   }
+  for (const t of tracks) if (t.bends) t.bends = tidyBends(t.bends)
   return { ...song, sections, bars: Math.max(1, cursor / barTicks), tracks }
+}
+
+/** 같은 위치는 마지막 값만, 값이 바뀌지 않는 점은 뺀다 */
+function tidyBends(list: Bend[]): Bend[] {
+  const out: Bend[] = []
+  for (const b of list) {
+    const last = out.at(-1)
+    if (last && last.tick === b.tick) last.value = b.value
+    else out.push({ ...b })
+  }
+  return out.filter((b, i) => b.value !== (i === 0 ? 0 : out[i - 1].value))
 }
 
 /** 파트 안에 음표가 있는지 (트랙별 개수) */

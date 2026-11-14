@@ -53,7 +53,7 @@ export function LearnPanel({ settings, drumTrack, onSettings, onChord, onProgres
             disabled={drumTrack}
             onClick={() => onProgression(minor ? [0, 5, 2, 6] : [0, 4, 5, 3])}
           >
-            ✨ 인기 코드 진행 넣기 ({minor ? 'Ⅰ-Ⅵ-Ⅲ-Ⅶ' : 'Ⅰ-Ⅴ-Ⅵ-Ⅳ'})
+            인기 코드 진행 넣기 ({minor ? 'Ⅰ-Ⅵ-Ⅲ-Ⅶ' : 'Ⅰ-Ⅴ-Ⅵ-Ⅳ'})
           </button>
         </>
       )}

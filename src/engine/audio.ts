@@ -19,6 +19,10 @@ export class AudioEngine {
   private chProgram: number[] = Array(16).fill(0)
   private chDrum: boolean[] = Array(16).fill(false)
   private chVol: number[] = Array(16).fill(-1)
+  /** 채널별 피치 벤드: 값(센트)을 내는 소스를 그 채널 모든 오실레이터의 detune에 연결한다 */
+  private bendSrc: ConstantSourceNode[] = []
+  private bendOn: boolean[] = Array(16).fill(false)
+  private bendRange: number[] = Array(16).fill(2)
   private active = new Map<string, { osc: OscillatorNode[]; gain: GainNode; amp: number; start: number; attack: number; decay: number }[]>()
   private sf?: WorkletSynthesizer
   soundfontName: string | null = null
@@ -36,6 +40,10 @@ export class AudioEngine {
       const g = this.ctx.createGain()
       g.connect(this.bus)
       this.chGain.push(g)
+      const b = this.ctx.createConstantSource()
+      b.offset.value = 0
+      b.start()
+      this.bendSrc.push(b)
     }
   }
 
@@ -78,6 +86,24 @@ export class AudioEngine {
     if (!this.sf) return
     this.sf.midiChannels[ch]?.setDrums(this.chDrum[ch])
     this.sf.programChange(ch, this.chProgram[ch])
+    this.sf.pitchWheelRange(ch, this.bendRange[ch])
+  }
+
+  /** 이 채널에서 피치 벤드를 쓸지와 벤드 폭(반음) */
+  setBendMode(ch: number, on: boolean, range = 2) {
+    if (this.bendOn[ch] === on && this.bendRange[ch] === range) return
+    this.bendOn[ch] = on
+    this.bendRange[ch] = range
+    this.sf?.pitchWheelRange(ch, range)
+  }
+
+  /** 피치 벤드 값(-1~1)을 when 시각에 건다 */
+  bend(ch: number, value: number, when: number) {
+    if (this.sf) {
+      this.sf.pitchWheel(ch, Math.max(0, Math.min(16383, Math.round(8192 + value * 8192))), { time: when })
+      return
+    }
+    this.bendSrc[ch].offset.setValueAtTime(value * this.bendRange[ch] * 100, Math.max(when, this.ctx.currentTime))
   }
 
   useBuiltin() {
@@ -153,6 +179,10 @@ export class AudioEngine {
     for (const list of this.active.values())
       for (const v of list) v.osc.forEach((o) => { try { o.stop(now + 0.02) } catch { /* 이미 끝남 */ } })
     this.active.clear()
+    for (const b of this.bendSrc) {
+      b.offset.cancelScheduledValues(now)
+      b.offset.setValueAtTime(0, now)
+    }
 
     // 사운드폰트: 모든 음을 끄고, 이미 예약된 음이 지나갈 때까지 출력을 잠깐 닫는다
     if (this.sf) {
@@ -161,7 +191,10 @@ export class AudioEngine {
       this.sfGate.gain.cancelScheduledValues(now)
       this.sfGate.gain.setValueAtTime(0, now)
       this.sfGate.gain.setValueAtTime(1, until)
-      for (let ch = 0; ch < 16; ch++) this.sf.controllerChange(ch, 120 as never, 0, { time: until - 0.01 })
+      for (let ch = 0; ch < 16; ch++) {
+        this.sf.controllerChange(ch, 120 as never, 0, { time: until - 0.01 })
+        this.sf.pitchWheel(ch, 8192, { time: until - 0.01 })
+      }
       this.guardUntil = until
     }
   }
@@ -277,6 +310,7 @@ export class AudioEngine {
         depth.gain.value = freq * 0.006
         lfo.connect(depth).connect(o.frequency)
       }
+      if (this.bendOn[ch]) this.bendSrc[ch].connect(o.detune)
       const og = this.ctx.createGain()
       og.gain.value = i === 0 ? 1 : bass ? 0.4 : 0.2
       o.connect(og).connect(gain)
@@ -284,7 +318,11 @@ export class AudioEngine {
       return o
     })
     // 소리가 끝나면 연결을 끊어 둔다. 남겨 두면 끝난 음도 계속 계산돼서 긴 곡일수록 느려진다.
-    osc[osc.length - 1].onended = () => gain.disconnect()
+    const bendSrc = this.bendOn[ch] ? this.bendSrc[ch] : null
+    osc[osc.length - 1].onended = () => {
+      gain.disconnect()
+      if (bendSrc) for (const o of osc) try { bendSrc.disconnect(o.detune) } catch { /* 연결 안 됨 */ }
+    }
     if (lfo) osc.push(lfo)
     const key = `${ch}:${pitch}`
     const list = this.active.get(key) ?? []
@@ -367,6 +405,9 @@ export class AudioEngine {
       return noise('highpass', 8500, 0.55, amp * 0.45)
     }
     if (pitch === 46) return noise('highpass', 7000, 0.3, amp * 0.55)
+    if (pitch === 39) return noise('bandpass', 1400, 0.16, amp * 0.9, 1.5) // 박수
+    if (pitch === 54) return noise('highpass', 9000, 0.22, amp * 0.5) // 탬버린
+    if (pitch === 69 || pitch === 70) return noise('highpass', 9500, 0.07, amp * 0.4) // 카바사·마라카스
     return noise('highpass', 7500, 0.06, amp * 0.55) // 닫힌 하이햇 등
   }
 }

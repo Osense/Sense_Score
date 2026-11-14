@@ -950,9 +950,9 @@ export function StaffEditor(p: Props) {
     <div className={`roll-wrap tool-${tool}`}>
       <div className="staff-tools">
         <span className="lbl">보기</span>
-        <button className={`toggle ${!page ? 'on' : ''}`} onClick={() => p.onSettings({ scoreView: 'scroll' })} title="가로로 길게 이어진 악보">📜 스크롤</button>
-        <button className={`toggle ${page ? 'on' : ''}`} onClick={() => p.onSettings({ scoreView: 'page' })} title="종이 악보처럼 여러 줄로 나눠 보기">📄 페이지</button>
-        <button className={`toggle ${multi ? 'on' : ''}`} onClick={() => p.onSettings({ scoreMulti: !multi })} title="모든 트랙을 한꺼번에 위아래로 겹쳐 보기">🎼 다중 악보</button>
+        <button className={`toggle ${!page ? 'on' : ''}`} onClick={() => p.onSettings({ scoreView: 'scroll' })} title="가로로 길게 이어진 악보">스크롤</button>
+        <button className={`toggle ${page ? 'on' : ''}`} onClick={() => p.onSettings({ scoreView: 'page' })} title="종이 악보처럼 여러 줄로 나눠 보기">페이지</button>
+        <button className={`toggle ${multi ? 'on' : ''}`} onClick={() => p.onSettings({ scoreMulti: !multi })} title="모든 트랙을 한꺼번에 위아래로 겹쳐 보기">다중 악보</button>
         {page && (
           <label className="inline" title="한 줄에 들어가는 마디 수. 자동은 4마디이고, 음이 촘촘하면 2마디로 줄어요">
             한 줄
@@ -1088,16 +1088,16 @@ export function StaffEditor(p: Props) {
             <b>{nSel}개 선택</b>
             {nSel === 1 && sel1 && <span>{sel1.track.drum ? drumPartFor(sel1.n.pitch).label : pitchLabel(sel1.n.pitch)}</span>}
             <button onClick={duplicate}>⧉ 복제</button>
-            <button onClick={() => del(selected)}>🗑 지우기</button>
+            <button onClick={() => del(selected)}>지우기</button>
           </>
         )}
         <button onClick={(e) => setMenu({ x: e.clientX, y: e.clientY, tick: Math.floor(p.getTick() / settings.snap) * settings.snap })} title="복사·붙여넣기·길이·음높이 등 편집 메뉴 (음표를 우클릭하거나 꾹 눌러도 열려요)">⋯ 편집 메뉴</button>
         <span className="transpose">
           <span className="lbl">전조 <small>({nSel ? '선택한 음' : '이 트랙 전체'})</small></span>
-          <button onClick={() => transpose(-12)} title="한 옥타브 내리기">⏬ 8도</button>
+          <button onClick={() => transpose(-12)} title="한 옥타브 내리기">8도 ↓</button>
           <button onClick={() => transpose(-1)} title="반음 내리기">♭ 반음↓</button>
           <button onClick={() => transpose(1)} title="반음 올리기">♯ 반음↑</button>
-          <button onClick={() => transpose(12)} title="한 옥타브 올리기">⏫ 8도</button>
+          <button onClick={() => transpose(12)} title="한 옥타브 올리기">8도 ↑</button>
         </span>
       </div>
       {menu && (
@@ -1120,8 +1120,8 @@ export function StaffEditor(p: Props) {
 }
 
 const TOOL_HINT: Record<Tool, string> = {
-  pen: '✏️ 오선 위를 누르면 위에서 고른 길이의 음표가 찍혀요 · 음표를 끌면 길이가 늘었다 줄었다 해요',
-  eraser: '🧽 지우고 싶은 음표를 누르거나, 문지르듯 끌면 닿는 음표가 지워져요',
-  hand: '✋ 음표를 끌면 이동 · 음표 끝의 손잡이를 끌면 길이 조절 · 빈 곳을 끌면 화면 이동',
+  pen: '오선 위를 누르면 위에서 고른 길이의 음표가 찍혀요 · 음표를 끌면 길이가 늘었다 줄었다 해요',
+  eraser: '지우고 싶은 음표를 누르거나, 문지르듯 끌면 닿는 음표가 지워져요',
+  hand: '음표를 끌면 이동 · 음표 끝의 손잡이를 끌면 길이 조절 · 빈 곳을 끌면 화면 이동',
   select: '⬚ 빈 곳에서 끌어 네모로 감싸면 여러 음표가 선택돼요 · 음표를 누르면 선택/해제',
 }

@@ -1,7 +1,7 @@
 import { PPQ, type Song } from '../types'
 import { AudioEngine, MASTER_GAIN } from './audio'
 import { Player } from './player'
-import type { ExportJob, ExportReply, NoteEvent, ChannelSetup } from './exportWorker'
+import type { BendEvent, ChannelSetup, ExportJob, ExportReply, NoteEvent } from './exportWorker'
 
 export type AudioFormat = 'mp3' | 'wav'
 
@@ -15,12 +15,14 @@ function plan(song: Song) {
   const anySolo = song.tracks.some((t) => t.solo)
   const channels: ChannelSetup[] = []
   const events: NoteEvent[] = []
+  const bends: BendEvent[] = []
   let last = (song.bars * song.beatsPerBar * PPQ) / tps
   song.tracks.forEach((t, i) => {
     const ch = Player.channelFor(song, i)
     const audible = anySolo ? t.solo : !t.mute
-    channels.push({ ch, program: t.program, drum: t.drum, volume: audible ? t.volume : 0 })
+    channels.push({ ch, program: t.program, drum: t.drum, volume: audible ? t.volume : 0, bend: !!t.bends?.length, bendRange: t.bendRange ?? 2 })
     if (!audible) return
+    for (const b of t.bends ?? []) bends.push({ ch, t: b.tick / tps, value: b.value })
     for (const n of t.notes) {
       const on = n.start / tps
       const off = Math.max(on + 0.02, (n.start + n.dur) / tps - 0.005)
@@ -28,7 +30,8 @@ function plan(song: Song) {
       last = Math.max(last, off)
     }
   })
-  return { channels, events, duration: last + TAIL }
+  bends.sort((a, b) => a.t - b.t)
+  return { channels, events, bends, duration: last + TAIL }
 }
 
 /** 구간 길이 (초). 한 구간에 노드를 너무 많이 만들면 렌더링이 급격히 느려진다. */
@@ -43,6 +46,7 @@ function newEngine(ctx: OfflineAudioContext, channels: ChannelSetup[]) {
   for (const c of channels) {
     eng.configure(c.ch, c.program, c.drum)
     eng.setVolume(c.ch, c.volume)
+    eng.setBendMode(c.ch, c.bend, c.bendRange)
   }
   return eng
 }
@@ -52,12 +56,14 @@ function newEngine(ctx: OfflineAudioContext, channels: ChannelSetup[]) {
  * 음표를 한꺼번에 다 예약하면 노드가 쌓여 긴 곡일수록 크게 느려지므로,
  * 실시간 재생처럼 약 1초마다 렌더링을 잠깐 멈추고 다음 구간 음표만 만들어 넣는다.
  */
-async function renderBuiltin({ channels, events, duration }: Plan, onProgress: (p: number) => void) {
+async function renderBuiltin({ channels, events, bends, duration }: Plan, onProgress: (p: number) => void) {
   const ctx = new OfflineAudioContext(2, Math.ceil(duration * SAMPLE_RATE), SAMPLE_RATE)
   const eng = newEngine(ctx, channels)
   events.sort((a, b) => a.on - b.on)
   let k = 0
+  let kb = 0
   const scheduleUntil = (t: number) => {
+    for (; kb < bends.length && bends[kb].t < t; kb++) eng.bend(bends[kb].ch, bends[kb].value, bends[kb].t)
     for (; k < events.length && events[k].on < t; k++) {
       const e = events[k]
       eng.noteOn(e.ch, e.pitch, e.vel, e.on)
@@ -83,7 +89,7 @@ async function renderBuiltin({ channels, events, duration }: Plan, onProgress: (
  * 렌더링 중 멈추기(suspend)를 못 하는 브라우저용.
  * 음 하나하나가 서로 독립인 소리라서, 곡을 짧은 구간으로 나눠 따로 렌더링한 뒤 더해도 한 번에 만든 것과 같다.
  */
-async function renderSegmented({ channels, events, duration }: Plan, onProgress: (p: number) => void) {
+async function renderSegmented({ channels, events, bends, duration }: Plan, onProgress: (p: number) => void) {
   const total = Math.ceil(duration * SAMPLE_RATE)
   const left = new Float32Array(total)
   const right = new Float32Array(total)
@@ -95,6 +101,13 @@ async function renderSegmented({ channels, events, duration }: Plan, onProgress:
     const end = Math.min(duration, Math.max(...mine.map((e) => e.off)) + RELEASE_TAIL)
     const ctx = new OfflineAudioContext(2, Math.ceil((end - t0) * SAMPLE_RATE), SAMPLE_RATE)
     const eng = newEngine(ctx, channels)
+    // 이 구간에서 울리는 동안의 벤드: 시작 시점 값 + 구간 안의 변화
+    for (const c of channels) {
+      if (!c.bend) continue
+      const before = bends.filter((b) => b.ch === c.ch && b.t <= t0).at(-1)
+      if (before) eng.bend(c.ch, before.value, 0)
+    }
+    for (const b of bends) if (b.t > t0 && b.t < end) eng.bend(b.ch, b.value, b.t - t0)
     for (const e of mine) {
       eng.noteOn(e.ch, e.pitch, e.vel, e.on - t0)
       eng.noteOff(e.ch, e.pitch, e.off - t0)
@@ -141,10 +154,10 @@ export async function exportAudio(song: Song, format: AudioFormat, soundfont: Ar
   onProgress(0)
   let data: Uint8Array
   if (soundfont) {
-    const { channels, events, duration } = plan(song)
+    const { channels, events, bends, duration } = plan(song)
     const sf = soundfont.slice(0)
     data = await runWorker(
-      { type: 'soundfont', format, sampleRate: SAMPLE_RATE, gain: MASTER_GAIN, soundfont: sf, channels, events, duration },
+      { type: 'soundfont', format, sampleRate: SAMPLE_RATE, gain: MASTER_GAIN, soundfont: sf, channels, events, bends, duration },
       [sf],
       onProgress,
       0,

@@ -13,16 +13,16 @@ export interface Instrument {
 
 /** 소리가 서로 크게 다른 대표 악기만 남겼다. 음역은 실제 악기가 낼 수 있는 범위를 따른다. */
 export const INSTRUMENTS: Instrument[] = [
-  { program: 0, name: '피아노', icon: '🎹', low: 21, high: 108, hint: '가장 넓은 음역을 가진 악기' },
-  { program: 4, name: '전자 피아노', icon: '🎹', low: 28, high: 100, hint: '말랑하고 따뜻한 건반' },
-  { program: 19, name: '오르간', icon: '⛪', low: 36, high: 96, hint: '길게 끄는 풍성한 소리' },
-  { program: 24, name: '기타', icon: '🎸', low: 40, high: 88, hint: '튕겨서 소리 내는 현악기' },
-  { program: 33, name: '베이스', icon: '🪕', low: 28, high: 67, hint: '낮은 음으로 바닥을 받쳐요' },
-  { program: 40, name: '바이올린', icon: '🎻', low: 55, high: 100, hint: '노래하는 듯한 높은 현악기' },
-  { program: 48, name: '현악 합주', icon: '🎻', low: 36, high: 96, hint: '여러 현악기가 함께 내는 소리' },
-  { program: 56, name: '트럼펫', icon: '🎺', low: 55, high: 84, hint: '밝고 힘찬 금관악기' },
-  { program: 73, name: '플루트', icon: '🪈', low: 60, high: 96, hint: '맑고 가벼운 관악기' },
-  { program: 80, name: '신스', icon: '🎛️', low: 24, high: 108, hint: '전자음 소리' },
+  { program: 0, name: '피아노', icon: '', low: 21, high: 108, hint: '가장 넓은 음역을 가진 악기' },
+  { program: 4, name: '전자 피아노', icon: '', low: 28, high: 100, hint: '말랑하고 따뜻한 건반' },
+  { program: 19, name: '오르간', icon: '', low: 36, high: 96, hint: '길게 끄는 풍성한 소리' },
+  { program: 24, name: '기타', icon: '', low: 40, high: 88, hint: '튕겨서 소리 내는 현악기' },
+  { program: 33, name: '베이스', icon: '', low: 28, high: 67, hint: '낮은 음으로 바닥을 받쳐요' },
+  { program: 40, name: '바이올린', icon: '', low: 55, high: 100, hint: '노래하는 듯한 높은 현악기' },
+  { program: 48, name: '현악 합주', icon: '', low: 36, high: 96, hint: '여러 현악기가 함께 내는 소리' },
+  { program: 56, name: '트럼펫', icon: '', low: 55, high: 84, hint: '밝고 힘찬 금관악기' },
+  { program: 73, name: '플루트', icon: '', low: 60, high: 96, hint: '맑고 가벼운 관악기' },
+  { program: 80, name: '신스', icon: '', low: 24, high: 108, hint: '전자음 소리' },
 ]
 
 /** 목록에 없는 악기(불러온 MIDI 등)는 넓게 허용한다 */

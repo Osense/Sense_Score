@@ -598,17 +598,17 @@ export function PianoRoll(p: Props) {
               />
             </label>
             <button onClick={duplicate}>⧉ 복제</button>
-            <button onClick={() => del(selected)}>🗑 지우기</button>
+            <button onClick={() => del(selected)}>지우기</button>
           </>
         )}
         <button onClick={(e) => setMenu({ x: e.clientX, y: e.clientY, tick: snapTick(p.getTick()) })} title="복사·붙여넣기·길이·음높이 등 편집 메뉴 (음표를 우클릭하거나 꾹 눌러도 열려요)">⋯ 편집 메뉴</button>
         {!drum && (
           <span className="transpose">
             <span className="lbl">전조 <small>({selNotes.length ? '선택한 음' : '이 트랙 전체'})</small></span>
-            <button onClick={() => transpose(-12)} title="한 옥타브 내리기">⏬ 8도</button>
+            <button onClick={() => transpose(-12)} title="한 옥타브 내리기">8도 ↓</button>
             <button onClick={() => transpose(-1)} title="반음 내리기">♭ 반음↓</button>
             <button onClick={() => transpose(1)} title="반음 올리기">♯ 반음↑</button>
-            <button onClick={() => transpose(12)} title="한 옥타브 올리기">⏫ 8도</button>
+            <button onClick={() => transpose(12)} title="한 옥타브 올리기">8도 ↑</button>
           </span>
         )}
       </div>
@@ -627,8 +627,8 @@ export function PianoRoll(p: Props) {
 
 const HINT_MENU = ' · 우클릭/꾹 누르기: 편집 메뉴'
 const HINT: Record<Tool, string> = {
-  pen: '✏️ 빈 곳을 누르면 음표가 생겨요 (끌면 길이 조절) · 음표를 끌면 길이가 늘었다 줄었다 해요',
-  eraser: '🧽 지우고 싶은 음표를 누르거나, 문지르듯 끌면 닿는 음표가 지워져요',
-  hand: '✋ 음표를 끌면 이동 · 음표 오른쪽 끝을 끌면 길이 조절 · 빈 곳을 끌면 화면 이동',
+  pen: '빈 곳을 누르면 음표가 생겨요 (끌면 길이 조절) · 음표를 끌면 길이가 늘었다 줄었다 해요',
+  eraser: '지우고 싶은 음표를 누르거나, 문지르듯 끌면 닿는 음표가 지워져요',
+  hand: '음표를 끌면 이동 · 음표 오른쪽 끝을 끌면 길이 조절 · 빈 곳을 끌면 화면 이동',
   select: '⬚ 빈 곳에서 끌어 네모로 감싸면 여러 음표가 선택돼요 · 음표를 누르면 선택/해제',
 }

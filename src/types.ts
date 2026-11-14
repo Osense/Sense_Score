@@ -8,6 +8,13 @@ export interface Note {
   vel: number // 1-127
 }
 
+/** 피치 벤드(음 끌어올리기·내리기) 한 점. 다음 점까지 이 값이 유지된다 */
+export interface Bend {
+  tick: number
+  /** -1(아래 끝) ~ 0(원래 음) ~ 1(위 끝). 실제 반음 수 = value × Track.bendRange */
+  value: number
+}
+
 export interface Track {
   id: string
   name: string
@@ -20,6 +27,20 @@ export interface Track {
   /** 뼈대 세우기(코드·베이스·드럼)가 어느 트랙에 음표를 넣을지 */
   role?: 'melody' | 'chords' | 'bass' | 'drums'
   notes: Note[]
+  /** 불러온 MIDI의 피치 벤드 (기타 초킹 등). 없으면 벤드 없음 */
+  bends?: Bend[]
+  /** 벤드 끝 값이 몇 반음인지 (MIDI 기본 2) */
+  bendRange?: number
+}
+
+/** tick 위치에서 걸려 있는 벤드 값 */
+export function bendAt(t: Track, tick: number): number {
+  let v = 0
+  for (const b of t.bends ?? []) {
+    if (b.tick > tick) break
+    v = b.value
+  }
+  return v
 }
 
 export type SectionKind = 'a' | 'b' | 'intro' | 'verse' | 'prechorus' | 'chorus' | 'bridge' | 'interlude' | 'outro' | 'free'

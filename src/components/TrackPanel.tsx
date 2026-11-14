@@ -1,3 +1,4 @@
+import { instrumentByPatchID } from '@tonejs/midi/dist/InstrumentMaps'
 import { INSTRUMENTS, instrumentOf, rangeLabel, rangeOf } from '../instruments'
 import type { Song, Track } from '../types'
 
@@ -13,7 +14,7 @@ export function ProgramSelect({ value, onChange }: { value: number; onChange: (p
       {INSTRUMENTS.map((i) => (
         <option key={i.program} value={i.program}>{i.icon} {i.name}</option>
       ))}
-      {!instrumentOf(value) && <option value={value}>기타 악기 (불러온 소리)</option>}
+      {!instrumentOf(value) && <option value={value}>불러온 소리 · {instrumentByPatchID[value] ?? value + 1}</option>}
     </select>
   )
 }
@@ -68,7 +69,7 @@ export function TrackPanel({ song, activeId, onSelect, onChange, onCheckpoint, o
             </div>
             <div className="track-bottom">
               {t.drum ? (
-                <span className="drum-label">🥁 드럼 (음 높이마다 다른 타악기)</span>
+                <span className="drum-label">드럼 (음 높이마다 다른 타악기)</span>
               ) : (
                 <ProgramSelect value={t.program} onChange={(v) => onChange(t.id, { program: v })} />
               )}

@@ -15,7 +15,7 @@ export function PracticePanel({ settings, onSettings }: Props) {
         <input type="checkbox" checked={t.on} onChange={(e) => set({ on: e.target.checked })} />
         <span>점점 빠르게 연습 (스피드 트레이너)</span>
       </label>
-      <p className="note-text">반복 구간을 한 번 돌 때마다 템포가 조금씩 올라가요. 위쪽 🔁 반복을 켜 두세요.</p>
+      <p className="note-text">반복 구간을 한 번 돌 때마다 템포가 조금씩 올라가요. 위쪽 반복을 켜 두세요.</p>
       {t.on && (
         <div className="trainer">
           <label>

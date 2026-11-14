@@ -144,7 +144,7 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
                 <b>{s.name}</b>
                 <small>{s.bars}마디 · {chordNames(progs.find((p) => p.id === full[s.id]?.prog)?.degrees.slice(0, 4) ?? [])}</small>
               </span>
-              {siblingsOf(song, s.id).length > 0 && full[s.id]?.linked !== false && <em className="lnk" title="같은 종류 파트와 설정이 함께 바뀌어요">🔗</em>}
+              {siblingsOf(song, s.id).length > 0 && full[s.id]?.linked !== false && <em className="lnk" title="같은 종류 파트와 설정이 함께 바뀌어요"></em>}
               {done && <em title="이미 음표가 있어요">✓</em>}
             </button>
           )
@@ -164,15 +164,15 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
           {(ctx.prevLast !== null || ctx.nextFirst !== null) && (
             <div className="mb-hint">
               {ctx.prevLast !== null && (
-                <div>🔗 앞 파트 <b>{ctx.prevName}</b>는 <b>{nm(ctx.prevLast)}</b> 화음으로 끝나요.</div>
+                <div>앞 파트 <b>{ctx.prevName}</b>는 <b>{nm(ctx.prevLast)}</b> 화음으로 끝나요.</div>
               )}
               {ctx.nextFirst !== null && (
                 <div>
-                  🎯 다음 파트 <b>{KINDS[ctx.nextKind!].label}</b>는 <b>{nm(ctx.nextFirst)}</b> 화음으로 시작해요
+                  다음 파트 <b>{KINDS[ctx.nextKind!].label}</b>는 <b>{nm(ctx.nextFirst)}</b> 화음으로 시작해요
                   {(sec.kind === 'prechorus' || sec.kind === 'bridge' || sec.kind === 'intro') ? ' — 그쪽으로 자연스럽게 이어지는 진행을 추천해요.' : '.'}
                 </div>
               )}
-              <button className="sense" onClick={() => set({ prog: ranks[0].prog.id })}>✨ 센스 있게 추천받기</button>
+              <button className="sense" onClick={() => set({ prog: ranks[0].prog.id })}>센스 있게 추천받기</button>
             </div>
           )}
           <div className="choice-grid">
@@ -180,7 +180,7 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
               const rec = recOf(p.id)
               return (
                 <button key={p.id} className={`choice ${plan.prog === p.id ? 'on' : ''}`} onClick={() => pick({ prog: p.id }, 4)}>
-                  {rec && <span className="rec" title={rec.reasons.join(' / ')}>⭐ 추천</span>}
+                  {rec && <span className="rec" title={rec.reasons.join(' / ')}>추천</span>}
                   <b className="roman">{p.name}</b>
                   <span className="chords">{chordNames(p.degrees)}</span>
                   <small>{p.mood}</small>
@@ -194,7 +194,7 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
             <div className="mb-row">
               <label className="check-card link-card">
                 <input type="checkbox" checked={linked} onChange={(e) => toggleLink(e.target.checked)} />
-                🔗 같은 종류의 파트 ({sibs.map((i) => song.sections[i].name).join(', ')})도 함께 바꾸기
+                같은 종류의 파트 ({sibs.map((i) => song.sections[i].name).join(', ')})도 함께 바꾸기
                 <small>{linked ? '여기서 고른 것이 다른 파트에도 자동으로 적용돼요' : '이 파트만 따로 정해요'}</small>
               </label>
             </div>
@@ -278,7 +278,7 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
         <button onClick={() => onApply([sec.id], sec.id)}>▶ 이 파트 적용하고 듣기</button>
         <button onClick={gotoNext} disabled={idx === song.sections.length - 1}>다음 파트 →</button>
         <span className="grow" />
-        <button className="primary big-btn" onClick={() => { onApply(undefined); onDone() }}>🧱 전체 뼈대 세우기</button>
+        <button className="primary big-btn" onClick={() => { onApply(undefined); onDone() }}>전체 뼈대 세우기</button>
       </footer>
     </div>
   )

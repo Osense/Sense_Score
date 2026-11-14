@@ -19,7 +19,7 @@ export function MixPage({ song, master, onMaster, onChange, onAdd, onRemove, chi
     <div className="page mix">
       <header className="page-head">
         <div>
-          <h2>🎚️ 믹스 — 소리 맞추기</h2>
+          <h2>믹스 — 소리 맞추기</h2>
           <p>곡을 재생하면서 악기를 바꾸고 음량을 맞춰 보세요. <b>끄기</b>는 그 파트만 빼고, <b>혼자</b>는 그 파트만 들려줘요.</p>
         </div>
       </header>
@@ -28,7 +28,7 @@ export function MixPage({ song, master, onMaster, onChange, onAdd, onRemove, chi
           <div key={t.id} className="strip">
             <span className="strip-color" style={{ background: t.color }} />
             <input className="strip-name" value={t.name} onChange={(e) => onChange(t.id, { name: e.target.value })} aria-label="트랙 이름" />
-            {t.drum ? <span className="drum-label">🥁 드럼</span> : <ProgramSelect value={t.program} onChange={(v) => onChange(t.id, { program: v })} />}
+            {t.drum ? <span className="drum-label">드럼</span> : <ProgramSelect value={t.program} onChange={(v) => onChange(t.id, { program: v })} />}
             <div className="fader-wrap">
               <input
                 className="fader"

@@ -52,7 +52,7 @@ const GRIDS = [
 
 type Assist = 'free' | 'snap' | 'lock'
 
-/** 멜로디 쓰기: 가로 건반으로 연주하고 녹음(⏺)하면 건반 소리가 MIDI 음표로 기록되고, 보정으로 다듬어진다 */
+/** 멜로디 쓰기: 가로 건반으로 연주하고 녹음()하면 건반 소리가 MIDI 음표로 기록되고, 보정으로 다듬어진다 */
 export function MelodyPage(p: Props) {
   const { song, settings } = p
   const tracks = song.tracks.filter((t) => !t.drum)
@@ -101,7 +101,7 @@ export function MelodyPage(p: Props) {
 
   const noteOn = (pitch: number, vel: number) => {
     if (!playable(pitch)) return
-    // 🧲 음계로 보정: 음계 밖 건반을 눌러도 가장 가까운 음계 안의 음이 소리 나고 기록된다
+    // 음계로 보정: 음계 밖 건반을 눌러도 가장 가까운 음계 안의 음이 소리 나고 기록된다
     const sounded = assist === 'snap' && scaleOn ? nearestInScale(pitch, settings.scaleRoot, settings.scaleType, range.low, range.high) : pitch
     snapMap.current.set(pitch, sounded)
     setDown((s) => new Set(s).add(pitch))
@@ -171,7 +171,7 @@ export function MelodyPage(p: Props) {
         }
       })
       setMidiName(names.length ? names.join(', ') : null)
-      p.onMessage(names.length ? `🎹 ${names.join(', ')} 연결됐어요!` : '연결된 MIDI 키보드가 없어요. 키보드를 꽂고 다시 눌러 주세요.')
+      p.onMessage(names.length ? `${names.join(', ')} 연결됐어요!` : '연결된 MIDI 키보드가 없어요. 키보드를 꽂고 다시 눌러 주세요.')
     } catch {
       p.onMessage('MIDI 접근이 허용되지 않았어요.')
     }
@@ -227,7 +227,7 @@ export function MelodyPage(p: Props) {
           <i />
           {p.taking ? '녹음 중… 눌러서 끝내기' : '녹음'}
         </button>
-        <button onClick={p.onPlay} disabled={p.taking}>{p.playing && !p.taking ? '⏸ 반주 멈추기' : '▶ 반주만 듣기'}</button>
+        <button onClick={p.onPlay} disabled={p.taking}>{p.playing && !p.taking ? '반주 멈추기' : '▶ 반주만 듣기'}</button>
         <label className="inline">
           연주할 트랙
           <select value={track?.id} onChange={(e) => p.onTrack(e.target.value)}>
@@ -238,26 +238,26 @@ export function MelodyPage(p: Props) {
         </label>
         {track && <span className="range-badge" title="이 악기가 낼 수 있는 음역">음역 {rangeLabel(range)}</span>}
         <span className="sep" />
-        <button className={settings.countIn ? 'toggle on' : 'toggle'} onClick={() => p.onSettings({ countIn: !settings.countIn })} title="녹음 전에 한 마디 박자를 세어줘요">⏱ 먼저 세기</button>
-        <button className={settings.metronome ? 'toggle on' : 'toggle'} onClick={() => p.onSettings({ metronome: !settings.metronome })}>🥁 메트로놈</button>
-        <button className={replace ? 'toggle on' : 'toggle'} onClick={() => setReplace(!replace)} title="녹음하기 전에 이 구간의 기존 음표를 지우고 새로 녹음해요">🧹 덮어쓰기</button>
+        <button className={settings.countIn ? 'toggle on' : 'toggle'} onClick={() => p.onSettings({ countIn: !settings.countIn })} title="녹음 전에 한 마디 박자를 세어줘요">먼저 세기</button>
+        <button className={settings.metronome ? 'toggle on' : 'toggle'} onClick={() => p.onSettings({ metronome: !settings.metronome })}>메트로놈</button>
+        <button className={replace ? 'toggle on' : 'toggle'} onClick={() => setReplace(!replace)} title="녹음하기 전에 이 구간의 기존 음표를 지우고 새로 녹음해요">덮어쓰기</button>
         <span className="seg assist" title="연주하는 동안 틀린 음을 어떻게 도와줄지">
-          {([['free', '자유롭게'], ['snap', '🧲 음계로 보정'], ['lock', '🔒 음계 안만']] as const).map(([v, t]) => (
+          {([['free', '자유롭게'], ['snap', '음계로 보정'], ['lock', '음계 안만']] as const).map(([v, t]) => (
             <button key={v} className={assist === v ? 'on' : ''} onClick={() => setAssist(v)} disabled={v !== 'free' && !scaleOn} title={v === 'snap' ? '음계 밖 건반을 눌러도 가장 가까운 음계 음이 소리 나요' : v === 'lock' ? '음계 밖 건반은 눌리지 않아요' : '아무 건반이나 눌러요'}>
               {t}
             </button>
           ))}
         </span>
-        <button onClick={connectMidi} title="MIDI 키보드를 꽂았다면 연결해서 진짜 건반으로 연주해요">{midiName ? `🎹 ${midiName}` : '🎹 MIDI 키보드 연결'}</button>
+        <button onClick={connectMidi} title="MIDI 키보드를 꽂았다면 연결해서 진짜 건반으로 연주해요">{midiName ? `${midiName}` : 'MIDI 키보드 연결'}</button>
         {p.lastTake && !p.taking && (
           <span className="take-info">
-            ✅ 방금 {p.lastTake.count}개 녹음됨 <button onClick={p.onDiscard}>🗑 이 녹음 지우기</button>
+            방금 {p.lastTake.count}개 녹음됨 <button onClick={p.onDiscard}>이 녹음 지우기</button>
           </span>
         )}
       </div>
 
       <div className="mel-fix">
-        <span className="fix-title">🪄 연주 보정</span>
+        <span className="fix-title">연주 보정</span>
         <div className="fix-presets">
           {PRESETS.map((pr) => (
             <button key={pr.id} className={presetId === pr.id ? 'on' : ''} onClick={() => setCorrection(pr.c, pr.id)} title={pr.desc}>
@@ -292,7 +292,7 @@ export function MelodyPage(p: Props) {
           </div>
         </details>
         <span className="fix-note">
-          {p.lastTake && !p.taking ? '👆 보정을 바꾸면 방금 녹음에 바로 적용돼요. 들어 보며 골라 보세요!' : '녹음이 끝나면 이 설정으로 다듬어져요. 녹음한 뒤에도 바꿀 수 있어요.'}
+          {p.lastTake && !p.taking ? '보정을 바꾸면 방금 녹음에 바로 적용돼요. 들어 보며 골라 보세요!' : '녹음이 끝나면 이 설정으로 다듬어져요. 녹음한 뒤에도 바꿀 수 있어요.'}
         </span>
       </div>
 

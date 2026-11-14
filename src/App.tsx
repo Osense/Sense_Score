@@ -22,6 +22,8 @@ import { Player } from './engine/player'
 import { useHistory } from './history'
 import { exportMidi, importMidi } from './midi'
 import { exportAudio, type AudioFormat } from './engine/export'
+import { Icon } from './components/Icon'
+import { ExportMenu } from './components/ExportMenu'
 import { defaultSettings, defaultSong, loadSaved, newTrack, parseProject, save } from './storage'
 import { diatonicChords, DRUM_PARTS, SCALES } from './music'
 import { fitGroup, fitPitch, rangeLabel, rangeOf } from './instruments'
@@ -53,13 +55,13 @@ function TimeDisplay({ getTick, song, speed }: { getTick: () => number; song: So
       const sec = (t / PPQ) * (60 / (song.bpm * speed))
       const m = Math.floor(sec / 60)
       const s = (sec % 60).toFixed(1).padStart(4, '0')
-      if (ref.current) ref.current.textContent = `${bar}마디 ${beat}박 · ${m}:${s}`
+      if (ref.current) ref.current.textContent = `${bar}마디 ${beat}박  ${m}:${s}`
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
   }, [getTick, song.beatsPerBar, song.bpm, speed])
-  return <span className="time" ref={ref} />
+  return <span className="time" ref={ref} aria-label="재생 위치" />
 }
 
 function download(data: BlobPart, name: string, type: string) {
@@ -67,7 +69,10 @@ function download(data: BlobPart, name: string, type: string) {
   const a = document.createElement('a')
   a.href = url
   a.download = name
+  a.style.display = 'none'
+  document.body.appendChild(a) // 문서에 붙여야 안드로이드 등에서 파일 이름이 지켜진다
   a.click()
+  a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
@@ -86,6 +91,7 @@ export default function App() {
   const [ws, setWs] = useState<Workspace>('start')
   const [incoming, setIncoming] = useState<{ song: Song; scale: Pick<Settings, 'scaleRoot' | 'scaleType'> } | null>(null)
   /** 소리 파일 만드는 중이면 진행률(0~1) */
+  const [deliverView, setDeliverView] = useState<'listen' | 'rate' | 'share'>('listen')
   const [exporting, setExporting] = useState<{ format: AudioFormat; progress: number } | null>(null)
   const [selectedSec, setSelectedSec] = useState<string | null>(null)
   const [plans, setPlans] = useState<Record<string, PartPlan>>({}) // 뼈대 세우기 메뉴판에서 고른 것
@@ -269,7 +275,7 @@ export default function App() {
     setPlans(filled)
     hist.set((x) => generate(x, settingsRef.current, filled, ids))
     if (listen) playPart(listen)
-    else flash('뼈대를 세웠어요! 직접 쓰기에서 멜로디를 얹어 보세요 🎶')
+    else flash('뼈대를 세웠어요! 직접 쓰기에서 멜로디를 얹어 보세요 ')
   }
 
   const focusSection = (id: string) => {
@@ -385,7 +391,7 @@ export default function App() {
     const notes = correctTake(raw, info.correction, correctEnv(info.trackId))
     updateNotes(info.trackId, (ns) => [...ns, ...notes], true)
     setLastTake({ count: notes.length, trackId: info.trackId, raw })
-    flash(`🎙 음표 ${notes.length}개를 녹음하고 보정했어요!`)
+    flash(`음표 ${notes.length}개를 녹음하고 보정했어요!`)
   }
 
   /** 보정에 필요한 환경 (템포, 음계, 악기 음역) */
@@ -436,7 +442,7 @@ export default function App() {
     history.replaceState(null, '', location.pathname)
     setIncoming(null)
     setWs('deliver')
-    flash('친구의 곡을 열었어요! 먼저 들어 보고 평가도 받아 보세요 🎧')
+    flash('친구의 곡을 열었어요! 먼저 들어 보고 평가도 받아 보세요 ')
   }
   const changeMaster = (v: number) => {
     setMaster(v)
@@ -669,7 +675,7 @@ export default function App() {
         지금은 {sfName ? <b>{sfName}</b> : '내장 간단한 소리'}를 쓰고 있어요. 더 실감 나는 악기 소리를 원하면 사운드폰트(.sf2/.sf3)를 불러오세요.
       </p>
       <div className="row-btns">
-        <button onClick={() => sfRef.current?.click()}>🎹 불러오기</button>
+        <button onClick={() => sfRef.current?.click()}>사운드폰트 불러오기</button>
         {sfName && (
           <button
             onClick={() => {
@@ -687,30 +693,47 @@ export default function App() {
   return (
     <div className="app">
       <header className="top">
-        <div className="brand">🎼 작곡 놀이터</div>
-        <input
-          className="title"
-          value={song.title}
-          onFocus={hist.checkpoint}
-          onChange={(e) => setSong({ title: e.target.value }, false)}
-          aria-label="곡 제목"
-        />
-        <div className="grow" />
-        <button onClick={hist.undo} disabled={!hist.canUndo} title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>
-        <button onClick={hist.redo} disabled={!hist.canRedo} title="다시하기 (Ctrl+Y)">↷ 다시</button>
-        <span className="sep" />
-        <button onClick={() => setShowHelp(true)} title="도구 사용법">❓ 사용법</button>
-        <button onClick={newSong}>📄 새 곡</button>
-        <button onClick={() => fileRef.current?.click()}>📂 열기(.mid)</button>
-        <button className="primary" onClick={saveMidi} title="Ctrl+S">💾 저장(.mid)</button>
-        <button onClick={backupProject}>프로젝트 백업</button>
-        <button onClick={() => projectRef.current?.click()}>백업 복원</button>
+        <div className="top-main">
+          <span className="brand" aria-label="Sense Score">
+            <b>SENSE</b>
+            <i>score</i>
+          </span>
+          <input
+            className="title"
+            value={song.title}
+            onFocus={hist.checkpoint}
+            onChange={(e) => setSong({ title: e.target.value }, false)}
+            aria-label="곡 제목"
+          />
+          <button className="icon-btn" onClick={hist.undo} disabled={!hist.canUndo} title="되돌리기 (Ctrl+Z)" aria-label="되돌리기">
+            <Icon name="undo" />
+          </button>
+          <button className="icon-btn" onClick={hist.redo} disabled={!hist.canRedo} title="다시하기 (Ctrl+Y)" aria-label="다시하기">
+            <Icon name="redo" />
+          </button>
+          <ExportMenu exporting={exporting} onAudio={(f) => void saveAudio(f)} onMidi={saveMidi} onShare={() => {
+            setDeliverView('share')
+            setWs('deliver')
+          }} />
+        </div>
+        <div className="top-files">
+          <button onClick={newSong}><Icon name="file" size={15} />새 곡</button>
+          <button onClick={() => fileRef.current?.click()} title="다른 프로그램에서 만든 MIDI 파일도 열 수 있어요"><Icon name="folder" size={15} />MIDI 열기</button>
+          <button onClick={backupProject} title="이 곡을 프로젝트 파일(.json)로 내려받아 보관"><Icon name="save" size={15} />백업</button>
+          <button onClick={() => projectRef.current?.click()} title="백업해 둔 프로젝트 파일 열기"><Icon name="upload" size={15} />복원</button>
+          <button onClick={() => setShowHelp(true)} title="도구 사용법"><Icon name="help" size={15} />사용법</button>
+          <span className={`save-state ${dirty}`} role="status" aria-live="polite" title="작업 내용은 서버로 보내지 않고 이 기기에만 저장돼요. 브라우저 데이터를 지우기 전에 백업해 주세요.">
+            <i />
+            {dirty === 'saved' ? '이 기기에 저장됨' : dirty === 'error' ? '저장 실패' : '저장 중'}
+          </span>
+        </div>
       </header>
-      <div className={`local-status ${dirty === 'error' ? 'error' : ''}`} role="status" aria-live="polite">
-        <span>{dirty === 'saved' ? '이 기기에 자동 저장됨 ✓' : dirty === 'error' ? '자동 저장 실패 — 저장 공간·브라우저 설정을 확인하고 프로젝트를 백업해 주세요.' : '이 기기에 저장 중…'}</span>
-        <small>작업 내용은 서버에 전송되지 않아요. 브라우저 데이터 삭제 전에는 프로젝트를 백업해 주세요.</small>
-        {dirty === 'error' && <button onClick={() => setDirty(save(song, settings) ? 'saved' : 'error')}>저장 재시도</button>}
-      </div>
+      {dirty === 'error' && (
+        <div className="local-status error" role="alert">
+          <span>자동 저장 실패 — 저장 공간·브라우저 설정을 확인하고 프로젝트를 백업해 주세요.</span>
+          <button onClick={() => setDirty(save(song, settings) ? 'saved' : 'error')}>저장 재시도</button>
+        </div>
+      )}
       <input ref={projectRef} type="file" accept=".json,application/json" hidden onChange={(e) => {
         const f = e.target.files?.[0]
         if (f) void restoreProject(f)
@@ -741,76 +764,50 @@ export default function App() {
 
       {ws !== 'start' && (
         <div className="transport">
-          <button className="big" onClick={stop} title="처음으로 (Home)">⏹</button>
-          <button className="big play" onClick={() => void togglePlay()} title="재생/일시정지 (스페이스)">
-            {playing ? '⏸' : '▶'}
-          </button>
-          <TimeDisplay getTick={getTick} song={song} speed={settings.speed} />
-          <span className="sep" />
-          <TempoControl value={song.bpm} onChange={(bpm) => setSong({ bpm }, false)} onCheckpoint={hist.checkpoint} />
-          <label className="inline" title="한 마디가 몇 박인지">
-            박자
-            <select value={song.beatsPerBar} onChange={(e) => setSong({ beatsPerBar: +e.target.value })}>
-              {[2, 3, 4, 5, 6, 7].map((n) => (
-                <option key={n} value={n}>{n}/4</option>
-              ))}
-            </select>
-          </label>
-          <label className="inline" title="느리게 연습하거나 빠르게 들어보기">
-            속도 ×{settings.speed.toFixed(2)}
-            <input type="range" min={0.25} max={2} step={0.05} value={settings.speed} onChange={(e) => setSettings({ speed: +e.target.value })} />
-          </label>
-          <span className="sep" />
-          <button
-            className={settings.loop ? 'toggle on' : 'toggle'}
-            onClick={() => {
-              const end = song.bars * barTicks
-              if (!settings.loop && settings.loopEnd <= settings.loopStart) setSettings({ loop: true, loopStart: 0, loopEnd: end })
-              else setSettings({ loop: !settings.loop })
-            }}
-            title="눈금자(위쪽 마디 숫자)를 끌거나 파트 이름을 눌러서 반복할 구간을 정해요"
-          >
-            🔁 반복
-          </button>
-          <button
-            className={settings.metronome ? 'toggle on' : 'toggle'}
-            onClick={() => setSettings({ metronome: !settings.metronome })}
-            title="박자를 알려주는 딱딱 소리"
-          >
-            🥁 메트로놈
-          </button>
-          <button
-            className={settings.countIn ? 'toggle on' : 'toggle'}
-            onClick={() => setSettings({ countIn: !settings.countIn })}
-            title="재생 전에 한 마디 박자를 세어줘요"
-          >
-            ⏱ 먼저 세기
-          </button>
-          {compose && (
-            <>
-              <span className="sep" />
-              <label className="inline" title="음표를 놓을 수 있는 가장 작은 칸. 16분음표로 하면 한 박을 4등분해서 찍을 수 있어요">
-                최소 칸
-                <select value={settings.snap} onChange={(e) => setSettings({ snap: +e.target.value })}>
-                  {SNAPS.map((s) => (
-                    <option key={s.v} value={s.v}>{s.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="inline">
-                확대
-                <input type="range" min={0.4} max={2.5} step={0.1} value={zoom} onChange={(e) => setZoom(+e.target.value)} />
-              </label>
-              <label className="check" title="재생 중 화면이 따라가요">
-                <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} />
-                <span>따라가기</span>
-              </label>
-              <button onClick={() => resizeEnd(4)}>＋ 4마디</button>
-              <button onClick={() => resizeEnd(-4)} title="음표가 있는 곳까지만 줄여요 (맨 뒤 파트가 줄어요)">
-                － 4마디
-              </button>
-            </>
-          )}
+          <div className="t-group">
+            <button className="t-btn" onClick={stop} title="처음으로 (Home)" aria-label="처음으로">
+              <Icon name="stop" size={16} />
+            </button>
+            <button className="t-btn play" onClick={() => void togglePlay()} title="재생/일시정지 (스페이스)" aria-label={playing ? '일시정지' : '재생'}>
+              <Icon name={playing ? 'pause' : 'play'} size={18} />
+            </button>
+            <TimeDisplay getTick={getTick} song={song} speed={settings.speed} />
+          </div>
+          <div className="t-group">
+            <TempoControl value={song.bpm} onChange={(bpm) => setSong({ bpm }, false)} onCheckpoint={hist.checkpoint} />
+            <label className="inline" title="한 마디가 몇 박인지">
+              <span className="lbl-word">박자</span>
+              <select value={song.beatsPerBar} onChange={(e) => setSong({ beatsPerBar: +e.target.value })}>
+                {[2, 3, 4, 5, 6, 7].map((n) => (
+                  <option key={n} value={n}>{n}/4</option>
+                ))}
+              </select>
+            </label>
+            <label className="inline speed" title="느리게 연습하거나 빠르게 들어보기 (곡의 빠르기는 바뀌지 않아요)">
+              <span className="lbl-word">속도</span> <b>×{settings.speed.toFixed(2)}</b>
+              <input type="range" min={0.25} max={2} step={0.05} value={settings.speed} onChange={(e) => setSettings({ speed: +e.target.value })} />
+            </label>
+          </div>
+          <div className="t-group">
+            <button
+              className={settings.loop ? 'toggle on' : 'toggle'}
+              aria-pressed={settings.loop}
+              onClick={() => {
+                const end = song.bars * barTicks
+                if (!settings.loop && settings.loopEnd <= settings.loopStart) setSettings({ loop: true, loopStart: 0, loopEnd: end })
+                else setSettings({ loop: !settings.loop })
+              }}
+              title="눈금자(위쪽 마디 숫자)를 끌거나 파트 이름을 눌러서 반복할 구간을 정해요"
+            >
+              <Icon name="loop" size={15} />반복
+            </button>
+            <button className={settings.metronome ? 'toggle on' : 'toggle'} aria-pressed={settings.metronome} onClick={() => setSettings({ metronome: !settings.metronome })} title="박자를 알려주는 딱딱 소리">
+              <Icon name="metronome" size={15} />메트로놈
+            </button>
+            <button className={settings.countIn ? 'toggle on' : 'toggle'} aria-pressed={settings.countIn} onClick={() => setSettings({ countIn: !settings.countIn })} title="재생 전에 한 마디 박자를 세어줘요">
+              <Icon name="countin" size={15} />먼저 세기
+            </button>
+          </div>
         </div>
       )}
 
@@ -894,10 +891,10 @@ export default function App() {
             <div className="editor-head">
             <div className="mode-tabs">
               <button className={mode === 'keys' ? 'tab on' : 'tab'} onClick={() => setMode('keys')}>
-                {active.drum ? '🥁 드럼' : '🎹 건반'}
+                <Icon name={active.drum ? 'drum' : 'keys'} size={16} />{active.drum ? '드럼' : '건반'}
               </button>
               <button className={mode === 'score' ? 'tab on' : 'tab'} onClick={() => setMode('score')}>
-                🎼 악보
+                <Icon name="score" size={16} />악보
               </button>
             </div>
             <div className="part-strip">
@@ -924,14 +921,36 @@ export default function App() {
                   {s.name}
                 </button>
               ))}
-              <button className="chip ghost" onClick={() => setWs('arrange')}>🧩 파트 편집</button>
+              <button className="chip ghost" onClick={() => setWs('arrange')}>파트 편집</button>
             </div>
             <span className="cur-track" title="지금 쓰고 있는 트랙과, 그 악기가 낼 수 있는 음역">
               <i style={{ background: active.color }} /> {active.name}
               {!active.drum && <small className="range-badge">음역 {rangeLabel(rangeOf(active.program))}</small>}
             </span>
             </div>
-            {mode === 'keys' && !active.drum && <KeyDisplayControls settings={settings} onSettings={setSettings} />}
+            <div className="view-bar" role="group" aria-label="보기 설정">
+              <label className="inline" title="음표를 놓을 수 있는 가장 작은 칸. 16분음표로 하면 한 박을 4등분해서 찍을 수 있어요">
+                <span className="lbl-word">최소 칸</span>
+                <select value={settings.snap} onChange={(e) => setSettings({ snap: +e.target.value })}>
+                  {SNAPS.map((s) => (
+                    <option key={s.v} value={s.v}>{s.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="inline" title="가로 확대">
+                <span className="lbl-word">확대</span>
+                <input type="range" min={0.4} max={2.5} step={0.1} value={zoom} onChange={(e) => setZoom(+e.target.value)} />
+              </label>
+              <label className="check" title="재생 중 화면이 따라가요">
+                <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} />
+                <span>따라가기</span>
+              </label>
+              <button onClick={() => resizeEnd(4)} title="곡 끝에 4마디 더하기"><Icon name="plus" size={14} />4마디</button>
+              <button onClick={() => resizeEnd(-4)} title="음표가 있는 곳까지만 줄여요 (맨 뒤 파트가 줄어요)">
+                <Icon name="minus" size={14} />4마디
+              </button>
+              {mode === 'keys' && !active.drum && <KeyDisplayControls settings={settings} onSettings={setSettings} />}
+            </div>
             {mode === 'keys' ? (
               <PianoRoll
                 key={`k${active.id}`}
@@ -989,6 +1008,8 @@ export default function App() {
 
       {ws === 'deliver' && (
         <DeliverPage
+          key={deliverView}
+          initialView={deliverView}
           song={song}
           settings={settings}
           playing={playing}
@@ -1006,7 +1027,13 @@ export default function App() {
         />
       )}
 
-      <WorkspaceTabs ws={ws} onChange={setWs} />
+      <WorkspaceTabs
+        ws={ws}
+        onChange={(w) => {
+          setDeliverView('listen')
+          setWs(w)
+        }}
+      />
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
       {msg && <div className="toast">{msg}</div>}
     </div>

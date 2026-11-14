@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Icon } from './Icon'
 import { NOTE_NAMES_EN, NOTE_NAMES_KO } from '../music'
 import { buildTemplate, defaultAnswers, type Answers } from '../template'
 import type { ScaleType, Settings, Song } from '../types'
@@ -17,10 +18,10 @@ interface Props {
 }
 
 const TEMPOS = [
-  { bpm: 70, icon: '🐢', label: '느긋하게', term: '아다지오 (Adagio)', hint: '발라드, 잔잔한 곡' },
-  { bpm: 100, icon: '🚶', label: '보통', term: '안단테 (Andante)', hint: '걷는 빠르기, 가장 무난해요' },
-  { bpm: 130, icon: '🏃', label: '신나게', term: '알레그로 (Allegro)', hint: '댄스, 팝송' },
-  { bpm: 160, icon: '🚀', label: '아주 빠르게', term: '비바체 (Vivace)', hint: '록, 신나는 게임 음악' },
+  { bpm: 70, label: '느긋하게', term: '아다지오 (Adagio)', hint: '발라드, 잔잔한 곡' },
+  { bpm: 100, label: '보통', term: '안단테 (Andante)', hint: '걷는 빠르기, 가장 무난해요' },
+  { bpm: 130, label: '신나게', term: '알레그로 (Allegro)', hint: '댄스, 팝송' },
+  { bpm: 160, label: '아주 빠르게', term: '비바체 (Vivace)', hint: '록, 신나는 게임 음악' },
 ]
 
 const METERS = [
@@ -30,11 +31,11 @@ const METERS = [
   { beats: 5, label: '5박자', hint: '하나-둘-셋-넷-다섯 · 독특해서 도전!', accents: [1, 0, 0, 0.5, 0] },
 ]
 
-const MOODS: { type: ScaleType; icon: string; label: string; hint: string }[] = [
-  { type: 'major', icon: '☀️', label: '밝고 경쾌하게', hint: '장음계 · 도레미파솔라시' },
-  { type: 'minor', icon: '🌙', label: '차분하고 슬프게', hint: '단음계 · 어두운 분위기' },
-  { type: 'pentatonic', icon: '🌈', label: '아무렇게나 쳐도 어울리게', hint: '5음계 · 틀리기 어려워요' },
-  { type: 'blues', icon: '🎷', label: '블루스 느낌으로', hint: '블루스 음계 · 멋부린 느낌' },
+const MOODS: { type: ScaleType; label: string; hint: string }[] = [
+  { type: 'major', label: '밝고 경쾌하게', hint: '장음계 · 도레미파솔라시' },
+  { type: 'minor', label: '차분하고 슬프게', hint: '단음계 · 어두운 분위기' },
+  { type: 'pentatonic', label: '아무렇게나 쳐도 어울리게', hint: '5음계 · 틀리기 어려워요' },
+  { type: 'blues', label: '블루스 느낌으로', hint: '블루스 음계 · 멋부린 느낌' },
 ]
 
 const TITLE_IDEAS = ['나의 첫 곡', '봄날의 산책', '별이 빛나는 밤', '우리 동네 행진곡', '비 오는 날', '여름 방학', '꿈속의 놀이터', '달리는 자전거']
@@ -44,7 +45,7 @@ const STEP_TITLES = ['시작', '제목', '빠르기', '박자', '분위기', '�
 function Learn({ title = '알아두면 좋아요', children }: { title?: string; children: React.ReactNode }) {
   return (
     <aside className="learn">
-      <b>💡 {title}</b>
+      <b>{title}</b>
       <div>{children}</div>
     </aside>
   )
@@ -62,20 +63,20 @@ export function Wizard({ hasSaved, incoming, onOpenIncoming, onCreate, onBlank, 
       case 0:
         return (
           <>
-            <h2>어떤 곡을 만들어 볼까요? 🎵</h2>
+            <h2>어떤 곡을 만들어 볼까요? </h2>
             <p className="lead">
               먼저 곡의 기본 설정(제목·빠르기·박자·분위기)을 정해요. 그다음 <b>구성</b>에서 곡의 틀을 짜고, <b>멜로디 쓰기</b>로 녹음한 뒤 <b>직접 쓰기 모드</b>에서 다듬고 듣고·평가받고·친구에게 공유해요.
             </p>
             {incoming && (
               <button className="incoming" onClick={onOpenIncoming}>
-                🎁 친구가 보낸 곡 「{incoming.title || '이름 없는 곡'}」이 도착했어요! 열어 보기
+                친구가 보낸 곡 「{incoming.title || '이름 없는 곡'}」이 도착했어요! 열어 보기
               </button>
             )}
             <div className="wiz-actions">
-              <button className="primary big-btn" onClick={() => setStep(1)}>🧙 새 곡 시작하기</button>
+              <button className="primary big-btn" onClick={() => setStep(1)}>새 곡 시작하기</button>
               {hasSaved && <button className="big-btn" onClick={onContinue}>▶ 하던 곡 이어서 하기</button>}
-              <button className="big-btn" onClick={onBlank}>✏️ 틀 없이 바로 직접 쓰기</button>
-              <button className="big-btn" onClick={onImport}>📂 MIDI 파일 불러오기</button>
+              <button className="big-btn" onClick={onBlank}>틀 없이 바로 직접 쓰기</button>
+              <button className="big-btn" onClick={onImport}>MIDI 파일 불러오기</button>
             </div>
             <ol className="flow-list">
               <li><b>시작</b> 제목·빠르기·박자·분위기 정하기</li>
@@ -98,7 +99,7 @@ export function Wizard({ hasSaved, incoming, onOpenIncoming, onCreate, onBlank, 
               {TITLE_IDEAS.slice(0, 5).map((t) => (
                 <button key={t} className="chip ghost" onClick={() => set({ title: t })}>{t}</button>
               ))}
-              <button className="chip" onClick={() => set({ title: TITLE_IDEAS[Math.floor(Math.random() * TITLE_IDEAS.length)] })}>🎲 아무거나</button>
+              <button className="chip" onClick={() => set({ title: TITLE_IDEAS[Math.floor(Math.random() * TITLE_IDEAS.length)] })}>아무거나</button>
             </div>
             <Learn>제목은 곡의 분위기를 한마디로 알려 줘요. 클래식에서는 ‘왈츠’, ‘행진곡’처럼 곡의 종류나 박자를 제목에 쓰기도 해요.</Learn>
           </>
@@ -111,18 +112,17 @@ export function Wizard({ hasSaved, incoming, onOpenIncoming, onCreate, onBlank, 
             <div className="wiz-grid">
               {TEMPOS.map((t) => (
                 <button key={t.bpm} className={`wiz-card ${a.bpm === t.bpm ? 'on' : ''}`} onClick={() => set({ bpm: t.bpm })}>
-                  <span className="big-icon">{t.icon}</span>
+                  <span className="big-icon meter">{t.bpm}<small>BPM</small></span>
                   <b>{t.label}</b>
                   <small>{t.hint}</small>
                   <span className="term">{t.term}</span>
-                  <em>{t.bpm}</em>
                 </button>
               ))}
             </div>
             <div className="fine">
               세밀하게 조절 <b>{a.bpm}</b>
               <input type="range" min={50} max={200} value={a.bpm} onChange={(e) => set({ bpm: +e.target.value })} />
-              <button onClick={() => onBeatDemo(a.bpm, a.beats)}>🔊 박 소리 들어보기</button>
+              <button onClick={() => onBeatDemo(a.bpm, a.beats)}>박 소리 들어보기</button>
             </div>
             <Learn>
               악보에는 빠르기를 이탈리아어로 적어요. 지금 고른 빠르기는 <b>{tempo.term}</b>쯤이에요. 같은 멜로디도 빠르기에 따라 신나게도, 슬프게도 들려요.
@@ -149,7 +149,7 @@ export function Wizard({ hasSaved, incoming, onOpenIncoming, onCreate, onBlank, 
               ))}
             </div>
             <div className="fine">
-              <button onClick={() => onBeatDemo(a.bpm, a.beats)}>🔊 {a.beats}박자 들어보기</button>
+              <button onClick={() => onBeatDemo(a.bpm, a.beats)}>{a.beats}박자 들어보기</button>
             </div>
             <Learn>
               박자는 <b>센 박</b>과 <b>여린 박</b>이 반복되는 규칙이에요. 큰 동그라미가 센 박이고, 마디의 첫 박이 가장 세요. 4박자는 ‘강-약-중강-약’, 3박자는 ‘강-약-약’으로 느껴져요.
@@ -164,7 +164,6 @@ export function Wizard({ hasSaved, incoming, onOpenIncoming, onCreate, onBlank, 
             <div className="wiz-grid">
               {MOODS.map((m) => (
                 <button key={m.type} className={`wiz-card ${a.scaleType === m.type ? 'on' : ''}`} onClick={() => set({ scaleType: m.type })}>
-                  <span className="big-icon">{m.icon}</span>
                   <b>{m.label}</b>
                   <small>{m.hint}</small>
                 </button>
@@ -180,7 +179,7 @@ export function Wizard({ hasSaved, incoming, onOpenIncoming, onCreate, onBlank, 
               ))}
             </div>
             <div className="fine">
-              <button onClick={() => onScaleDemo(a.root, a.scaleType)}>🔊 {NOTE_NAMES_KO[a.root]}에서 시작하는 {mood.label.split(' ')[0]} 음계 들어보기</button>
+              <button onClick={() => onScaleDemo(a.root, a.scaleType)}>{NOTE_NAMES_KO[a.root]}에서 시작하는 {mood.label.split(' ')[0]} 음계 들어보기</button>
             </div>
             <Learn>
               같은 도레미라도 장음계는 밝고, 단음계는 어둡게 들려요. 으뜸음은 음계의 <b>집</b>이라서, 곡이 이 음에서 끝나면 ‘끝났다’는 편안한 느낌이 나요.
@@ -194,13 +193,13 @@ export function Wizard({ hasSaved, incoming, onOpenIncoming, onCreate, onBlank, 
             <p className="lead">하나 이상 골라요. 나중에 얼마든지 더하거나 뺄 수 있어요.</p>
             <div className="wiz-grid">
               {([
-                ['melody', '🎹', '멜로디', '내가 직접 만드는 주인공 선율'],
-                ['chords', '🎸', '코드 반주', '화음으로 받쳐 주는 반주'],
-                ['bass', '🪕', '베이스', '낮은 음으로 바닥을 깔아 줘요'],
-                ['drums', '🥁', '드럼', '킥·스네어·하이햇으로 리듬'],
+                ['melody', 'melody', '멜로디', '내가 직접 만드는 주인공 선율'],
+                ['chords', 'keys', '코드 반주', '화음으로 받쳐 주는 반주'],
+                ['bass', 'sound', '베이스', '낮은 음으로 바닥을 깔아 줘요'],
+                ['drums', 'drum', '드럼', '킥·스네어·하이햇으로 리듬'],
               ] as const).map(([k, icon, label, hint]) => (
                 <button key={k} className={`wiz-card ${a[k] ? 'on' : ''}`} onClick={() => set({ [k]: !a[k] })}>
-                  <span className="big-icon">{icon}</span>
+                  <span className="big-icon"><Icon name={icon} size={26} /></span>
                   <b>{label}</b>
                   <small>{hint}</small>
                 </button>
@@ -214,9 +213,9 @@ export function Wizard({ hasSaved, incoming, onOpenIncoming, onCreate, onBlank, 
       default:
         return (
           <>
-            <h2>마지막이에요! 이렇게 시작할게요 ✨</h2>
+            <h2>마지막이에요! 이렇게 시작할게요 </h2>
             <div className="summary">
-              <h4>🎼 「{a.title.trim() || '새 곡'}」</h4>
+              <h4>「{a.title.trim() || '새 곡'}」</h4>
               <p>
                 <b>{a.bpm}</b> BPM({tempo.term.split(' ')[0]}) · <b>{a.beats}/4</b> 박자 · <b>{NOTE_NAMES_KO[a.root]}</b> {mood.label} · 트랙{' '}
                 <b>{[a.melody && '멜로디', a.chords && '코드 반주', a.bass && '베이스', a.drums && '드럼'].filter(Boolean).join(' · ')}</b>
@@ -247,7 +246,7 @@ export function Wizard({ hasSaved, incoming, onOpenIncoming, onCreate, onBlank, 
           <button onClick={() => setStep(step - 1)}>← 이전</button>
           {last ? (
             <button className="primary big-btn" onClick={() => { const r = buildTemplate(a); onCreate(r.song, r.settings) }}>
-              🎉 곡 만들기 시작!
+              곡 만들기 시작!
             </button>
           ) : (
             <button className="primary" onClick={() => setStep(step + 1)} disabled={step === 5 && !a.melody && !a.chords && !a.bass && !a.drums}>

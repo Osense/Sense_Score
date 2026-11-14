@@ -25,7 +25,7 @@ export function TempoControl({ value, onChange, onCheckpoint }: {
 
   return (
     <div className="tempo-control" role="group" aria-label="템포 조절">
-      <label htmlFor="song-tempo">템포</label>
+      <label htmlFor="song-tempo" className="lbl-word">템포</label>
       <button type="button" aria-label="템포 내리기" title="1 BPM 내리기" onPointerDown={(e) => e.preventDefault()} onClick={() => step(-1)}>−</button>
       <input
         id="song-tempo"

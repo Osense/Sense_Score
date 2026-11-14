@@ -1,4 +1,4 @@
-import { PPQ, type Settings, type Song } from '../types'
+import { bendAt, PPQ, type Settings, type Song } from '../types'
 import type { AudioEngine } from './audio'
 
 const LOOKAHEAD = 0.15
@@ -48,6 +48,14 @@ export class Player {
       this.engine.configure(ch, t.program, t.drum)
       const audible = anySolo ? t.solo : !t.mute
       this.engine.setVolume(ch, audible ? t.volume : 0)
+      this.engine.setBendMode(ch, !!t.bends?.length, t.bendRange ?? 2)
+    })
+  }
+
+  /** 재생을 시작하거나 반복으로 되돌아갈 때, 그 위치에 걸려 있던 벤드 값으로 맞춘다 */
+  private resetBends(song: Song, tick: number, time: number) {
+    song.tracks.forEach((t, i) => {
+      if (t.bends?.length) this.engine.bend(Player.channelFor(song, i), bendAt(t, tick), time)
     })
   }
 
@@ -86,6 +94,7 @@ export class Player {
     this.trainerBpm = s.trainer.on ? s.trainer.from : song.bpm
     this.pausedAt = fromTick
     this.playing = true
+    this.resetBends(song, this.cursorTick, this.cursorTime)
     this.timer = window.setInterval(() => this.pump(), TIMER_MS)
     this.pump()
   }
@@ -163,6 +172,7 @@ export class Player {
       if (hitEnd) {
         if (s.loop && s.loopEnd > s.loopStart) {
           this.cursorTick = s.loopStart
+          this.resetBends(song, s.loopStart, this.cursorTime)
           if (s.trainer.on && this.trainerBpm < s.trainer.to)
             this.trainerBpm = Math.min(s.trainer.to, this.trainerBpm + s.trainer.step)
         } else {
@@ -189,6 +199,7 @@ export class Player {
     const cut = s.loop ? s.loopEnd : Infinity
     song.tracks.forEach((tr, i) => {
       const ch = Player.channelFor(song, i)
+      for (const b of tr.bends ?? []) if (b.tick >= from && b.tick < to) eng.bend(ch, b.value, at(b.tick))
       for (const n of tr.notes) {
         if (n.start < from || n.start >= to) continue
         const on = at(n.start)
