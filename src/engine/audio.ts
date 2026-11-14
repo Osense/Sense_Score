@@ -1,16 +1,18 @@
 import { WorkletSynthesizer } from 'spessasynth_lib'
 import processorUrl from 'spessasynth_lib/dist/spessasynth_processor.min.js?url'
 
+/** 전체 음량 (내보내기에서도 같은 값을 쓴다) */
+export const MASTER_GAIN = 0.8
+
 /** 채널 단위로 소리를 내는 엔진. 내장 신디사이저 또는 사운드폰트(SF2/SF3). */
 export class AudioEngine {
-  ctx = new AudioContext()
-  private master = this.ctx.createGain()
-  /** 녹음용 출력 (소리 파일로 저장할 때 쓴다) */
-  private recDest = this.ctx.createMediaStreamDestination()
+  /** 실시간 재생은 AudioContext, 소리 파일 내보내기는 OfflineAudioContext */
+  ctx: BaseAudioContext
+  private master: GainNode
   /** 모든 내장 소리가 지나가는 통로. 정지하면 통째로 갈아 끼워서 예약된 소리까지 한꺼번에 끊는다. */
-  private bus = this.makeBus()
+  private bus: GainNode
   /** 사운드폰트 출력. 정지 직후 이미 예약된 음이 새어 나오지 않도록 잠깐 닫는다. */
-  private sfGate = this.makeSfGate()
+  private sfGate: GainNode
   /** 이 시각 전에는 새 소리를 예약하면 안 된다 (정지 처리가 끝나는 시각) */
   guardUntil = 0
   private chGain: GainNode[] = []
@@ -20,11 +22,16 @@ export class AudioEngine {
   private active = new Map<string, { osc: OscillatorNode[]; gain: GainNode; amp: number; start: number; attack: number; decay: number }[]>()
   private sf?: WorkletSynthesizer
   soundfontName: string | null = null
+  /** 불러온 사운드폰트 원본 (소리 파일 내보내기 때 다시 쓴다) */
+  soundfontData: ArrayBuffer | null = null
 
-  constructor() {
-    this.master.gain.value = 0.8
+  constructor(ctx: BaseAudioContext = new AudioContext()) {
+    this.ctx = ctx
+    this.master = ctx.createGain()
+    this.bus = this.makeBus()
+    this.sfGate = this.makeSfGate()
+    this.master.gain.value = MASTER_GAIN
     this.master.connect(this.ctx.destination)
-    this.master.connect(this.recDest)
     for (let i = 0; i < 16; i++) {
       const g = this.ctx.createGain()
       g.connect(this.bus)
@@ -45,7 +52,7 @@ export class AudioEngine {
   }
 
   resume() {
-    return this.ctx.state === 'running' ? Promise.resolve() : this.ctx.resume()
+    return this.ctx.state === 'running' || !(this.ctx instanceof AudioContext) ? Promise.resolve() : this.ctx.resume()
   }
 
   setMasterVolume(v: number) {
@@ -53,6 +60,7 @@ export class AudioEngine {
   }
 
   async loadSoundfont(buf: ArrayBuffer, name: string) {
+    const copy = buf.slice(0) // 신디사이저에 넘기면 원본이 비워질 수 있다
     await this.ctx.audioWorklet.addModule(processorUrl)
     const synth = new WorkletSynthesizer(this.ctx)
     synth.connect(this.sfGate)
@@ -61,6 +69,7 @@ export class AudioEngine {
     this.sf?.disconnect(this.sfGate)
     this.sf = synth
     this.soundfontName = name
+    this.soundfontData = copy
     this.chVol.fill(-1)
     for (let ch = 0; ch < 16; ch++) this.applyToSynth(ch)
   }
@@ -75,6 +84,7 @@ export class AudioEngine {
     this.sf?.disconnect(this.sfGate)
     this.sf = undefined
     this.soundfontName = null
+    this.soundfontData = null
     this.chVol.fill(-1)
   }
 
@@ -156,23 +166,6 @@ export class AudioEngine {
     }
   }
 
-  /** 지금부터 나는 소리를 녹음한다. stop()을 부르면 소리 파일(Blob)이 나온다. */
-  startRecording(): { stop: () => Promise<Blob> } {
-    const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((m) => MediaRecorder.isTypeSupported(m))
-    const rec = new MediaRecorder(this.recDest.stream, mime ? { mimeType: mime } : undefined)
-    const chunks: Blob[] = []
-    rec.ondataavailable = (e) => e.data.size && chunks.push(e.data)
-    rec.start()
-    return {
-      stop: () =>
-        new Promise<Blob>((resolve) => {
-          rec.onstop = () => resolve(new Blob(chunks, { type: rec.mimeType || 'audio/webm' }))
-          if (rec.state !== 'inactive') rec.stop()
-          else resolve(new Blob(chunks))
-        }),
-    }
-  }
-
   /** 음계 들려주기 (질문 화면의 ‘들어보기’) */
   playScale(root: number, steps: number[]) {
     void this.resume()
@@ -203,6 +196,7 @@ export class AudioEngine {
     g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.3, when + 0.002)
     g.gain.exponentialRampToValueAtTime(0.0001, when + 0.05)
     o.connect(g).connect(this.bus)
+    o.onended = () => g.disconnect()
     o.start(when)
     o.stop(when + 0.06)
   }
@@ -289,6 +283,8 @@ export class AudioEngine {
       o.start(when)
       return o
     })
+    // 소리가 끝나면 연결을 끊어 둔다. 남겨 두면 끝난 음도 계속 계산돼서 긴 곡일수록 느려진다.
+    osc[osc.length - 1].onended = () => gain.disconnect()
     if (lfo) osc.push(lfo)
     const key = `${ch}:${pitch}`
     const list = this.active.get(key) ?? []
@@ -322,6 +318,7 @@ export class AudioEngine {
       o.frequency.exponentialRampToValueAtTime(to, when + sweepLen)
       env(g, peak, len)
       o.connect(g).connect(out)
+      o.onended = () => g.disconnect()
       o.start(when)
       o.stop(when + len + 0.02)
     }
@@ -335,6 +332,7 @@ export class AudioEngine {
       const g = this.ctx.createGain()
       env(g, peak, len)
       src.connect(f).connect(g).connect(out)
+      src.onended = () => g.disconnect()
       src.start(when)
       src.stop(when + len + 0.02)
     }
@@ -357,6 +355,7 @@ export class AudioEngine {
         f.frequency.value = 700
         env(g, amp * 0.35, 0.28)
         o.connect(f).connect(g).connect(out)
+        o.onended = () => g.disconnect()
         o.start(when)
         o.stop(when + 0.3)
       }

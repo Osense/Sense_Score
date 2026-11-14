@@ -30,7 +30,7 @@ Vite + React + TypeScript. MIDI 파싱/생성은 `@tonejs/midi`, 사운드폰트
 - 악보 편집(`StaffEditor`): 줄(시스템)×트랙(블록) 배치. 보기 = 스크롤/페이지, 다중 악보(전 트랙), 조표(`keyOf`, 설정의 음계와 연동)·박자표·템포 표시. 페이지 보기는 A4 비율, 한 줄 기본 4마디(촘촘하면 2마디, 직접 2/4/8), 마디 수는 항상 짝수, 페이지 상단에 악보명
 - 용어: 건반/악보에 직접 찍는 화면 = **직접 쓰기 모드**(탭 id `compose`). 프로그램은 항상 시작(`Wizard`)에서 출발한다.
 - 작업 흐름 탭(아래, `WorkspaceTabs`): 시작(`Wizard`: 제목→빠르기→박자→분위기→구성(AB/ABA/AABA/기성곡/풀 세션/자유, 설명으로 형식을 배움)→악기→밑그림, 소리 들어보기 데모 → `template.ts`가 파트·트랙·코드/베이스/드럼 밑그림 생성) → 구성(`ArrangePage`) → 직접 쓰기(기존 편집기 + 파트 칩) → 믹스(`MixPage`) → 완성(`DeliverPage`: 듣기·평가·공유)
-- 평가: `evaluate.ts`(완성도·음계·리듬·멜로디 모양·음역·반복/변화·마무리·악기 구성, 항목마다 배움 한 줄+팁). 공유: `share.ts`(곡을 deflate+base64url로 링크 `#s=`에 담음), 소리 파일은 MediaRecorder 녹음(`AudioEngine.startRecording`), .mid 저장
+- 평가: `evaluate.ts`(완성도·음계·리듬·멜로디 모양·음역·반복/변화·마무리·악기 구성, 항목마다 배움 한 줄+팁). 공유: `share.ts`(곡을 deflate+base64url로 링크 `#s=`에 담음), 소리 파일은 `engine/export.ts`의 `exportAudio`로 재생 없이 바로 MP3/WAV 생성(내장 소리=OfflineAudioContext를 약 1초마다 suspend하며 음표를 넣음, suspend 미지원이면 2초 구간 렌더 후 합산 / 사운드폰트=`exportWorker.ts`에서 spessasynth_core로 직접 렌더, MP3는 wasm-media-encoders 192kbps, 모두 워커에서 변환). 3분 곡 기준 2코어 헤드리스 Chrome에서 WAV 약 4초, MP3 약 7초. 내장 신스의 노드는 소리가 끝나면 `onended`로 연결을 끊는다(안 끊으면 긴 곡일수록 느려짐), .mid 저장
 - 곡 모델: `Song.sections`(파트, 마디 수 합 = `song.bars`). 파트 연산은 `sections.ts`의 `applySections(plan)` 하나로 처리(음표가 파트와 함께 이동). 항상 `normalizeSong`으로 정합 유지
 - 선택 도구: 선택된 음표를 끌면 전체 이동(세로=전조), 상태줄 전조 버튼(반음/8도, 선택 없으면 트랙 전체)
 - 로직 스모크 테스트: `npx tsx <스크립트>`로 `sections.ts`/`template.ts`/`music.ts` 검증 가능(브라우저 UI는 미검증)

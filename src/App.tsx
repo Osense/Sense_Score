@@ -21,6 +21,7 @@ import { AudioEngine } from './engine/audio'
 import { Player } from './engine/player'
 import { useHistory } from './history'
 import { exportMidi, importMidi } from './midi'
+import { exportAudio, type AudioFormat } from './engine/export'
 import { defaultSettings, defaultSong, loadSaved, newTrack, parseProject, save } from './storage'
 import { diatonicChords, DRUM_PARTS, SCALES } from './music'
 import { fitGroup, fitPitch, rangeLabel, rangeOf } from './instruments'
@@ -84,8 +85,8 @@ export default function App() {
   const [tool, setTool] = useState<Tool>('pen')
   const [ws, setWs] = useState<Workspace>('start')
   const [incoming, setIncoming] = useState<{ song: Song; scale: Pick<Settings, 'scaleRoot' | 'scaleType'> } | null>(null)
-  const [recording, setRecording] = useState(false)
-  const recRef = useRef<{ stop: () => Promise<Blob> } | null>(null)
+  /** 소리 파일 만드는 중이면 진행률(0~1) */
+  const [exporting, setExporting] = useState<{ format: AudioFormat; progress: number } | null>(null)
   const [selectedSec, setSelectedSec] = useState<string | null>(null)
   const [plans, setPlans] = useState<Record<string, PartPlan>>({}) // 뼈대 세우기 메뉴판에서 고른 것
   const [phase, setPhase] = useState<ScaffoldPhase>('ask')
@@ -112,16 +113,6 @@ export default function App() {
       player.onStop = () => {
         setPlaying(false)
         finishTakeRef.current() // 녹음 중이었다면 여기서 마무리
-        // 녹음 중이었다면 끝소리가 사라질 때까지 잠깐 기다렸다가 저장한다
-        const rec = recRef.current
-        if (!rec) return
-        recRef.current = null
-        setTimeout(() => {
-          void rec.stop().then((blob) => {
-            download(blob, `${hist.ref.current.title || '내 곡'}.${blob.type.includes('mp4') ? 'm4a' : 'webm'}`, blob.type)
-            setRecording(false)
-          })
-        }, 800)
       }
       audioRef.current = { engine, player }
     }
@@ -312,15 +303,21 @@ export default function App() {
     if (player.playing) return player.stop()
     playWith({ loop: false }, 0)
   }
-  /** 곡을 처음부터 끝까지 재생하면서 녹음해 소리 파일로 저장 */
-  const recordAndSave = async () => {
-    if (recording) return
-    const { engine } = audio()
-    await engine.resume()
-    recRef.current = engine.startRecording()
-    setRecording(true)
-    flash('녹음을 시작했어요. 곡이 끝나면 자동으로 저장돼요.')
-    playWith({ loop: false }, 0)
+  /** 곡을 재생하지 않고 한 번에 계산해서 MP3/WAV 파일로 저장 */
+  const saveAudio = async (format: AudioFormat) => {
+    if (exporting) return
+    const song = hist.ref.current
+    setExporting({ format, progress: 0 })
+    try {
+      const sf = audioRef.current?.engine.soundfontData ?? null
+      const blob = await exportAudio(song, format, sf, (progress) => setExporting({ format, progress }))
+      download(blob, `${song.title || '내 곡'}.${format}`, blob.type)
+    } catch (e) {
+      console.error(e)
+      flash('소리 파일을 만들지 못했어요. 다시 해 보거나 .mid로 저장해 주세요.')
+    } finally {
+      setExporting(null)
+    }
   }
   const makeLink = async () => shareUrl(await encodeSong(hist.ref.current, settingsRef.current))
 
@@ -334,7 +331,7 @@ export default function App() {
     (recorderRef.current ??= new Recorder(() => {
       const a = audioRef.current
       if (!a) return 0
-      const c = a.engine.ctx
+      const c = a.engine.ctx as AudioContext
       const lat = (c.outputLatency || 0) + (c.baseLatency || 0)
       const tps = (hist.ref.current.bpm * settingsRef.current.speed * PPQ) / 60
       return a.player.currentTick() - lat * tps
@@ -995,13 +992,13 @@ export default function App() {
           song={song}
           settings={settings}
           playing={playing}
-          recording={recording}
+          exporting={exporting}
           getTick={getTick}
           onPlayAll={playAll}
           onStop={stop}
           onSeek={seek}
           onExportMidi={saveMidi}
-          onRecord={() => void recordAndSave()}
+          onExportAudio={(f) => void saveAudio(f)}
           makeLink={makeLink}
           onCompose={goCompose}
           onWrite={() => setWs('compose')}

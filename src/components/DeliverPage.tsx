@@ -3,18 +3,20 @@ import { evaluate, evaluationText } from '../evaluate'
 import { keyOf, NOTE_NAMES_KO } from '../music'
 import { KINDS, noteCounts, rangesOf } from '../sections'
 import { PPQ, type Settings, type Song } from '../types'
+import type { AudioFormat } from '../engine/export'
 
 interface Props {
   song: Song
   settings: Settings
   playing: boolean
-  recording: boolean
+  /** 소리 파일 만드는 중이면 형식과 진행률(0~1) */
+  exporting: { format: AudioFormat; progress: number } | null
   getTick: () => number
   onPlayAll: () => void
   onStop: () => void
   onSeek: (tick: number) => void
   onExportMidi: () => void
-  onRecord: () => void
+  onExportAudio: (format: AudioFormat) => void
   /** 곡이 담긴 공유 링크 */
   makeLink: () => Promise<string>
   onCompose: (id: string) => void
@@ -25,7 +27,7 @@ interface Props {
 type View = 'listen' | 'rate' | 'share'
 
 /** 마지막 단계: 듣기 · 평가 · 공유 */
-export function DeliverPage({ song, settings, playing, recording, getTick, onPlayAll, onStop, onSeek, onExportMidi, onRecord, makeLink, onCompose, onWrite, onMessage }: Props) {
+export function DeliverPage({ song, settings, playing, exporting, getTick, onPlayAll, onStop, onSeek, onExportMidi, onExportAudio, makeLink, onCompose, onWrite, onMessage }: Props) {
   const [view, setView] = useState<View>('listen')
   const [link, setLink] = useState('')
   const barTicks = song.beatsPerBar * PPQ
@@ -221,8 +223,14 @@ export function DeliverPage({ song, settings, playing, recording, getTick, onPla
           </section>
           <section className="share-card">
             <h3>🎧 소리 파일로 저장</h3>
-            <p>곡을 처음부터 끝까지 재생하면서 녹음해요. 곡 길이만큼 시간이 걸려요 (약 {Math.floor(secs / 60)}분 {secs % 60}초). 메신저로 바로 들려줄 수 있어요.</p>
-            <button className="primary" onClick={onRecord} disabled={recording}>{recording ? '🔴 녹음 중… (끝나면 자동 저장)' : '🎙 녹음해서 저장'}</button>
+            <p>재생하지 않고 바로 만들어요 (곡 길이 약 {Math.floor(secs / 60)}분 {secs % 60}초). MP3는 작아서 메신저로 보내기 좋고, WAV는 크지만 음질 손실이 없어요.</p>
+            <div className="row-btns">
+              {(['mp3', 'wav'] as const).map((f) => (
+                <button key={f} className={f === 'mp3' ? 'primary' : undefined} onClick={() => onExportAudio(f)} disabled={!!exporting}>
+                  {exporting?.format === f ? `만드는 중… ${Math.round(exporting.progress * 100)}%` : `.${f} 저장`}
+                </button>
+              ))}
+            </div>
           </section>
           <section className="share-card">
             <h3>💾 MIDI 파일</h3>
