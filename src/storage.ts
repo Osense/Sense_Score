@@ -74,7 +74,7 @@ export function parseProject(raw: string): { song: Song; settings: Settings } {
   const kinds = ['a', 'b', 'intro', 'verse', 'prechorus', 'chorus', 'bridge', 'interlude', 'outro', 'free']
   if (data?.format !== 'sense-score' || data.version !== 1 || !s || typeof s.title !== 'string' ||
     !num(s.bpm, 20, 400) || !integer(s.beatsPerBar, 1, 16) || !integer(s.bars, 1, 256) ||
-    !Array.isArray(s.sections) || !s.sections.length || !Array.isArray(s.tracks) || !s.tracks.length) throw new Error('Invalid project')
+    !Array.isArray(s.sections) || !Array.isArray(s.tracks) || !s.tracks.length) throw new Error('Invalid project')
   const ids = new Set<string>()
   const validId = (id: unknown) => {
     if (typeof id !== 'string' || !id || ids.has(id)) return false
@@ -84,7 +84,7 @@ export function parseProject(raw: string): { song: Song; settings: Settings } {
   for (const sec of s.sections) {
     if (!sec || !validId(sec.id) || typeof sec.name !== 'string' || !kinds.includes(sec.kind) || !integer(sec.bars, 1, 256)) throw new Error('Invalid section')
   }
-  if (s.sections.reduce((n: number, sec: { bars: number }) => n + sec.bars, 0) !== s.bars) throw new Error('Invalid length')
+  if (s.sections.length && s.sections.reduce((n: number, sec: { bars: number }) => n + sec.bars, 0) !== s.bars) throw new Error('Invalid length')
   for (const track of s.tracks) {
     if (!track || !validId(track.id) || typeof track.name !== 'string' || !integer(track.program, 0, 127) ||
       typeof track.drum !== 'boolean' || typeof track.mute !== 'boolean' || typeof track.solo !== 'boolean' ||

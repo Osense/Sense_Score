@@ -15,7 +15,7 @@ export class AudioEngine {
   private sfGate: GainNode
   /** 이 시각 전에는 새 소리를 예약하면 안 된다 (정지 처리가 끝나는 시각) */
   guardUntil = 0
-  private chGain: GainNode[] = []
+  private chGain: GainNode[]
   private chProgram: number[] = Array(16).fill(0)
   private chDrum: boolean[] = Array(16).fill(false)
   private chVol: number[] = Array(16).fill(-1)
@@ -36,10 +36,8 @@ export class AudioEngine {
     this.sfGate = this.makeSfGate()
     this.master.gain.value = MASTER_GAIN
     this.master.connect(this.ctx.destination)
+    this.chGain = this.makeChannels()
     for (let i = 0; i < 16; i++) {
-      const g = this.ctx.createGain()
-      g.connect(this.bus)
-      this.chGain.push(g)
       const b = this.ctx.createConstantSource()
       b.offset.value = 0
       b.start()
@@ -51,6 +49,20 @@ export class AudioEngine {
     const g = this.ctx.createGain()
     g.connect(this.master)
     return g
+  }
+
+  /** 채널마다 음량 노드. 정지할 때 통째로 새로 만들어서, 이미 울리고 있는 음(끝 시각이 예약된 긴 음 포함)을 함께 끊는다 */
+  private makeChannels() {
+    return Array.from({ length: 16 }, () => {
+      const g = this.ctx.createGain()
+      g.connect(this.bus)
+      return g
+    })
+  }
+
+  /** 새 소리를 놓아도 되는 가장 이른 시각 (정지 직후에는 조금 기다린다) */
+  startAt(delay = 0.03) {
+    return Math.max(this.ctx.currentTime + delay, this.guardUntil + 0.02)
   }
 
   private makeSfGate() {
@@ -165,17 +177,19 @@ export class AudioEngine {
   allOff() {
     const now = this.ctx.currentTime
 
-    // 내장 소리: 통로(bus)를 빠르게 줄이고 새 통로로 교체 → 드럼, 메트로놈, 아직 시작 전인 음까지 전부 사라진다
+    // 내장 소리: 통로(bus)와 채널 노드를 빠르게 줄이고 새것으로 교체 → 이미 끝 시각이 예약된 긴 음(온음표 등),
+    // 드럼, 메트로놈, 아직 시작 전인 음까지 전부 바로 사라진다
     const old = this.bus
+    const oldCh = this.chGain
     old.gain.cancelScheduledValues(now)
     old.gain.setValueAtTime(old.gain.value, now)
-    old.gain.linearRampToValueAtTime(0, now + 0.01)
-    setTimeout(() => old.disconnect(), 80)
+    old.gain.linearRampToValueAtTime(0, now + 0.012)
+    setTimeout(() => { old.disconnect(); for (const g of oldCh) g.disconnect() }, 80)
     this.bus = this.makeBus()
-    for (const g of this.chGain) {
-      g.disconnect()
-      g.connect(this.bus)
-    }
+    this.chGain = this.makeChannels()
+    const vols = this.chVol.slice()
+    this.chVol.fill(-1)
+    vols.forEach((v, ch) => { if (v >= 0) this.setVolume(ch, v) })
     for (const list of this.active.values())
       for (const v of list) v.osc.forEach((o) => { try { o.stop(now + 0.02) } catch { /* 이미 끝남 */ } })
     this.active.clear()
@@ -205,7 +219,7 @@ export class AudioEngine {
     this.configure(0, 0, false)
     this.setVolume(0, 0.9)
     const base = 60 + (root > 6 ? root - 12 : root)
-    const t0 = this.ctx.currentTime + 0.05
+    const t0 = this.startAt(0.05)
     ;[...steps, 12].forEach((st, i) => {
       this.noteOn(0, base + st, 90, t0 + i * 0.32)
       this.noteOff(0, base + st, t0 + i * 0.32 + 0.28)
@@ -215,7 +229,7 @@ export class AudioEngine {
   /** 박자 들려주기: 첫 박이 강한 ‘딱 딱 딱’ 두 마디 */
   playBeats(bpm: number, beats: number) {
     void this.resume()
-    const t0 = this.ctx.currentTime + 0.05
+    const t0 = this.startAt(0.05)
     const spb = 60 / bpm
     for (let i = 0; i < beats * 2; i++) this.click(t0 + i * spb, i % beats === 0)
   }
@@ -239,7 +253,7 @@ export class AudioEngine {
     void this.resume()
     this.configure(ch, program, drum)
     this.setVolume(ch, volume)
-    const t = this.ctx.currentTime + 0.005
+    const t = this.startAt(0.005)
     this.noteOn(ch, pitch, vel, t)
     this.noteOff(ch, pitch, t + len)
   }

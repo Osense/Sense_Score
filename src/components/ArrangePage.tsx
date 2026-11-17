@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { autoName, KIND_ORDER, KINDS, noteCounts, planOf, rangesOf, STRUCTURES, stepBars, type PlanItem } from '../sections'
+import { autoName, TYPICAL_BARS, KIND_ORDER, KINDS, noteCounts, planOf, rangesOf, STRUCTURES, stepBars, type PlanItem } from '../sections'
 import type { PartPlan } from '../scaffold'
 import { useReorder } from '../useReorder'
 import type { Section, SectionKind, Settings, Song } from '../types'
@@ -32,7 +32,7 @@ export function ArrangePage(p: Props) {
   const { song } = p
   const ranges = rangesOf(song)
   const secs = Math.round(((song.bars * song.beatsPerBar) / song.bpm) * 60)
-  const blank = song.sections.length === 1 && song.sections[0].kind === 'free' && song.tracks.every((t) => t.notes.length === 0)
+  const blank = song.sections.length === 0 || (song.sections.length === 1 && song.sections[0].kind === 'free' && song.tracks.every((t) => t.notes.length === 0))
   const [galleryOpen, setGalleryOpen] = useState<boolean | null>(null)
   const [pickId, setPickId] = useState<string>('aba')
   const open = galleryOpen ?? blank
@@ -57,7 +57,7 @@ export function ArrangePage(p: Props) {
     p.onPlan(plan)
   }
   const remove = (i: number) => {
-    if (song.sections.length <= 1) return
+    if (!song.sections.length) return
     const s = song.sections[i]
     if (noteCounts(song, s.id).some((n) => n > 0) && !confirm(`"${s.name}" 파트와 그 안의 음표를 지울까요? (되돌리기로 복구할 수 있어요)`)) return
     p.onPlan(planOf(song.sections).filter((_, k) => k !== i))
@@ -71,7 +71,7 @@ export function ArrangePage(p: Props) {
   }
   const add = (kind: SectionKind) => {
     const plan = planOf(song.sections)
-    plan.push({ src: null, kind, name: autoName(kind, song.sections), bars: 4 })
+    plan.push({ src: null, kind, name: autoName(kind, song.sections), bars: TYPICAL_BARS[kind] })
     p.onPlan(plan)
   }
   const meta = (i: number, patch: Partial<Section>) => p.onMeta(song.sections.map((s, k) => (k === i ? { ...s, ...patch } : s)))
@@ -198,7 +198,7 @@ export function ArrangePage(p: Props) {
                 <button onClick={() => step(i, -1)} disabled={i === 0} title="위로">▲</button>
                 <button onClick={() => step(i, 1)} disabled={i === song.sections.length - 1} title="아래로">▼</button>
                 <button onClick={() => duplicate(i)} title="복제 (음표도 같이 복사돼요)">⧉</button>
-                <button onClick={() => remove(i)} disabled={song.sections.length <= 1} title="지우기" aria-label="이 파트 지우기"><Icon name="close" size={16} /></button>
+                <button onClick={() => remove(i)} title="지우기" aria-label="이 파트 지우기"><Icon name="close" size={16} /></button>
               </div>
             </div>
           )
@@ -222,7 +222,7 @@ export function ArrangePage(p: Props) {
       <section className="scaffold">
         <h3 className="sec-title">③ 뼈대 세우기 <small>화음 · 반주 · 드럼 · 베이스 (멜로디는 직접 쓰는 거예요!)</small></h3>
 
-        {(p.phase === 'ask' || p.phase === 'skip') && (
+        {(p.phase === 'ask' || p.phase === 'skip') && song.sections.length > 0 && (
           <div className="ask-card">
             <div className="ask-icon"></div>
             <div className="ask-body">
@@ -239,7 +239,7 @@ export function ArrangePage(p: Props) {
           </div>
         )}
 
-        {p.phase === 'menu' && (
+        {p.phase === 'menu' && song.sections.length > 0 && (
           <ScaffoldMenu
             song={song}
             settings={p.settings}
@@ -253,7 +253,7 @@ export function ArrangePage(p: Props) {
           />
         )}
 
-        {p.phase === 'done' && (
+        {p.phase === 'done' && song.sections.length > 0 && (
           <div className="ask-card done">
             <div className="ask-icon"></div>
             <div className="ask-body">

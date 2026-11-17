@@ -44,6 +44,9 @@ const SNAPS = [
 const saved = loadSaved()
 const HELP_FLAG = 'composing-sense:help-seen'
 const THEME_KEY = 'sense-score:theme'
+const SOUND_KEY = 'sense-score:sound'
+const DEFAULT_SF_URL = './soundfonts/GeneralUserGS.sf3'
+const DEFAULT_SF_NAME = 'GeneralUser GS'
 type Theme = 'light' | 'dark'
 const initialTheme = (): Theme => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light')
 /** 악기 구성이 같으면 곡을 새로 만들지 않고 이름·빠르기·박자·음계만 고친다 */
@@ -125,6 +128,9 @@ export default function App() {
   latestSave.current = { song, settings }
 
   const audioRef = useRef<{ engine: AudioEngine; player: Player } | null>(null)
+  const defaultSf = useRef<ArrayBuffer | null>(null)
+  const applyDefaultSfRef = useRef<() => Promise<void>>(async () => {})
+  const [sfState, setSfState] = useState<'loading' | 'waiting' | 'ready' | 'error' | null>(null)
   const audio = useCallback(() => {
     if (!audioRef.current) {
       const engine = new AudioEngine()
@@ -134,6 +140,7 @@ export default function App() {
         finishTakeRef.current() // 녹음 중이었다면 여기서 마무리
       }
       audioRef.current = { engine, player }
+      if (defaultSf.current) queueMicrotask(() => void applyDefaultSfRef.current())
     }
     return audioRef.current
   }, [hist.ref])
@@ -242,7 +249,9 @@ export default function App() {
       const target = Math.min(256, Math.max(4, used, s.bars + delta))
       const diff = target - s.bars
       const last = s.sections[s.sections.length - 1]
-      if (!diff || last.bars + diff < 1) return s
+      if (!diff) return s
+      if (!last) return { ...s, bars: target }
+      if (last.bars + diff < 1) return s
       return { ...s, bars: target, sections: [...s.sections.slice(0, -1), { ...last, bars: last.bars + diff }] }
     })
 
@@ -262,8 +271,8 @@ export default function App() {
     hist.set((x) => applySections(x, secs.map((q) => ({ src: null, kind: q.kind, name: q.name, bars: q.bars }))))
     setPlans({})
     setPhase('ask')
-    setSelectedSec(secs[0].id)
-    setSettings({ loop: false, loopStart: 0, loopEnd: secs.reduce((n, q) => n + q.bars, 0) * song.beatsPerBar * PPQ })
+    setSelectedSec(secs[0]?.id ?? null)
+    setSettings({ loop: false, loopStart: 0, loopEnd: Math.max(8, secs.reduce((n, q) => n + q.bars, 0)) * song.beatsPerBar * PPQ })
     setIvStructure(id)
     setIvBuilt(false)
     if (!quiet) flash(`${st.label}(으)로 곡의 틀을 만들었어요. 파트를 끌어서 순서를 바꿔 보세요!`)
@@ -281,6 +290,7 @@ export default function App() {
     }
     const tmp = generate(base, settingsRef.current, { __aud: plan })
     const st: Settings = { ...settingsRef.current, loop: false, countIn: false, metronome: false, trainer: { ...settingsRef.current.trainer, on: false } }
+    hush()
     setPlaying(true)
     void audio().player.playTemp(tmp, st)
   }
@@ -308,6 +318,7 @@ export default function App() {
   }
   /** 설정이 다음 렌더 전에 필요한 재생 시작용 */
   const playWith = (patch: Partial<Settings>, from: number) => {
+    hush()
     const next = { ...settingsRef.current, ...patch }
     settingsRef.current = next
     setSettingsState(next)
@@ -344,7 +355,7 @@ export default function App() {
   const makeLink = async () => shareUrl(await encodeSong(hist.ref.current, settingsRef.current))
 
   /* ---------- 멜로디 쓰기: 건반 연주를 라이브로 녹음 ---------- */
-  const melTrack = song.tracks.find((t) => t.id === melTrackId && !t.drum) ?? findRoleTrack(song, 'melody') ?? song.tracks.find((t) => !t.drum)
+  const melTrack = song.tracks.find((t) => t.id === melTrackId) ?? findRoleTrack(song, 'melody') ?? song.tracks.find((t) => !t.drum) ?? song.tracks[0]
   const melTrackRef = useRef<string | undefined>(undefined)
   melTrackRef.current = melTrack?.id
 
@@ -369,7 +380,7 @@ export default function App() {
     if (!c) return
     const { engine } = audio()
     void engine.resume()
-    engine.configure(c.ch, c.t.program, false)
+    engine.configure(c.ch, c.t.program, c.t.drum)
     engine.setVolume(c.ch, c.t.volume)
     engine.noteOn(c.ch, pitch, vel, engine.ctx.currentTime)
     recorder().noteOn(pitch, vel)
@@ -382,7 +393,9 @@ export default function App() {
     recorder().noteOff(pitch)
   }
 
-  const startTake = (o: { replace: boolean; correction: Correction }) => {
+  const [takeFrom, setTakeFrom] = useState<number | null>(null)
+  const countInBefore = useRef<boolean | null>(null)
+  const startTake = (o: { replace: boolean; correction: Correction; countIn: boolean }) => {
     if (!melTrack) return
     const { player } = audio()
     const st = settingsRef.current
@@ -394,14 +407,22 @@ export default function App() {
     takeInfo.current = { trackId: melTrack.id, correction: o.correction }
     recorder().begin(from)
     setTake(true)
+    setTakeFrom(from)
     setLastTake(null)
-    playWith({}, from)
+    // 녹음에서만 먼저 세기(예비박)를 쓰고, 끝나면 원래 설정으로 돌려놓는다
+    countInBefore.current = settingsRef.current.countIn
+    playWith({ countIn: o.countIn }, from)
   }
   const finishTake = () => {
     const info = takeInfo.current
     if (!info) return
     takeInfo.current = null
     setTake(false)
+    setTakeFrom(null)
+    if (countInBefore.current !== null) {
+      setSettings({ countIn: countInBefore.current })
+      countInBefore.current = null
+    }
     const raw = recorder().finish()
     if (!raw.length) return flash('녹음된 음표가 없어요. 건반을 눌러 연주해 보세요!')
     const notes = correctTake(raw, info.correction, correctEnv(info.trackId))
@@ -416,6 +437,7 @@ export default function App() {
     const st = settingsRef.current
     const t = s.tracks.find((x) => x.id === trackId)
     const r = rangeOf(t?.program ?? 0)
+    if (t?.drum) return { bpm: s.bpm, speed: st.speed, scaleRoot: 0, scaleType: 'none' as const, low: 0, high: 127, drum: true }
     return { bpm: s.bpm, speed: st.speed, scaleRoot: st.scaleRoot, scaleType: st.scaleType, low: r.low, high: r.high }
   }
 
@@ -480,6 +502,7 @@ export default function App() {
     if (player.playing) {
       player.pause()
     } else {
+      audioRef.current?.engine.allOff() // 미리 듣던 소리가 남아 있으면 끊고 시작
       setPlaying(true)
       let from = player.currentTick()
       if (from >= player.songEnd()) from = 0
@@ -581,10 +604,48 @@ export default function App() {
       flash('음색 파일을 불러오는 중…')
       await audio().engine.loadSoundfont(await f.arrayBuffer(), f.name)
       setSfName(f.name)
+      try { localStorage.setItem(SOUND_KEY, 'custom') } catch { /* 무시 */ }
       flash(`음색 "${f.name}" 적용!`)
     } catch {
       flash('음색 파일을 불러오지 못했어요 (.sf2 / .sf3 / .dls).')
     }
+  }
+
+  /* ---------- 기본 악기 소리(GeneralUser GS 사운드폰트): 처음부터 받아 두었다가 소리 엔진이 생기면 바로 쓴다 ---------- */
+  const applyDefaultSf = useCallback(async () => {
+    const buf = defaultSf.current
+    const a = audioRef.current
+    if (!buf || !a || a.engine.soundfontName) return
+    setSfState('loading')
+    try {
+      await a.engine.loadSoundfont(buf.slice(0), DEFAULT_SF_NAME)
+      setSfName(DEFAULT_SF_NAME)
+      setSfState('ready')
+    } catch {
+      setSfState('error')
+    }
+  }, [])
+  useEffect(() => {
+    let pref = ''
+    try { pref = localStorage.getItem(SOUND_KEY) ?? '' } catch { /* 무시 */ }
+    if (pref === 'builtin') return
+    setSfState('loading')
+    fetch(DEFAULT_SF_URL)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+      .then((buf) => {
+        defaultSf.current = buf
+        if (audioRef.current) void applyDefaultSf()
+        else setSfState('waiting')
+      })
+      .catch(() => setSfState('error'))
+  }, [applyDefaultSf])
+  applyDefaultSfRef.current = applyDefaultSf
+  /** 지금 나는 소리를 모두 멈춘다 (새 소리를 들려주기 전에: 소리가 겹치지 않게) */
+  const hush = () => {
+    const a = audioRef.current
+    if (!a) return
+    if (a.player.playing) a.player.stop()
+    else a.engine.allOff()
   }
 
   // 인터뷰에서 새 곡을 만들기 전에는 지금 곡이 그대로 남는다
@@ -615,7 +676,7 @@ export default function App() {
     hist.reset(r.song)
     setActiveId(r.song.tracks[0].id)
     setSettingsState(r.settings)
-    setSelectedSec(r.song.sections[0].id)
+    setSelectedSec(r.song.sections[0]?.id ?? null)
     setPlans({})
     setPhase('ask')
     setIvCreated(key)
@@ -722,18 +783,29 @@ export default function App() {
     <section className="panel">
       <h3>소리 파일</h3>
       <p className="note-text">
-        지금은 {sfName ? <b>{sfName}</b> : '내장 간단한 소리'}를 쓰고 있어요. 더 실감 나는 악기 소리를 원하면 사운드폰트(.sf2/.sf3)를 불러오세요.
+        지금은 {sfName ? <b>{sfName === DEFAULT_SF_NAME ? '실감 나는 악기 소리(GeneralUser GS)' : sfName}</b> : sfState === 'loading' ? '실감 나는 악기 소리를 불러오는 중이라 잠시 간단한 소리' : '내장 간단한 소리'}를 쓰고 있어요.
+        다른 사운드폰트(.sf2/.sf3)를 불러올 수도 있어요.
       </p>
       <div className="row-btns">
+        {sfName !== DEFAULT_SF_NAME && (
+          <button onClick={() => {
+            try { localStorage.removeItem(SOUND_KEY) } catch { /* 무시 */ }
+            audio().engine.useBuiltin()
+            setSfName(null)
+            if (defaultSf.current) void applyDefaultSf()
+            else location.reload()
+          }}>실감 나는 기본 소리로</button>
+        )}
         <button onClick={() => sfRef.current?.click()}>사운드폰트 불러오기</button>
         {sfName && (
           <button
             onClick={() => {
               audio().engine.useBuiltin()
               setSfName(null)
+              try { localStorage.setItem(SOUND_KEY, 'builtin') } catch { /* 무시 */ }
             }}
           >
-            내장 소리로
+            간단한 소리로
           </button>
         )}
       </div>
@@ -744,11 +816,13 @@ export default function App() {
     <div className="app">
       <header className="top">
         <div className="top-main">
-          <button className="brand" onClick={() => { setIvStep('welcome'); setWs('start') }} aria-label="Sense Score 처음 화면">
-            <span className="brand-mark"><Icon name="melody" size={16} /></span>
-            <b>Sense Score</b>
-            <small>WSNS</small>
-          </button>
+          <a className="wordmark" href="https://osense.github.io/WesNS/" target="_blank" rel="noopener" title="WSNS studio 홈페이지" aria-label="쎈스 스코어 — WSNS studio 홈페이지">
+            <img className="mark" src="./brand/wsns-mark.svg" alt="" width="166" height="212" draggable={false} />
+            <span className="bn">
+              <b>쎈스 스코어</b>
+              <small className="pron"><span className="pn-en">WSNS studio</span> <span className="pn-k">[웨스엔에스 스튜디오]</span></small>
+            </span>
+          </a>
           <input
             className="title"
             value={song.title}
@@ -886,8 +960,8 @@ export default function App() {
           onPlayAll={playAll}
           onStop={stop}
           playing={playing}
-          onScaleDemo={(root, type) => audio().engine.playScale(root, SCALES[type].steps)}
-          onBeatDemo={(bpm, beats) => audio().engine.playBeats(bpm, beats)}
+          onScaleDemo={(root, type) => { audio(); hush(); audio().engine.playScale(root, SCALES[type].steps) }}
+          onBeatDemo={(bpm, beats) => { audio(); hush(); audio().engine.playBeats(bpm, beats) }}
           onGo={(w) => { stop(); setWs(w) }}
           hasSaved={hasSaved}
           incoming={incoming ? { title: incoming.song.title } : null}
@@ -933,6 +1007,8 @@ export default function App() {
           liveOn={liveOn}
           liveOff={liveOff}
           onStart={startTake}
+          takeFrom={takeFrom}
+          onSeek={seek}
           onStop={() => audio().player.stop()}
           onPlay={() => void togglePlay()}
           onSettings={setSettings}
@@ -1073,6 +1149,8 @@ export default function App() {
           onCheckpoint={hist.checkpoint}
           onAdd={addTrack}
           onRemove={removeTrack}
+          getTick={getTick}
+          onSeek={seek}
         >
           {soundfontPanel}
         </MixPage>

@@ -26,6 +26,8 @@ export interface CorrectEnv {
   scaleType: ScaleType | 'none'
   low: number
   high: number
+  /** 드럼: 음 높이·길이 보정은 하지 않고(음 높이가 곧 악기), 짧게 친 것도 지우지 않는다 */
+  drum?: boolean
 }
 
 export const PRESETS: { id: string; name: string; desc: string; c: Correction }[] = [
@@ -40,7 +42,8 @@ export const DEFAULT_CORRECTION = PRESETS[2].c
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n))
 
 /** 녹음한 음표들을 보정한다 (id는 그대로 유지) */
-export function correctTake(raw: Note[], c: Correction, env: CorrectEnv): Note[] {
+export function correctTake(raw: Note[], c0: Correction, env: CorrectEnv): Note[] {
+  const c = env.drum ? { ...c0, clean: false, toScale: false, lenGrid: false } : c0
   const ticksPerMs = (env.bpm * env.speed * PPQ) / 60 / 1000
   let notes = raw.map((n) => ({ ...n }))
 
@@ -86,5 +89,5 @@ export function correctTake(raw: Note[], c: Correction, env: CorrectEnv): Note[]
     const mean = notes.reduce((s, n) => s + n.vel, 0) / notes.length
     notes = notes.map((n) => ({ ...n, vel: clamp(Math.round(mean + (n.vel - mean) * (1 - c.smooth)), 1, 127) }))
   }
-  return notes.map((n) => ({ ...n, start: Math.round(n.start), dur: Math.round(n.dur) }))
+  return notes.map((n) => ({ ...n, start: Math.round(n.start), dur: env.drum ? 120 : Math.round(n.dur) }))
 }

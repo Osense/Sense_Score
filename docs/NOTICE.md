@@ -17,4 +17,11 @@
 ## JetBrains Mono (숫자·라벨 글꼴)
 - © JetBrains — SIL Open Font License 1.1 (원문: `public/fonts/jetbrainsmono-OFL.txt`)
 
+## GeneralUser GS (기본 악기 소리)
+`public/soundfonts/GeneralUserGS.sf3`는 S. Christian Collins의 GeneralUser GS 사운드폰트(SpessaSynth 저장소에 들어 있는 SF3 압축판)다.
+
+- 라이선스: GeneralUser GS License v2.0 — 개인·상업 음악 제작에 제한 없이 쓸 수 있고, 소프트웨어 프로젝트에 넣어 쓰는 것도 허용한다 (원문: `public/soundfonts/GeneralUserGS-LICENSE.txt`)
+- 원본: https://schristiancollins.com/generaluser.php · https://github.com/mrbumpy409/GeneralUser-GS
+- 라이선스 원문에 적힌 대로, 일부 샘플은 출처를 100% 확인할 수 없다고 저자가 밝히고 있다. 유료 판매 제품에 넣기 전에는 다시 검토한다.
+
 Guitar Pro 5의 어떤 자산도 사용하지 않는다 (CLAUDE.md의 규칙).

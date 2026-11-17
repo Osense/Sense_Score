@@ -9,6 +9,10 @@ import { PPQ, type Note, type Settings, type Song } from '../types'
 import { HKeyboard } from './HKeyboard'
 import { LiveRoll } from './LiveRoll'
 import { KeyDisplayControls } from './KeyDisplayControls'
+import { SongStrip } from './SongStrip'
+import { DRUM_LANES, DrumKitView, DrumRoll, laneOf } from './DrumKit'
+import { Icon } from './Icon'
+import { rangesOf } from '../sections'
 
 interface Props {
   song: Song
@@ -23,7 +27,10 @@ interface Props {
   getLive: () => Note[]
   liveOn: (pitch: number, vel: number) => void
   liveOff: (pitch: number) => void
-  onStart: (o: { replace: boolean; correction: Correction }) => void
+  onStart: (o: { replace: boolean; correction: Correction; countIn: boolean }) => void
+  /** 녹음이 시작되는 자리(먼저 세기 동안 카운트다운에 쓴다) */
+  takeFrom: number | null
+  onSeek: (tick: number) => void
   onStop: () => void
   onPlay: () => void
   onSettings: (patch: Partial<Settings>) => void
@@ -55,8 +62,11 @@ type Assist = 'free' | 'snap' | 'lock'
 /** 멜로디 쓰기: 가로 건반으로 연주하고 녹음()하면 건반 소리가 MIDI 음표로 기록되고, 보정으로 다듬어진다 */
 export function MelodyPage(p: Props) {
   const { song, settings } = p
-  const tracks = song.tracks.filter((t) => !t.drum)
+  const tracks = song.tracks
   const track = tracks.find((t) => t.id === p.trackId) ?? tracks[0]
+  const drum = !!track?.drum
+  const [countIn, setCountIn] = useState(true)
+  const [flash, setFlash] = useState<Set<number>>(new Set())
   const range = rangeOf(track?.program ?? 0)
   const scaleOn = settings.scaleType !== 'none'
 
@@ -119,16 +129,39 @@ export function MelodyPage(p: Props) {
   }
 
   // 컴퓨터 키보드와 MIDI 키보드 입력은 항상 최신 상태를 보도록 ref로 연결
-  const api = useRef({ noteOn, noteOff, shift, base })
+  /** 드럼: 레인 하나를 친다 (소리 + 녹음 + 잠깐 빛나기) */
+  const hitDrum = (lane: number, pitch?: number) => {
+    const l = DRUM_LANES[lane]
+    if (!l) return
+    const pt = pitch ?? l.pitch
+    p.liveOn(pt, 104)
+    setTimeout(() => p.liveOff(pt), 90)
+    setFlash((f) => new Set(f).add(lane))
+    setTimeout(() => setFlash((f) => { const n = new Set(f); n.delete(lane); return n }), 120)
+  }
+  const api = useRef({ noteOn, noteOff, shift, base, drum, hitDrum })
   useEffect(() => {
-    api.current = { noteOn, noteOff, shift, base }
+    api.current = { noteOn, noteOff, shift, base, drum, hitDrum }
   })
 
   useEffect(() => {
     const held = new Map<string, number>() // e.code → 누르는 음 (옥타브를 옮겨도 정확히 떼기 위해)
     const typing = (e: KeyboardEvent) => ['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)
     const onDown = (e: KeyboardEvent) => {
-      if (typing(e) || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return
+      if (typing(e) || e.ctrlKey || e.metaKey || e.altKey) return
+      if (api.current.drum) {
+        for (let i = 0; i < DRUM_LANES.length; i++) {
+          const k = DRUM_LANES[i].keys.find((x) => x.code === e.code)
+          if (!k) continue
+          // 스페이스(킥)가 재생 버튼으로 가지 않게 여기서 멈춘다
+          e.preventDefault()
+          e.stopImmediatePropagation()
+          if (!e.repeat) api.current.hitDrum(i, k.pitch)
+          return
+        }
+        return
+      }
+      if (e.repeat) return
       if (e.code === 'KeyZ') return api.current.shift(-1)
       if (e.code === 'KeyX') return api.current.shift(1)
       const k = KEYS.find((x) => x[0] === e.code)
@@ -139,16 +172,17 @@ export function MelodyPage(p: Props) {
       api.current.noteOn(pitch, 96)
     }
     const onUp = (e: KeyboardEvent) => {
+      if (api.current.drum && e.code === 'Space') { e.preventDefault(); e.stopImmediatePropagation() }
       const pitch = held.get(e.code)
       if (pitch === undefined) return
       held.delete(e.code)
       api.current.noteOff(pitch)
     }
-    window.addEventListener('keydown', onDown)
-    window.addEventListener('keyup', onUp)
+    window.addEventListener('keydown', onDown, true)
+    window.addEventListener('keyup', onUp, true)
     return () => {
-      window.removeEventListener('keydown', onDown)
-      window.removeEventListener('keyup', onUp)
+      window.removeEventListener('keydown', onDown, true)
+      window.removeEventListener('keyup', onUp, true)
       for (const pitch of held.values()) api.current.noteOff(pitch)
     }
   }, [])
@@ -165,6 +199,10 @@ export function MelodyPage(p: Props) {
           const d = m.data
           if (!d || d.length < 3) return
           const cmd = d[0] & 0xf0
+          if (api.current.drum) {
+            if (cmd === 0x90 && d[2] > 0) { const i = laneOf(d[1]); if (i >= 0) api.current.hitDrum(i, d[1]) }
+            return
+          }
           const pitch = fitPitch(d[1], range.low, range.high)
           if (cmd === 0x90 && d[2] > 0) api.current.noteOn(pitch, d[2])
           else if (cmd === 0x80 || cmd === 0x90) api.current.noteOff(pitch)
@@ -199,130 +237,188 @@ export function MelodyPage(p: Props) {
       })
     : undefined
 
-  return (
-    <div className="melody">
-      <div className="part-strip mel-parts">
-        <span className="lbl">녹음할 곳</span>
-        <button className={!loopOn ? 'chip on' : 'chip'} onClick={p.onAllParts} title="곡 전체를 처음부터 (또는 지금 위치부터)">전체</button>
-        {song.sections.map((s) => (
-          <button
-            key={s.id}
-            className={curPart?.id === s.id ? 'chip on' : 'chip'}
-            style={{ ['--c' as string]: KINDS[s.kind].color }}
-            onClick={() => p.onFocusPart(s.id)}
-            title={`${s.name} (${s.bars}마디) — 이 파트만 반복하며 녹음`}
-          >
-            {s.name}
-          </button>
-        ))}
-      </div>
+  const rec = () => {
+    ;(document.activeElement as HTMLElement | null)?.blur?.()
+    if (p.taking) p.onStop()
+    else p.onStart({ replace, correction: corr, countIn })
+  }
 
-      <div className="mel-controls">
-        <button
-          className={`rec-btn ${p.taking ? 'on' : ''}`}
-          onClick={() => (p.taking ? p.onStop() : p.onStart({ replace, correction: corr }))}
-          disabled={!track}
-          title={p.taking ? '녹음 끝내기' : '녹음 시작: 반주가 나오면서 건반 연주가 기록돼요'}
-        >
+  return (
+    <div className={`melody ${drum ? 'drum-mode' : ''}`}>
+      <div className="mel-top">
+        <button className={`rec-btn ${p.taking ? 'on' : ''}`} onClick={rec} disabled={!track}
+          title={p.taking ? '녹음 끝내기' : '녹음 시작: 반주가 나오면서 연주가 기록돼요'}>
           <i />
-          {p.taking ? '녹음 중… 눌러서 끝내기' : '녹음'}
+          {p.taking ? '녹음 끝내기' : '녹음'}
         </button>
-        <button onClick={p.onPlay} disabled={p.taking}>{p.playing && !p.taking ? '반주 멈추기' : '▶ 반주만 듣기'}</button>
-        <label className="inline">
-          연주할 트랙
-          <select value={track?.id} onChange={(e) => p.onTrack(e.target.value)}>
+        <button className="mel-btn" onClick={p.onPlay} disabled={p.taking}>
+          <Icon name={p.playing && !p.taking ? 'stop' : 'play'} size={15} />{p.playing && !p.taking ? '멈추기' : '반주 듣기'}
+        </button>
+        <label className="mel-track" title="녹음할 악기(트랙)">
+          <select value={track?.id} onChange={(e) => p.onTrack(e.target.value)} aria-label="연주할 트랙">
             {tracks.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
+              <option key={t.id} value={t.id}>{t.drum ? '드럼 · ' : ''}{t.name}</option>
             ))}
           </select>
         </label>
-        {track && <span className="range-badge" title="이 악기가 낼 수 있는 음역">음역 {rangeLabel(range)}</span>}
-        <span className="sep" />
-        <button className={settings.countIn ? 'toggle on' : 'toggle'} onClick={() => p.onSettings({ countIn: !settings.countIn })} title="녹음 전에 한 마디 박자를 세어줘요">먼저 세기</button>
-        <button className={settings.metronome ? 'toggle on' : 'toggle'} onClick={() => p.onSettings({ metronome: !settings.metronome })}>메트로놈</button>
-        <button className={replace ? 'toggle on' : 'toggle'} onClick={() => setReplace(!replace)} title="녹음하기 전에 이 구간의 기존 음표를 지우고 새로 녹음해요">덮어쓰기</button>
-        <span className="seg assist" title="연주하는 동안 틀린 음을 어떻게 도와줄지">
-          {([['free', '자유롭게'], ['snap', '음계로 보정'], ['lock', '음계 안만']] as const).map(([v, t]) => (
-            <button key={v} className={assist === v ? 'on' : ''} onClick={() => setAssist(v)} disabled={v !== 'free' && !scaleOn} title={v === 'snap' ? '음계 밖 건반을 눌러도 가장 가까운 음계 음이 소리 나요' : v === 'lock' ? '음계 밖 건반은 눌리지 않아요' : '아무 건반이나 눌러요'}>
-              {t}
-            </button>
-          ))}
-        </span>
-        <button onClick={connectMidi} title="MIDI 키보드를 꽂았다면 연결해서 진짜 건반으로 연주해요">{midiName ? `${midiName}` : 'MIDI 키보드 연결'}</button>
+        <button className={countIn ? 'toggle on' : 'toggle'} aria-pressed={countIn} onClick={() => setCountIn(!countIn)} title="녹음 전에 한 마디 동안 박을 세어 줘요 (예비박)">
+          <Icon name="countin" size={15} />예비박
+        </button>
+        <details className="mel-more">
+          <summary><Icon name="more" size={16} />설정</summary>
+          <div className="mel-pop">
+            <div className="mel-pop-row">
+              <button className={settings.metronome ? 'toggle on' : 'toggle'} onClick={() => p.onSettings({ metronome: !settings.metronome })}><Icon name="metronome" size={15} />메트로놈</button>
+              <button className={replace ? 'toggle on' : 'toggle'} onClick={() => setReplace(!replace)} title="녹음하기 전에 이 구간의 기존 음표를 지우고 새로 녹음해요">덮어쓰기</button>
+              <button onClick={connectMidi} title="MIDI 키보드·드럼 패드를 꽂았다면 연결해요">{midiName ? midiName : 'MIDI 기기 연결'}</button>
+            </div>
+            {!drum && (
+              <div className="mel-pop-row">
+                <span className="mel-pop-t">틀린 음 도와주기</span>
+                <span className="seg assist">
+                  {([['free', '자유롭게'], ['snap', '음계로 보정'], ['lock', '음계 안만']] as const).map(([v, t]) => (
+                    <button key={v} className={assist === v ? 'on' : ''} onClick={() => setAssist(v)} disabled={v !== 'free' && !scaleOn}>{t}</button>
+                  ))}
+                </span>
+                {track && <span className="range-badge" title="이 악기가 낼 수 있는 음역">음역 {rangeLabel(range)}</span>}
+              </div>
+            )}
+            <div className="mel-pop-row">
+              <span className="mel-pop-t">연주 보정</span>
+              <div className="fix-presets">
+                {PRESETS.map((pr) => (
+                  <button key={pr.id} className={presetId === pr.id ? 'on' : ''} onClick={() => setCorrection(pr.c, pr.id)} title={pr.desc}>{pr.name}</button>
+                ))}
+              </div>
+            </div>
+            <div className="fix-grid">
+              <label>
+                박자 칸
+                <select value={corr.grid} onChange={(e) => setCorrection({ ...corr, grid: +e.target.value })}>
+                  {GRIDS.map((g) => <option key={g.v} value={g.v}>{g.label}</option>)}
+                </select>
+              </label>
+              <label>
+                칸에 맞추는 힘 <b>{Math.round(corr.strength * 100)}%</b>
+                <input type="range" min={0} max={1} step={0.05} value={corr.strength} onChange={(e) => setCorrection({ ...corr, strength: +e.target.value })} disabled={!corr.grid} />
+              </label>
+              <label>
+                세기 고르게 <b>{Math.round(corr.smooth * 100)}%</b>
+                <input type="range" min={0} max={1} step={0.05} value={corr.smooth} onChange={(e) => setCorrection({ ...corr, smooth: +e.target.value })} />
+              </label>
+              <label title="소리가 늦게 들려서 박자가 밀린다면 조절해요 (+는 뒤로, −는 앞으로)">
+                소리 지연 보정 <b>{corr.offsetMs > 0 ? '+' : ''}{corr.offsetMs}ms</b>
+                <input type="range" min={-150} max={150} step={5} value={corr.offsetMs} onChange={(e) => setCorrection({ ...corr, offsetMs: +e.target.value })} />
+              </label>
+              {!drum && <label className="chk"><input type="checkbox" checked={corr.toScale} disabled={!scaleOn} onChange={(e) => setCorrection({ ...corr, toScale: e.target.checked })} /> 음계 밖의 음을 음계 안으로</label>}
+              {!drum && <label className="chk"><input type="checkbox" checked={corr.lenGrid} onChange={(e) => setCorrection({ ...corr, lenGrid: e.target.checked })} /> 음 길이도 칸에 맞추기</label>}
+              {!drum && <label className="chk"><input type="checkbox" checked={corr.clean} onChange={(e) => setCorrection({ ...corr, clean: e.target.checked })} /> 실수로 스친 짧은 음 지우기</label>}
+            </div>
+          </div>
+        </details>
         {p.lastTake && !p.taking && (
           <span className="take-info">
-            방금 {p.lastTake.count}개 녹음됨 <button onClick={p.onDiscard}>이 녹음 지우기</button>
+            방금 {p.lastTake.count}개 녹음 <button onClick={p.onDiscard}>지우기</button>
           </span>
         )}
       </div>
 
-      <div className="mel-fix">
-        <span className="fix-title">연주 보정</span>
-        <div className="fix-presets">
-          {PRESETS.map((pr) => (
-            <button key={pr.id} className={presetId === pr.id ? 'on' : ''} onClick={() => setCorrection(pr.c, pr.id)} title={pr.desc}>
-              {pr.name}
-            </button>
-          ))}
+      <div className="mel-where">
+        <button className={!loopOn ? 'chip on' : 'chip'} onClick={p.onAllParts} title="곡 전체 (지금 위치부터)">전체</button>
+        <SongStrip song={song} getTick={p.getTick} onSeek={p.onSeek} onPart={p.onFocusPart} activePart={curPart?.id ?? null} label="녹음할 곳" />
+      </div>
+
+      <div className="mel-stage">
+        {drum
+          ? <DrumRoll song={song} trackId={track?.id ?? ''} getTick={p.getTick} getLive={p.getLive} flash={flash} />
+          : <LiveRoll song={song} trackId={track?.id ?? ''} base={base} whiteCount={whiteCount} root={settings.scaleRoot} scale={settings.scaleType} display={settings} getTick={p.getTick} getLive={p.getLive} />}
+        <Cue song={song} getTick={p.getTick} playing={p.playing} taking={p.taking} takeFrom={p.takeFrom} />
+      </div>
+
+      {drum ? (
+        <div className="kit-wrap">
+          <DrumKitView onHit={hitDrum} flash={flash} />
+          <p className="kb-hint">
+            드럼을 눌러 치거나 키보드로 쳐요 · 왼손 <kbd>F</kbd> 스네어 <kbd>R</kbd> 크래시 · 오른손 <kbd>J</kbd> 하이햇(<kbd>K</kbd> 열린 하이햇) <kbd>O</kbd> 라이드 · 가운데 <kbd>G</kbd><kbd>H</kbd> 탐 · <kbd>L</kbd> 플로어 탐 · 엄지 <kbd>Space</kbd> 킥
+          </p>
         </div>
-        <details className="fix-more">
-          <summary>세부 설정</summary>
-          <div className="fix-grid">
-            <label>
-              박자 칸
-              <select value={corr.grid} onChange={(e) => setCorrection({ ...corr, grid: +e.target.value })}>
-                {GRIDS.map((g) => <option key={g.v} value={g.v}>{g.label}</option>)}
-              </select>
-            </label>
-            <label>
-              칸에 맞추는 힘 <b>{Math.round(corr.strength * 100)}%</b>
-              <input type="range" min={0} max={1} step={0.05} value={corr.strength} onChange={(e) => setCorrection({ ...corr, strength: +e.target.value })} disabled={!corr.grid} />
-            </label>
-            <label>
-              세기 고르게 <b>{Math.round(corr.smooth * 100)}%</b>
-              <input type="range" min={0} max={1} step={0.05} value={corr.smooth} onChange={(e) => setCorrection({ ...corr, smooth: +e.target.value })} />
-            </label>
-            <label title="소리가 늦게 들려서 박자가 밀린다면 조절해요 (+는 뒤로, −는 앞으로)">
-              소리 지연 보정 <b>{corr.offsetMs > 0 ? '+' : ''}{corr.offsetMs}ms</b>
-              <input type="range" min={-150} max={150} step={5} value={corr.offsetMs} onChange={(e) => setCorrection({ ...corr, offsetMs: +e.target.value })} />
-            </label>
-            <label className="chk"><input type="checkbox" checked={corr.toScale} disabled={!scaleOn} onChange={(e) => setCorrection({ ...corr, toScale: e.target.checked })} /> 음계 밖의 음을 음계 안으로</label>
-            <label className="chk"><input type="checkbox" checked={corr.lenGrid} onChange={(e) => setCorrection({ ...corr, lenGrid: e.target.checked })} /> 음 길이도 칸에 맞추기</label>
-            <label className="chk"><input type="checkbox" checked={corr.clean} onChange={(e) => setCorrection({ ...corr, clean: e.target.checked })} /> 실수로 스친 짧은 음 지우기</label>
+      ) : (
+        <>
+          <div className="kb-bar">
+            <button onClick={() => shift(-1)} title="한 옥타브 아래 (Z)"><Icon name="left" size={15} />옥타브<kbd>Z</kbd></button>
+            <KeyDisplayControls settings={settings} onSettings={p.onSettings} />
+            <button onClick={() => shift(1)} title="한 옥타브 위 (X)"><kbd>X</kbd>옥타브<Icon name="right" size={15} /></button>
           </div>
-        </details>
-        <span className="fix-note">
-          {p.lastTake && !p.taking ? '보정을 바꾸면 방금 녹음에 바로 적용돼요. 들어 보며 골라 보세요!' : '녹음이 끝나면 이 설정으로 다듬어져요. 녹음한 뒤에도 바꿀 수 있어요.'}
-        </span>
-      </div>
+          <div className="kb-wrap" ref={kbWrap}>
+            <HKeyboard
+              base={base}
+              whiteCount={whiteCount}
+              low={range.low}
+              high={range.high}
+              root={settings.scaleRoot}
+              scale={settings.scaleType}
+              display={settings}
+              lock={assist === 'lock'}
+              down={down}
+              chordPcs={chordPcs}
+              letters={letters}
+              onDown={noteOn}
+              onUp={noteOff}
+            />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
-      <LiveRoll song={song} trackId={track?.id ?? ''} base={base} whiteCount={whiteCount} root={settings.scaleRoot} scale={settings.scaleType} display={settings} getTick={p.getTick} getLive={p.getLive} />
-
-      <div className="kb-bar">
-        <button onClick={() => shift(-1)} title="한 옥타브 아래 (Z)">◀ 옥타브</button>
-        <KeyDisplayControls settings={settings} onSettings={p.onSettings} />
-        <button onClick={() => shift(1)} title="한 옥타브 위 (X)">옥타브 ▶</button>
-      </div>
-      <div className="kb-wrap" ref={kbWrap}>
-        <HKeyboard
-          base={base}
-          whiteCount={whiteCount}
-          low={range.low}
-          high={range.high}
-          root={settings.scaleRoot}
-          scale={settings.scaleType}
-          display={settings}
-          lock={assist === 'lock'}
-          down={down}
-          chordPcs={chordPcs}
-          letters={letters}
-          onDown={noteOn}
-          onUp={noteOff}
-        />
-      </div>
-      <p className="kb-hint">
-        건반을 눌러 연주해요 · 컴퓨터 키보드 <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd>… 흰 건반, <kbd>W</kbd><kbd>E</kbd><kbd>T</kbd>… 검은 건반, <kbd>Z</kbd>/<kbd>X</kbd> 옥타브 · 건반 아래쪽을 누를수록 세게 나요
-      </p>
+/**
+ * 크게 보여 주는 카운트다운.
+ * 먼저 세기 동안: "첫 파트: 인트로 · 준비하세요!" + 4 3 2 1
+ * 재생 중 다음 파트가 한 마디 안으로 다가오면: "다음 파트는 코러스입니다! 준비하세요!" + 남은 박
+ */
+function Cue({ song, getTick, playing, taking, takeFrom }: { song: Song; getTick: () => number; playing: boolean; taking: boolean; takeFrom: number | null }) {
+  const [cue, setCue] = useState<{ n: number; text: string; color: string } | null>(null)
+  const latest = useRef({ song, getTick, playing, taking, takeFrom })
+  useEffect(() => { latest.current = { song, getTick, playing, taking, takeFrom } })
+  useEffect(() => {
+    let raf = 0
+    let last = ''
+    const loop = () => {
+      const { song, getTick, playing, taking, takeFrom } = latest.current
+      let next: { n: number; text: string; color: string } | null = null
+      if (playing) {
+        const t = getTick()
+        const bar = song.beatsPerBar * PPQ
+        const rg = rangesOf(song)
+        const partAt = (tick: number) => song.sections.find((s) => tick >= rg.get(s.id)!.start && tick < rg.get(s.id)!.end)
+        if (taking && takeFrom !== null && t < takeFrom) {
+          const p = partAt(takeFrom)
+          next = { n: Math.max(1, Math.ceil((takeFrom - t) / PPQ - 0.001)), text: p ? `첫 파트는 ${p.name}! 준비하세요` : '준비하세요!', color: p ? KINDS[p.kind].color : '' }
+        } else {
+          const up = song.sections.map((s) => rg.get(s.id)!.start).find((st) => st > t && st - t <= bar)
+          if (up !== undefined) {
+            const p = partAt(up)
+            const cur = partAt(t)
+            if (p && cur && p.id !== cur.id) next = { n: Math.max(1, Math.ceil((up - t) / PPQ - 0.001)), text: `다음 파트는 ${p.name}입니다! 준비하세요`, color: KINDS[p.kind].color }
+          }
+        }
+      }
+      const key = next ? `${next.n}|${next.text}` : ''
+      if (key !== last) {
+        last = key
+        setCue(next)
+      }
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+  if (!cue) return null
+  return (
+    <div className="cue" style={{ ['--c' as string]: cue.color || 'var(--accent)' }} aria-live="assertive">
+      <span className="cue-text">{cue.text}</span>
+      <b key={cue.n} className="cue-n">{cue.n}</b>
     </div>
   )
 }

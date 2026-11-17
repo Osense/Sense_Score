@@ -73,7 +73,7 @@ export function evaluate(song: Song, settings: Settings): Evaluation {
   const emptyNames = song.sections.filter((s) => !filled.includes(s)).map((s) => s.name)
   criteria.push({
     id: 'complete', icon: '', label: '완성도', weight: 25,
-    score: Math.round((filled.length / song.sections.length) * 100),
+    score: song.sections.length ? Math.round((filled.length / song.sections.length) * 100) : 0,
     detail: `${song.sections.length}개 파트 중 ${filled.length}개에 멜로디가 있어요`,
     learn: '곡은 여러 파트가 이어져 하나의 이야기가 돼요. 빈 파트가 없어야 끝까지 흘러가요.',
     tip: emptyNames.length ? `${emptyNames.join(', ')} 파트를 채워 보세요.` : undefined,

@@ -40,7 +40,7 @@ export const STRUCTURES: Structure[] = [
       'B는 A와 분위기가 다른 가락이에요. 이렇게 다른 것을 놓는 걸 ‘대비’라고 해요.',
       '짧은 동요나 연습곡에 많이 쓰이는, 가장 단순한 틀이에요.',
     ],
-    parts: [['a', 4, 'A'], ['b', 4, 'B']],
+    parts: [['a', 8, 'A'], ['b', 8, 'B']],
   },
   {
     id: 'aba',
@@ -52,7 +52,7 @@ export const STRUCTURES: Structure[] = [
       '가운데 B가 달라서, A가 다시 나올 때 더 반갑게 들려요.',
       '동요와 클래식 소품에서 정말 자주 만나는 틀이에요.',
     ],
-    parts: [['a', 4, 'A'], ['b', 4, 'B'], ['a', 4, 'A (다시)']],
+    parts: [['a', 8, 'A'], ['b', 8, 'B'], ['a', 8, 'A (다시)']],
   },
   {
     id: 'aaba',
@@ -64,7 +64,7 @@ export const STRUCTURES: Structure[] = [
       '그다음 B에서 분위기를 바꾸고, 마지막에 A로 돌아와요.',
       '재즈 스탠더드와 옛날 대중가요에 많이 쓰인 형식이에요.',
     ],
-    parts: [['a', 4, 'A'], ['a', 4, 'A (반복)'], ['b', 4, 'B'], ['a', 4, 'A (다시)']],
+    parts: [['a', 8, 'A'], ['a', 8, 'A (반복)'], ['b', 8, 'B'], ['a', 8, 'A (다시)']],
   },
   {
     id: 'pop',
@@ -76,7 +76,7 @@ export const STRUCTURES: Structure[] = [
       '인트로로 분위기를 열고 아웃트로로 마무리해요.',
       '우리가 라디오에서 듣는 대부분의 노래가 이런 모양이에요.',
     ],
-    parts: [['intro', 4], ['verse', 4], ['chorus', 4], ['verse', 4, '벌스 2'], ['chorus', 4, '코러스 2'], ['outro', 4]],
+    parts: [['intro', 4], ['verse', 8], ['chorus', 8], ['verse', 8, '벌스 2'], ['chorus', 8, '코러스 2'], ['outro', 4]],
   },
   {
     id: 'full',
@@ -89,17 +89,17 @@ export const STRUCTURES: Structure[] = [
       '코러스를 여러 번 반복해서 노래가 머릿속에 남게 해요. 조금 길지만 도전해 볼 만해요!',
     ],
     parts: [
-      ['intro', 4], ['verse', 4], ['chorus', 4], ['verse', 4, '벌스 2'], ['prechorus', 4],
-      ['chorus', 4, '코러스 2'], ['bridge', 4], ['chorus', 4, '코러스 3'], ['outro', 4],
+      ['intro', 4], ['verse', 8], ['chorus', 8], ['verse', 8, '벌스 2'], ['prechorus', 4],
+      ['chorus', 8, '코러스 2'], ['bridge', 8], ['chorus', 8, '코러스 3'], ['outro', 4],
     ],
   },
   {
     id: 'free',
     label: '처음엔 자유롭게',
     term: '자유 형식',
-    desc: '8마디 한 덩어리',
-    learn: ['정해진 틀 없이 시작해요. 쓰다가 구성 탭에서 파트를 나눠도 돼요.'],
-    parts: [['free', 8, '전체']],
+    desc: '빈 곳에서 파트를 하나씩 직접 쌓아요',
+    learn: ['정해진 틀 없이 빈 곳에서 시작해요. ＋를 눌러 인트로, 벌스, 코러스 같은 파트를 원하는 순서로 하나씩 쌓아 보세요.'],
+    parts: [],
   },
 ]
 
@@ -114,6 +114,11 @@ export function stepBars(bars: number, dir: 1 | -1, max = 64): number {
 }
 
 export const barsOf = (sections: Section[]) => sections.reduce((s, x) => s + x.bars, 0)
+
+/** 파트 종류별로 보통 쓰는 길이(마디). 노래의 중심(벌스·코러스·A·B)은 8마디, 여닫는 파트는 짧게 */
+export const TYPICAL_BARS: Record<SectionKind, number> = {
+  a: 8, b: 8, intro: 4, verse: 8, prechorus: 4, chorus: 8, bridge: 8, interlude: 4, outro: 4, free: 8,
+}
 
 /** 같은 종류가 여러 개면 "벌스 2"처럼 번호를 붙인 이름 */
 export function autoName(kind: SectionKind, existing: Section[]): string {
@@ -144,7 +149,14 @@ export function rangesOf(song: Pick<Song, 'sections' | 'beatsPerBar'>): Map<stri
 /** 파트 정보와 곡 길이(song.bars)를 항상 일치시킨다 */
 export function normalizeSong(song: Song): Song {
   let sections = song.sections
-  if (!sections?.length) sections = [{ id: uid(), kind: 'free', name: '전체', bars: Math.max(1, song.bars) }]
+  if (!sections?.length) {
+    // 파트가 하나도 없는 빈 곡도 허용한다(틀 없이 시작). 음표를 쓰기 시작하면 그때 '자유' 파트 하나로 묶는다.
+    if (!song.tracks.some((t) => t.notes.length)) {
+      const bars = Math.max(4, song.bars || 8)
+      return sections === song.sections && bars === song.bars ? song : { ...song, sections: [], bars }
+    }
+    sections = [{ id: uid(), kind: 'free', name: '자유', bars: Math.max(1, song.bars) }]
+  }
   const sum = barsOf(sections)
   if (sum < song.bars) {
     const last = sections[sections.length - 1]
@@ -209,6 +221,8 @@ export function applySections(song: Song, plan: PlanItem[]): Song {
     cursor += len
   }
   for (const t of tracks) if (t.bends) t.bends = tidyBends(t.bends)
+  // 파트를 모두 뺀 빈 곡: 8마디 빈 칸으로 둔다
+  if (!sections.length) return { ...song, sections, bars: 8, tracks }
   return { ...song, sections, bars: Math.max(1, cursor / barTicks), tracks }
 }
 

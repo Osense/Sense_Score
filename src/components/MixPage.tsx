@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Song, Track } from '../types'
 import { ProgramSelect } from './TrackPanel'
+import { SongStrip } from './SongStrip'
 
 interface Props {
   song: Song
@@ -11,10 +12,12 @@ interface Props {
   onAdd: (drum: boolean) => void
   onRemove: (id: string) => void
   children?: ReactNode
+  getTick: () => number
+  onSeek: (tick: number) => void
 }
 
 /** 트랙별 악기·음량·뮤트·솔로를 한눈에 맞추는 믹서 */
-export function MixPage({ song, master, onMaster, onChange, onAdd, onRemove, children }: Props) {
+export function MixPage({ song, master, onMaster, onChange, onAdd, onRemove, children, getTick, onSeek }: Props) {
   return (
     <div className="page mix">
       <header className="page-head">
@@ -23,6 +26,9 @@ export function MixPage({ song, master, onMaster, onChange, onAdd, onRemove, chi
           <p>곡을 재생하면서 악기를 바꾸고 음량을 맞춰 보세요. <b>끄기</b>는 그 파트만 빼고, <b>혼자</b>는 그 파트만 들려줘요.</p>
         </div>
       </header>
+      <div className="mix-where">
+        <SongStrip song={song} getTick={getTick} onSeek={onSeek} label="지금 위치" />
+      </div>
       <div className="mixer">
         {song.tracks.map((t) => (
           <div key={t.id} className="strip">

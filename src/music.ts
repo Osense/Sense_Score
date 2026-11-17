@@ -59,16 +59,21 @@ export interface DrumPart {
 }
 
 /** 위쪽일수록 높은 소리 */
+/**
+ * 드럼 파트와 컴퓨터 키보드 자리. 실제 드럼을 칠 때의 손발 자리를 따랐다(책상 위 드럼 패드처럼):
+ * 왼손 = F 스네어 · R 크래시(왼쪽 위 심벌), 오른손 = J 하이햇(가장 자주 치니 오른손 검지) · O 라이드(오른쪽 위 심벌),
+ * 가운데 = G·H 탐(스네어와 하이햇 사이), L 플로어 탐(오른쪽 아래), 발 = B(또는 녹음 화면의 스페이스) 킥
+ */
 export const DRUM_PARTS: DrumPart[] = [
-  { id: 'crash', label: '크래시', pitch: 49, aliases: [52, 55, 57], color: '#f5b83d', key: 'Q', slot: 10, head: 'x' },
-  { id: 'ride', label: '라이드', pitch: 51, aliases: [53, 59], color: '#2ec4d6', key: 'W', slot: 8, head: 'x' },
-  { id: 'hihat', label: '하이햇', pitch: 42, aliases: [44, 46], color: '#9acd32', key: 'E', slot: 9, head: 'x' },
-  { id: 'cowbell', label: '카우벨', pitch: 56, aliases: [], color: '#b072ff', key: 'R', slot: 6, head: 'tri' },
-  { id: 'snare', label: '스네어', pitch: 38, aliases: [37, 40], color: '#ff5f9e', key: 'T', slot: 3, head: 'o' },
-  { id: 'tomH', label: '높은 탐', pitch: 50, aliases: [48], color: '#ff9a3c', key: 'A', slot: 5, head: 'o' },
-  { id: 'tomM', label: '중간 탐', pitch: 47, aliases: [45], color: '#e0703f', key: 'S', slot: 4, head: 'o' },
-  { id: 'tomF', label: '낮은 탐', pitch: 41, aliases: [43], color: '#c25a2b', key: 'D', slot: 2, head: 'o' },
-  { id: 'kick', label: '킥', pitch: 36, aliases: [35], color: '#4f8cff', key: 'F', slot: 1, head: 'o' },
+  { id: 'crash', label: '크래시', pitch: 49, aliases: [52, 55, 57], color: '#f5b83d', key: 'R', slot: 10, head: 'x' },
+  { id: 'ride', label: '라이드', pitch: 51, aliases: [53, 59], color: '#2ec4d6', key: 'O', slot: 8, head: 'x' },
+  { id: 'hihat', label: '하이햇', pitch: 42, aliases: [44, 46], color: '#9acd32', key: 'J', slot: 9, head: 'x' },
+  { id: 'cowbell', label: '카우벨', pitch: 56, aliases: [], color: '#b072ff', key: 'Y', slot: 6, head: 'tri' },
+  { id: 'snare', label: '스네어', pitch: 38, aliases: [37, 40], color: '#ff5f9e', key: 'F', slot: 3, head: 'o' },
+  { id: 'tomH', label: '높은 탐', pitch: 50, aliases: [48], color: '#ff9a3c', key: 'G', slot: 5, head: 'o' },
+  { id: 'tomM', label: '중간 탐', pitch: 47, aliases: [45], color: '#e0703f', key: 'H', slot: 4, head: 'o' },
+  { id: 'tomF', label: '낮은 탐', pitch: 41, aliases: [43], color: '#c25a2b', key: 'L', slot: 2, head: 'o' },
+  { id: 'kick', label: '킥', pitch: 36, aliases: [35], color: '#4f8cff', key: 'B', slot: 1, head: 'o' },
 ]
 
 export function drumPartFor(pitch: number): DrumPart {

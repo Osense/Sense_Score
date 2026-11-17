@@ -9,9 +9,15 @@ import { PPQ, uid, type Note, type SectionKind, type Settings, type Song, type T
    멜로디는 직접 쓰는 것이므로 만들지 않는다.
    ====================================================================== */
 
-export type ChordRhythm = 'whole' | 'half' | 'beats' | 'eighths' | 'offbeat' | 'arpeggio' | 'syncop'
-export type DrumStyle = 'none' | 'basic8' | 'basic4' | 'floor4' | 'sixteen' | 'syncop' | 'halftime' | 'shuffle' | 'polka'
-export type BassStyle = 'none' | 'roots' | 'roots-pass' | 'walking' | 'finger' | 'octave' | 'whole'
+export type ChordRhythm = 'none' | 'whole' | 'half' | 'beats' | 'eighths' | 'offbeat' | 'arpeggio' | 'syncop' | 'custom'
+export type DrumStyle = 'none' | 'basic8' | 'basic4' | 'floor4' | 'sixteen' | 'syncop' | 'halftime' | 'shuffle' | 'polka' | 'custom'
+export type BassStyle = 'none' | 'roots' | 'roots-pass' | 'walking' | 'finger' | 'octave' | 'whole' | 'custom'
+
+/** 직접 정한 리듬: 한 마디를 8분음표 칸(박 수 × 2)으로 나눈 칸 번호들 */
+export const STEP = PPQ / 2
+export interface CustomDrum { kick: number[]; snare: number[]; hat: number[]; crash?: number[] }
+/** 베이스 칸마다 어떤 음을 칠지: 0 = 근음(루트), 1 = 5도, 2 = 한 옥타브 위 근음, null = 쉼 */
+export type BassTone = 0 | 1 | 2 | null
 export type ChordSpeed = 'slow' | 'normal' | 'fast'
 
 export interface PartPlan {
@@ -27,6 +33,11 @@ export interface PartPlan {
   bass: BassStyle
   /** 같은 종류의 파트(코러스 2, 3…)와 설정을 함께 바꿀지 (기본: 예) */
   linked?: boolean
+  /** 인터뷰에서 학생이 직접 확인한 파트 (자동 추천이 다시 바꾸지 않는다) */
+  picked?: boolean
+  customComp?: number[]
+  customDrum?: CustomDrum
+  customBass?: BassTone[]
 }
 
 /* ---------- 화음 진행 ---------- */
@@ -48,6 +59,8 @@ export const PROG_MAJOR: Progression[] = [
   { id: 'jazz', name: 'ⅱ–Ⅴ–Ⅰ–ⅵ', degrees: [1, 4, 0, 5], mood: '세련된 재즈 느낌', theory: 'ⅱ–Ⅴ–Ⅰ은 재즈의 기본 진행. 7화음을 켜면 더 재즈다워져요.' },
   { id: 'build', name: 'ⅵ–Ⅴ–Ⅳ–Ⅴ', degrees: [5, 4, 3, 4], mood: '긴장이 쌓이는 진행', theory: 'Ⅴ(딸림화음)로 끝나서 ‘다음에 뭔가 나온다’는 기대를 만들어 프리코러스에 좋아요.' },
   { id: 'canon', name: '캐논 Ⅰ–Ⅴ–ⅵ–ⅲ–Ⅳ–Ⅰ–Ⅳ–Ⅴ', degrees: [0, 4, 5, 2, 3, 0, 3, 4], mood: '차분하게 흘러가는 8마디', theory: '파헬벨의 캐논에서 온 진행. 베이스가 계단처럼 내려와요.' },
+  { id: 'royal', name: 'Ⅳ–Ⅴ–ⅲ–ⅵ', degrees: [3, 4, 2, 5], mood: '벅차오르다 촉촉해지는 후렴', theory: '버금딸림(Ⅳ)에서 딸림(Ⅴ)으로 올라갔다가 단조 화음으로 내려앉아요. 일본·한국 가요 후렴에 정말 많아요.' },
+  { id: 'climb', name: 'Ⅳ–Ⅴ–Ⅰ–Ⅰ', degrees: [3, 4, 0, 0], mood: '계단을 올라 활짝 도착', theory: 'Ⅳ→Ⅴ→Ⅰ로 한 칸씩 올라가 으뜸화음에 도착해요. 마무리나 후렴 끝에 시원해요.' },
 ]
 
 export const PROG_MINOR: Progression[] = [
@@ -58,6 +71,9 @@ export const PROG_MINOR: Progression[] = [
   { id: 'm-lift', name: 'Ⅵ–Ⅶ–ⅰ–ⅰ', degrees: [5, 6, 0, 0], mood: '어둡다가 위로 올라서는 후렴', theory: 'Ⅵ→Ⅶ→ⅰ로 계단처럼 올라가 으뜸으로 도착해요.' },
   { id: 'm-dark', name: 'ⅰ–ⅳ–Ⅶ–Ⅲ', degrees: [0, 3, 6, 2], mood: '신비롭고 깊은 분위기', theory: '4도씩 움직이는 화음들이 이어져 깊이 있는 느낌을 줘요.' },
   { id: 'm-build', name: 'ⅳ–Ⅵ–Ⅶ–Ⅶ', degrees: [3, 5, 6, 6], mood: '긴장을 키우는 진행', theory: 'Ⅶ에서 멈춰서 으뜸(ⅰ)으로 돌아가고 싶게 만들어요.' },
+  { id: 'm-pop', name: 'Ⅵ–Ⅲ–Ⅶ–ⅰ', degrees: [5, 2, 6, 0], mood: '어둠 속에서 환하게 열리는 후렴', theory: '밝은 Ⅵ로 시작해서 마지막에야 ⅰ로 돌아와요. 단조 노래의 후렴에서 아주 흔해요.' },
+  { id: 'm-major', name: 'Ⅲ–Ⅶ–Ⅵ–Ⅶ', degrees: [2, 6, 5, 6], mood: '잠깐 장조처럼 밝아지는 진행', theory: 'Ⅲ은 나란한조(같은 음을 쓰는 장조)의 으뜸화음이에요. 단조 곡 안에서 분위기가 확 밝아져요.' },
+  { id: 'm-v', name: 'ⅰ–ⅳ–ⅴ–Ⅵ', degrees: [0, 3, 4, 5], mood: '한 계단씩 차분히 올라가는 진행', theory: 'ⅰ에서 ⅳ, ⅴ로 차례로 올라가다 Ⅵ에 걸쳐 다음으로 넘겨줘요.' },
 ]
 
 export const progressionsFor = (minor: boolean) => (minor ? PROG_MINOR : PROG_MAJOR)
@@ -199,7 +215,8 @@ const HO = 46
 const CR = 49
 
 /** 드럼 한 마디 (ticks 기준, 마디 시작이 0). 박자 수가 달라도 자연스럽게 맞춘다. */
-export function drumBar(style: DrumStyle, beats: number): Hit[] {
+export function drumBar(style: DrumStyle, beats: number, custom?: CustomDrum): Hit[] {
+  if (style === 'custom') return customDrumBar(custom)
   const out: Hit[] = []
   const add = (t: number, pitch: number, vel: number, d = 120) => out.push({ t, d, vel, pitch })
   const eighths = (vel = 78) => { for (let i = 0; i < beats * 2; i++) add(i * 240, HC, i % 2 ? vel - 22 : vel) }
@@ -264,6 +281,7 @@ export function compSeg(style: ChordRhythm, len: number, v: number[]): CompHit[]
   const out: CompHit[] = []
   const chord = (t: number, d: number, vel: number) => out.push({ t, d: Math.max(60, Math.min(d, len - t)), vel, pitches: v })
   switch (style) {
+    case 'none': case 'custom': break
     case 'whole': chord(0, len, 70); break
     case 'half': for (let t = 0; t < len; t += 960) chord(t, 960, t === 0 ? 76 : 66); break
     case 'beats': for (let t = 0; t < len; t += PPQ) chord(t, 420, t === 0 ? 82 : 66); break
@@ -288,6 +306,9 @@ export interface BassCtx {
   /** 이 구간 안에서 킥 드럼이 울리는 자리 (구간 시작이 0) */
   kicks: number[]
   barIndex: number
+  /** 직접 정한 베이스: 칸별 음, 그리고 이 구간 안의 [위치, 칸 번호] */
+  custom?: BassTone[]
+  onsets?: [number, number][]
 }
 
 export function bassSeg(style: BassStyle, len: number, c: BassCtx): { t: number; d: number; vel: number; pitch: number }[] {
@@ -323,7 +344,44 @@ export function bassSeg(style: BassStyle, len: number, c: BassCtx): { t: number;
       for (let t = 0, i = 0; t < len; t += 240, i++) add(t, 200, i % 2 ? c.rootP + 12 : c.rootP, i % 2 ? 66 : 88)
       break
     case 'whole': add(0, len - 20, c.rootP, 80); break
+    case 'custom': {
+      const tones = c.custom ?? []
+      const on = c.onsets ?? []
+      on.forEach(([t, step], i) => {
+        const tone = tones[step]
+        if (tone == null) return
+        const pitch = tone === 0 ? c.rootP : tone === 1 ? c.rootP + c.fifthInt : c.rootP + 12
+        add(t, (on[i + 1]?.[0] ?? len) - t - 20, pitch, t % PPQ === 0 ? 90 : 78)
+      })
+      break
+    }
   }
+  return out
+}
+
+/**
+ * 직접 정한 리듬의 칸들이 이 구간(seg) 안에서 어디에 오는지.
+ * segOffset = 구간이 자기 마디 시작에서 얼마나 떨어져 있는지. [구간 안 위치, 칸 번호] 목록
+ */
+export function stepOnsets(steps: number[], barTicks: number, segOffset: number, len: number): [number, number][] {
+  const out: [number, number][] = []
+  const bars = Math.ceil((segOffset + len) / barTicks)
+  for (let b = 0; b < bars; b++)
+    for (const st of [...steps].sort((x, y) => x - y)) {
+      const t = b * barTicks + st * STEP - segOffset
+      if (t >= 0 && t < len) out.push([t, st])
+    }
+  return out.sort((a, b) => a[0] - b[0])
+}
+
+/** 직접 정한 드럼 한 마디 */
+export function customDrumBar(c: CustomDrum | undefined): Hit[] {
+  if (!c) return []
+  const out: Hit[] = []
+  for (const st of c.hat) out.push({ t: st * STEP, d: 110, vel: st % 2 ? 62 : 80, pitch: HC })
+  for (const st of c.snare) out.push({ t: st * STEP, d: 110, vel: 100, pitch: S })
+  for (const st of c.kick) out.push({ t: st * STEP, d: 110, vel: 104, pitch: K })
+  for (const st of c.crash ?? []) out.push({ t: st * STEP, d: 900, vel: 100, pitch: CR })
   return out
 }
 
@@ -332,10 +390,17 @@ export function sampleBar(beats: number) {
   const len = beats * PPQ
   const v = [60, 64, 67]
   return {
-    comp: (s: ChordRhythm) => compSeg(s, len, v),
-    drum: (s: DrumStyle) => drumBar(s, beats),
-    bass: (s: BassStyle, drum: DrumStyle) =>
-      bassSeg(s, len, { rootP: 36, thirdInt: 4, fifthInt: 7, nextRootP: 41, kicks: drumBar(drum, beats).filter((h) => h.pitch === K).map((h) => h.t), barIndex: 1 }),
+    comp: (s: ChordRhythm, custom?: number[]): CompHit[] => {
+      if (s !== 'custom') return compSeg(s, len, v)
+      const on = stepOnsets(custom ?? [], len, 0, len)
+      return on.map(([t], k) => ({ t, d: (on[k + 1]?.[0] ?? len) - t - 20, vel: 76, pitches: v }))
+    },
+    drum: (s: DrumStyle, custom?: CustomDrum) => drumBar(s, beats, custom),
+    bass: (s: BassStyle, drum: DrumStyle, custom?: BassTone[], customDrum?: CustomDrum) =>
+      bassSeg(s, len, {
+        rootP: 36, thirdInt: 4, fifthInt: 7, nextRootP: 41, kicks: drumBar(drum, beats, customDrum).filter((h) => h.pitch === K).map((h) => h.t), barIndex: 1,
+        custom, onsets: s === 'custom' ? stepOnsets((custom ?? []).flatMap((x, k) => (x == null ? [] : [k])), len, 0, len) : undefined,
+      }),
   }
 }
 
@@ -422,15 +487,24 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
       cr.high,
     )
     prevCenter = v.reduce((a, b) => a + b, 0) / v.length
-    for (const h of compSeg(plan.comp, sg.len, v))
-      for (const p of h.pitches) chordsT.notes.push(note(p, sg.t0 + h.t, h.d, h.vel))
+    const off = (sg.t0 - ranges.get(sec.id)!.start) % barTicks
+    if (plan.comp === 'custom') {
+      const on = stepOnsets(plan.customComp ?? [], barTicks, off, sg.len)
+      on.forEach(([t], k) => {
+        const d = (on[k + 1]?.[0] ?? sg.len) - t - 20
+        for (const p of v) chordsT.notes.push(note(p, sg.t0 + t, Math.max(60, d), t % PPQ === 0 ? 80 : 68))
+      })
+    } else
+      for (const h of compSeg(plan.comp, sg.len, v))
+        for (const p of h.pitches) chordsT.notes.push(note(p, sg.t0 + h.t, h.d, h.vel))
 
     // 베이스
     const rootP = Math.min(br.high, Math.max(br.low, 36 + ((chord.rootPc - 36) % 12 + 12) % 12))
     const nextRootP = Math.min(br.high, Math.max(br.low, 36 + ((nextChord.rootPc - 36) % 12 + 12) % 12))
     const barStart = sg.t0 - (sg.sub * barTicks) / (plan.speed === 'fast' ? 2 : 1)
-    const kicks = drumBar(plan.drum, beats).filter((h) => h.pitch === K).map((h) => h.t - (sg.t0 - barStart)).filter((t) => t >= 0 && t < sg.len)
-    for (const h of bassSeg(plan.bass, sg.len, { rootP, thirdInt: chord.thirdInt, fifthInt: chord.fifthInt, nextRootP, kicks, barIndex: sg.bar }))
+    const kicks = drumBar(plan.drum, beats, plan.customDrum).filter((h) => h.pitch === K).map((h) => h.t - (sg.t0 - barStart)).filter((t) => t >= 0 && t < sg.len)
+    const onsets = plan.bass === 'custom' ? stepOnsets((plan.customBass ?? []).flatMap((x, k) => (x == null ? [] : [k])), barTicks, off, sg.len) : undefined
+    for (const h of bassSeg(plan.bass, sg.len, { rootP, thirdInt: chord.thirdInt, fifthInt: chord.fifthInt, nextRootP, kicks, barIndex: sg.bar, custom: plan.customBass, onsets }))
       bassT.notes.push(note(h.pitch, sg.t0 + h.t, h.d, h.vel))
   })
 
@@ -441,7 +515,7 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
     if (!plan || plan.drum === 'none') return
     const r = ranges.get(sec.id)!
     for (let bar = 0; bar < sec.bars; bar++) {
-      let hits = drumBar(plan.drum, beats)
+      let hits = drumBar(plan.drum, beats, plan.customDrum)
       if (plan.fill && bar === sec.bars - 1 && beats >= 2) hits = withFill(hits, beats)
       if (plan.crash && bar === 0) hits = [...hits, { t: 0, d: 960, vel: 104, pitch: CR }]
       for (const h of hits) drumsT.notes.push(note(h.pitch, r.start + bar * barTicks + h.t, h.d, h.vel))
@@ -473,59 +547,90 @@ export interface RankCtx {
   prevName?: string
   nextFirst: number | null
   nextKind: SectionKind | null
-  /** 비슷하면 변화가 적어서 피하고 싶은 진행들(이웃 벌스·코러스의 진행) */
-  avoid: string[]
+  /** 이 파트보다 앞에 나온, 종류가 다른 기둥 파트들(벌스·코러스·A·B…)의 선택. 대비를 따질 때 쓴다 */
+  peers: { name: string; kind: SectionKind; prog: string; first: number }[]
 }
 
-const BUILD = new Set(['build', 'm-build'])
-const CONTRAST = new Set(['emo', 'jazz', 'm-dark', 'm-sad', 'andalus'])
-const HOME = new Set(['basic', 'm-basic'])
+const BUILD = new Set(['build', 'm-build', 'm-v'])
+const CONTRAST = new Set(['emo', 'jazz', 'm-dark', 'm-sad', 'andalus', 'm-major', 'royal'])
+const HOME = new Set(['basic', 'm-basic', 'climb'])
+const LIFT = new Set(['lift', 'royal', 'm-lift', 'm-pop', 'm-major'])
+const PILLAR = new Set<SectionKind>(['a', 'b', 'verse', 'chorus', 'free'])
 
+/**
+ * 화음 진행 추천 점수. 음악에서 흔히 쓰는 원리를 점수로 옮겼다.
+ * 1) 앞 파트의 마지막 화음에서 자연스럽게 이어지는가 (5도 진행·딸림→으뜸 등)
+ * 2) 대비: 코러스·B는 앞의 벌스·A와 다른 진행, 무엇보다 다른 화음으로 시작해야 ‘바뀌었다’는 느낌이 난다
+ *    (같은 화음으로 시작하면 크게 깎는다. 단조의 후렴은 밝은 Ⅲ·Ⅵ, 장조의 후렴은 Ⅳ·Ⅵ로 여는 경우가 많다)
+ * 3) 역할: 벌스·A는 으뜸화음으로 ‘집’을 먼저 들려주고, 연결 파트는 딸림화음으로 끝나 다음을 기다리게,
+ *    아웃트로는 으뜸화음으로 끝나게
+ */
 export function rankProgressions(c: RankCtx): Rank[] {
   const nm = (d: number) => chordOf(c.root, c.minor, d, false).name
   const kindLabel = (k: SectionKind) => KIND_LABEL[k]
   const list = progressionsFor(c.minor)
+  // 대비를 따질 상대: 코러스는 벌스·A·자유, B는 A, 벌스는 앞의 코러스, 프리코러스·브릿지는 앞의 모든 기둥 파트
+  const rivals = c.peers.filter((p) => {
+    if (c.kind === 'chorus') return p.kind === 'verse' || p.kind === 'a' || p.kind === 'free' || p.kind === 'b'
+    if (c.kind === 'b') return p.kind === 'a' || p.kind === 'verse'
+    if (c.kind === 'verse') return p.kind === 'chorus'
+    if (c.kind === 'a') return p.kind === 'b'
+    if (c.kind === 'prechorus' || c.kind === 'bridge') return PILLAR.has(p.kind)
+    return false
+  })
   const out: Rank[] = list.map((prog) => {
     let score = 0
     const reasons: string[] = []
     const first = prog.degrees[0]
     const last = prog.degrees[(c.bars - 1 + prog.degrees.length * 8) % prog.degrees.length]
 
-    // 앞 파트의 마지막 화음에서 자연스럽게 이어지는가
+    // 1) 앞 파트에서 이어지기
     if (c.prevLast !== null) {
       const i = suggestNext(c.prevLast, c.minor).findIndex((s) => s.degree === first)
       if (i >= 0) {
-        score += 34 - i * 8
+        score += 26 - i * 7
         reasons.push(`앞 파트${c.prevName ? `(${c.prevName})` : ''}가 ${nm(c.prevLast)}로 끝나서 ${nm(first)}로 자연스럽게 이어져요`)
       }
     }
-    // 다음 파트의 첫 화음으로 잘 풀리는가
+    // 다음 파트로 잘 풀리기 (뒤 파트는 아직 바뀔 수 있어서 가볍게)
     if (c.nextFirst !== null) {
       const i = suggestNext(last, c.minor).findIndex((s) => s.degree === c.nextFirst)
-      if (i >= 0) {
-        score += 34 - i * 8
-        reasons.push(`${nm(last)}로 끝나서 다음 ${c.nextKind ? kindLabel(c.nextKind) : '파트'}의 ${nm(c.nextFirst)}로 잘 풀려요`)
+      if (i >= 0) score += 10 - i * 3
+    }
+    // 2) 대비
+    for (const r of rivals) {
+      if (r.prog === prog.id) {
+        score -= 46
+        reasons.push(`${r.name}와 똑같은 진행이라 ${kindLabel(c.kind)}가 새롭게 들리지 않아요`)
+      } else if (r.first === first) {
+        score -= c.kind === 'prechorus' ? 8 : 24
+        reasons.push(`${r.name}와 같은 ${nm(first)}로 시작해서 바뀐 느낌이 약해요`)
+      } else if (c.kind === 'chorus' || c.kind === 'b') {
+        score += 16
+        reasons.push(`${r.name}(${nm(r.first)})와 다른 ${nm(first)}로 시작해서 ‘${kindLabel(c.kind)}가 왔다!’는 느낌이 나요`)
       }
     }
-    // 연결 파트는 딸림화음으로 끝나면 ‘다음에 뭔가 나온다’는 기대가 생긴다
+    if (c.kind === 'chorus' || c.kind === 'b') {
+      const bright = c.minor ? first === 2 || first === 5 : first === 3 || first === 5
+      if (bright) { score += 10; reasons.push(c.minor ? `밝은 ${nm(first)}로 열려서 후렴이 환해져요` : `${nm(first)}로 열어서 분위기가 확 바뀌어요`) }
+      if (LIFT.has(prog.id)) { score += 10; reasons.push('후렴에 많이 쓰는, 시원하게 열리는 진행이에요') }
+    }
+    // 3) 역할
+    if ((c.kind === 'verse' || c.kind === 'a' || c.kind === 'free') && first === 0) {
+      score += 14
+      reasons.push(`으뜸화음(${nm(0)})으로 시작해서 곡의 ‘집’을 먼저 들려줘요`)
+    }
     const dominant = c.minor ? last === 4 || last === 6 : last === 4
     if (dominant && (c.kind === 'prechorus' || c.kind === 'bridge' || c.kind === 'intro' || c.kind === 'interlude')) {
       score += 22
       reasons.push(`${nm(last)}(딸림화음)로 끝나 긴장이 쌓이고 다음 파트가 기다려져요`)
     }
-    // 종류별 성격
-    if (c.kind === 'prechorus' && BUILD.has(prog.id)) { score += 24; reasons.push('프리코러스용 긴장을 쌓는 진행이에요') }
+    if (c.kind === 'prechorus' && BUILD.has(prog.id)) { score += 22; reasons.push('후렴 앞에서 긴장을 쌓는 진행이에요') }
     if (c.kind === 'bridge' && CONTRAST.has(prog.id)) { score += 18; reasons.push('브릿지답게 분위기를 확 바꿔 줘요') }
     if (c.kind === 'outro' && HOME.has(prog.id)) { score += 26; reasons.push('으뜸화음으로 돌아와 곡이 끝난 느낌이 나요') }
-    if (c.kind === 'outro' && (last === 0)) { score += 10 }
-    if (c.kind === 'chorus' && (prog.id === 'lift' || prog.id === 'm-lift')) { score += 12; reasons.push('시원하게 열리는 후렴용 진행이에요') }
-    if ((c.kind === 'verse' || c.kind === 'a') && (prog.id === 'pop4' || prog.id === 'epic')) { score += 10 }
-    if (c.kind === 'intro' && (prog.id === 'pop4' || prog.id === 'epic')) { score += 10 }
-    // 이웃 파트와 같은 진행이면 변화가 적다 (브릿지는 특히)
-    if (c.avoid.includes(prog.id)) {
-      const pen = c.kind === 'bridge' ? 32 : c.kind === 'prechorus' ? 12 : 0
-      if (pen) { score -= pen; reasons.push('이웃 파트와 같은 진행이라 변화가 적어요') }
-    }
+    if (c.kind === 'outro' && last === 0) score += 10
+    if (c.kind === 'intro' && first === 0) { score += 8; reasons.push(`${nm(0)}로 시작해서 곡의 조를 미리 알려 줘요`) }
+    if (prog.degrees.length > 4 && c.bars < 8) score -= 12 // 8개짜리 진행은 짧은 파트에서 끝까지 못 간다
     return { prog, score, reasons }
   })
   return out.sort((a, b) => b.score - a.score)
@@ -537,7 +642,7 @@ const KIND_LABEL: Record<SectionKind, string> = {
 }
 
 /** 연결 역할의 파트: 이웃 파트를 보고 정한다 */
-const CONNECT = new Set<SectionKind>(['intro', 'prechorus', 'bridge', 'outro', 'interlude'])
+export const CONNECT = new Set<SectionKind>(['intro', 'prechorus', 'bridge', 'outro', 'interlude'])
 
 /** 이 파트(index)의 이웃 파트 정보 */
 export function neighborCtx(song: Song, plans: Record<string, PartPlan>, index: number, minor: boolean, root: number): RankCtx {
@@ -547,13 +652,17 @@ export function neighborCtx(song: Song, plans: Record<string, PartPlan>, index: 
   let p = index - 1
   while (p >= 0 && !has(p)) p--
   let n = index + 1
-  while (n < secs.length && !has(n)) n++
+  while (n < secs.length && (!has(n) || secs[n].kind === sec.kind)) n++
   const progOf = (pl: PartPlan) => progressionsFor(minor).find((x) => x.id === pl.prog) ?? progressionsFor(minor)[0]
-  const avoid = secs
-    .map((s, i) => ({ s, i }))
-    .filter(({ s, i }) => i !== index && has(i) && (s.kind === 'verse' || s.kind === 'chorus' || s.kind === 'a' || s.kind === 'b'))
-    .filter(({ i }) => Math.abs(i - index) <= 2 || secs[i].kind === 'verse' || secs[i].kind === 'chorus')
-    .map(({ s }) => plans[s.id].prog)
+  // 앞에 나온 다른 종류의 기둥 파트 (종류마다 가장 가까운 것 하나)
+  const peers: RankCtx['peers'] = []
+  for (let i = index - 1; i >= 0; i--) {
+    const s = secs[i]
+    if (s.kind === sec.kind || !has(i) || !PILLAR.has(s.kind) || peers.some((x) => x.kind === s.kind)) continue
+    const pl = plans[s.id]
+    if (pl.comp === 'none' && pl.bass === 'none') continue
+    peers.push({ name: s.name, kind: s.kind, prog: pl.prog, first: progOf(pl).degrees[0] })
+  }
   return {
     kind: sec.kind,
     minor,
@@ -563,15 +672,14 @@ export function neighborCtx(song: Song, plans: Record<string, PartPlan>, index: 
     prevName: p >= 0 ? secs[p].name : undefined,
     nextFirst: n < secs.length ? progOf(plans[secs[n].id]).degrees[0] : null,
     nextKind: n < secs.length ? secs[n].kind : null,
-    avoid,
+    peers,
   }
 }
 
 /**
  * 파트마다 선택이 없으면 채운다.
  * 1) 같은 종류가 이미 정해져 있으면 그대로 따라간다 (코러스 2, 코러스 3 … 는 자동으로 같게)
- * 2) 벌스·코러스 같은 기둥 파트를 먼저 정하고
- * 3) 인트로·프리코러스·브릿지·아웃트로 같은 연결 파트는 앞뒤 파트를 보고 센스 있게 고른다
+ * 2) 곡의 앞에서부터 차례로 정한다. 앞 파트에서 자연스럽게 이어지고, 앞의 기둥 파트와는 대비되게(rankProgressions)
  */
 export function autoPlans(song: Song, settings: Settings, existing: Record<string, PartPlan>): Record<string, PartPlan> {
   const minor = isMinorScale(settings.scaleType)
@@ -592,8 +700,8 @@ export function autoPlans(song: Song, settings: Settings, existing: Record<strin
     const best = rankProgressions(neighborCtx(song, out, i, minor, root))[0]
     out[sec.id] = { ...base, prog: best && best.score > 0 ? best.prog.id : base.prog, linked: true }
   }
-  secs.forEach((s, i) => { if (!CONNECT.has(s.kind)) fill(i) })
-  secs.forEach((s, i) => { if (CONNECT.has(s.kind)) fill(i) })
+  // 앞에서부터 차례로: 앞 파트를 보고 이어지게, 앞의 기둥 파트와는 대비되게
+  secs.forEach((_, i) => fill(i))
   return out
 }
 
