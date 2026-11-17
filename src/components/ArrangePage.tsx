@@ -4,6 +4,7 @@ import type { PartPlan } from '../scaffold'
 import { useReorder } from '../useReorder'
 import type { Section, SectionKind, Settings, Song } from '../types'
 import { ScaffoldMenu } from './ScaffoldMenu'
+import { Icon } from './Icon'
 
 export type ScaffoldPhase = 'ask' | 'menu' | 'skip' | 'done'
 
@@ -197,7 +198,7 @@ export function ArrangePage(p: Props) {
                 <button onClick={() => step(i, -1)} disabled={i === 0} title="위로">▲</button>
                 <button onClick={() => step(i, 1)} disabled={i === song.sections.length - 1} title="아래로">▼</button>
                 <button onClick={() => duplicate(i)} title="복제 (음표도 같이 복사돼요)">⧉</button>
-                <button onClick={() => remove(i)} disabled={song.sections.length <= 1} title="지우기"></button>
+                <button onClick={() => remove(i)} disabled={song.sections.length <= 1} title="지우기" aria-label="이 파트 지우기"><Icon name="close" size={16} /></button>
               </div>
             </div>
           )

@@ -2,7 +2,7 @@ import { namesFor } from './sections'
 import { defaultSettings, newTrack } from './storage'
 import type { ScaleType, Settings, Song, Track } from './types'
 
-/** 시작 마법사에서 묻는 것들. 곡의 구성(파트)과 코드·드럼·베이스 뼈대는 ‘구성’ 탭에서 정한다. */
+/** 시작 인터뷰 1마당에서 묻는 것들. 곡의 모양(파트)과 반주는 2·3마당에서 정한다. */
 export interface Answers {
   title: string
   bpm: number

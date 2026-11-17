@@ -10,7 +10,8 @@ import { DeliverPage } from './components/DeliverPage'
 import { HelpModal } from './components/HelpModal'
 import { MixPage } from './components/MixPage'
 import { WorkspaceTabs, type Workspace } from './components/WorkspaceTabs'
-import { Wizard } from './components/Wizard'
+import { Interview } from './components/Interview'
+import { buildTemplate, defaultAnswers, type Answers } from './template'
 import { MelodyPage } from './components/MelodyPage'
 import { Recorder } from './recorder'
 import { correctTake, type Correction } from './correct'
@@ -42,6 +43,11 @@ const SNAPS = [
 
 const saved = loadSaved()
 const HELP_FLAG = 'composing-sense:help-seen'
+const THEME_KEY = 'sense-score:theme'
+type Theme = 'light' | 'dark'
+const initialTheme = (): Theme => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light')
+/** 악기 구성이 같으면 곡을 새로 만들지 않고 이름·빠르기·박자·음계만 고친다 */
+const partsKey = (a: Answers) => [a.melody, a.chords, a.bass, a.drums].map(Number).join('')
 
 function TimeDisplay({ getTick, song, speed }: { getTick: () => number; song: Song; speed: number }) {
   const ref = useRef<HTMLSpanElement>(null)
@@ -97,6 +103,13 @@ export default function App() {
   const [plans, setPlans] = useState<Record<string, PartPlan>>({}) // 뼈대 세우기 메뉴판에서 고른 것
   const [phase, setPhase] = useState<ScaffoldPhase>('ask')
   const [showHelp, setShowHelp] = useState(false)
+  // 시작 인터뷰
+  const [ivStep, setIvStep] = useState('welcome')
+  const [ivAnswers, setIvAnswers] = useState<Answers>(defaultAnswers)
+  const [ivCreated, setIvCreated] = useState<string | null>(null)
+  const [ivStructure, setIvStructure] = useState<string | null>(null)
+  const [ivBuilt, setIvBuilt] = useState(false)
+  const [theme, setTheme] = useState<Theme>(initialTheme)
   const [master, setMaster] = useState(0.8)
   const hasSaved = useRef(!!saved).current
   // 멜로디 쓰기(라이브 녹음)
@@ -241,17 +254,20 @@ export default function App() {
   const setMeta = (sections: Section[]) => hist.set((s) => ({ ...s, sections }))
 
   /** 곡의 틀(형식)을 통째로 바꾼다 */
-  const applyStructure = (id: string) => {
+  const applyStructure = (id: string, quiet = false): boolean => {
     const st = STRUCTURES.find((x) => x.id === id)
-    if (!st) return
-    if (song.tracks.some((t) => t.notes.length) && !confirm('곡의 틀을 바꾸면 지금 쓴 음표가 모두 지워져요. 바꿀까요? (되돌리기로 복구할 수 있어요)')) return
+    if (!st) return false
+    if (song.tracks.some((t) => t.notes.length) && !confirm('곡의 틀을 바꾸면 지금 쓴 음표가 모두 지워져요. 바꿀까요? (되돌리기로 복구할 수 있어요)')) return false
     const secs = namesFor(st.parts)
     hist.set((x) => applySections(x, secs.map((q) => ({ src: null, kind: q.kind, name: q.name, bars: q.bars }))))
     setPlans({})
     setPhase('ask')
     setSelectedSec(secs[0].id)
     setSettings({ loop: false, loopStart: 0, loopEnd: secs.reduce((n, q) => n + q.bars, 0) * song.beatsPerBar * PPQ })
-    flash(`${st.label}(으)로 곡의 틀을 만들었어요. 파트를 끌어서 순서를 바꿔 보세요!`)
+    setIvStructure(id)
+    setIvBuilt(false)
+    if (!quiet) flash(`${st.label}(으)로 곡의 틀을 만들었어요. 파트를 끌어서 순서를 바꿔 보세요!`)
+    return true
   }
 
   /** 메뉴판에서 고른 설정을 몇 마디만 임시 곡으로 만들어 바로 들려준다 (실제 곡은 그대로) */
@@ -270,12 +286,12 @@ export default function App() {
   }
 
   /** 메뉴판에서 고른 대로 코드·베이스·드럼 뼈대를 곡에 만든다 */
-  const buildScaffold = (ids?: string[], listen?: string) => {
+  const buildScaffold = (ids?: string[], listen?: string, quiet = false) => {
     const filled = autoPlans(hist.ref.current, settingsRef.current, plans)
     setPlans(filled)
     hist.set((x) => generate(x, settingsRef.current, filled, ids))
     if (listen) playPart(listen)
-    else flash('뼈대를 세웠어요! 직접 쓰기에서 멜로디를 얹어 보세요 ')
+    else if (!quiet) flash('뼈대를 세웠어요! 직접 쓰기에서 멜로디를 얹어 보세요')
   }
 
   const focusSection = (id: string) => {
@@ -571,18 +587,52 @@ export default function App() {
     }
   }
 
-  const newSong = () => setWs('start') // 마법사에서 새 곡을 만들기 전에는 지금 곡이 그대로 남는다
+  // 인터뷰에서 새 곡을 만들기 전에는 지금 곡이 그대로 남는다
+  const newSong = () => {
+    setIvAnswers(defaultAnswers())
+    setIvCreated(null)
+    setIvStructure(null)
+    setIvBuilt(false)
+    setIvStep('title')
+    setWs('start')
+  }
 
-  const createFromWizard = (next: Song, st: Settings) => {
+  /** 인터뷰 1마당이 끝나면: 처음이면 곡을 만들고, 이미 만들었으면 바뀐 것만 고친다 */
+  const readyFromInterview = (a: Answers): boolean => {
+    const key = partsKey(a)
+    if (ivCreated === key) {
+      const cur = hist.ref.current
+      const beatsChanged = cur.beatsPerBar !== a.beats
+      hist.set((s) => ({ ...s, title: a.title.trim() || s.title, bpm: a.bpm, beatsPerBar: a.beats }))
+      setSettings({ scaleRoot: a.root, scaleType: a.scaleType })
+      if (beatsChanged) setIvBuilt(false)
+      return true
+    }
+    if (ivCreated === null && song.tracks.some((t) => t.notes.length) &&
+      !confirm('지금 열려 있는 곡 대신 새 곡을 만들까요? 필요하면 먼저 위쪽 "백업"으로 내려받아 두세요.')) return false
+    const r = buildTemplate(a)
     stop()
-    hist.reset(next)
-    setActiveId(next.tracks[0].id)
-    setSettingsState(st)
-    setSelectedSec(next.sections[0].id)
+    hist.reset(r.song)
+    setActiveId(r.song.tracks[0].id)
+    setSettingsState(r.settings)
+    setSelectedSec(r.song.sections[0].id)
     setPlans({})
     setPhase('ask')
-    setWs('arrange')
-    flash('곡이 만들어졌어요! 이제 곡의 틀(형식)을 골라 보세요.')
+    setIvCreated(key)
+    setIvStructure(null)
+    setIvBuilt(false)
+    return true
+  }
+  const buildFromInterview = () => {
+    buildScaffold(undefined, undefined, true)
+    setPhase('done')
+    setIvBuilt(true)
+  }
+  const toggleTheme = () => {
+    const next: Theme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    document.documentElement.dataset.theme = next
+    try { localStorage.setItem(THEME_KEY, next) } catch { /* 저장 못 해도 이번 화면에는 적용 */ }
   }
 
   const blankSong = () => {
@@ -694,10 +744,11 @@ export default function App() {
     <div className="app">
       <header className="top">
         <div className="top-main">
-          <span className="brand" aria-label="Sense Score">
-            <b>SENSE</b>
-            <i>score</i>
-          </span>
+          <button className="brand" onClick={() => { setIvStep('welcome'); setWs('start') }} aria-label="Sense Score 처음 화면">
+            <span className="brand-mark"><Icon name="melody" size={16} /></span>
+            <b>Sense Score</b>
+            <small>WSNS</small>
+          </button>
           <input
             className="title"
             value={song.title}
@@ -722,6 +773,9 @@ export default function App() {
           <button onClick={backupProject} title="이 곡을 프로젝트 파일(.json)로 내려받아 보관"><Icon name="save" size={15} />백업</button>
           <button onClick={() => projectRef.current?.click()} title="백업해 둔 프로젝트 파일 열기"><Icon name="upload" size={15} />복원</button>
           <button onClick={() => setShowHelp(true)} title="도구 사용법"><Icon name="help" size={15} />사용법</button>
+          <button onClick={toggleTheme} title={theme === 'dark' ? '밝은 화면으로' : '어두운 화면으로'} aria-label="화면 밝기 바꾸기">
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} />{theme === 'dark' ? '밝게' : '어둡게'}
+          </button>
           <span className={`save-state ${dirty}`} role="status" aria-live="polite" title="작업 내용은 서버로 보내지 않고 이 기기에만 저장돼요. 브라우저 데이터를 지우기 전에 백업해 주세요.">
             <i />
             {dirty === 'saved' ? '이 기기에 저장됨' : dirty === 'error' ? '저장 실패' : '저장 중'}
@@ -812,16 +866,34 @@ export default function App() {
       )}
 
       {ws === 'start' && (
-        <Wizard
+        <Interview
+          song={song}
+          settings={settings}
+          stepId={ivStep}
+          onStep={setIvStep}
+          answers={ivAnswers}
+          onAnswers={setIvAnswers}
+          onReady={readyFromInterview}
+          structureId={ivStructure}
+          onStructure={(id) => void applyStructure(id, true)}
+          onPlan={(plan) => { applyPlan(plan); setIvBuilt(false) }}
+          plans={plans}
+          onPlans={setPlans}
+          onAudition={audition}
+          onBuild={buildFromInterview}
+          built={ivBuilt}
+          onPlayPart={playPart}
+          onPlayAll={playAll}
+          onStop={stop}
+          playing={playing}
+          onScaleDemo={(root, type) => audio().engine.playScale(root, SCALES[type].steps)}
+          onBeatDemo={(bpm, beats) => audio().engine.playBeats(bpm, beats)}
+          onGo={(w) => { stop(); setWs(w) }}
           hasSaved={hasSaved}
           incoming={incoming ? { title: incoming.song.title } : null}
           onOpenIncoming={openIncoming}
-          onCreate={createFromWizard}
-          onBlank={blankSong}
-          onContinue={() => setWs('compose')}
           onImport={() => fileRef.current?.click()}
-          onScaleDemo={(root, type) => audio().engine.playScale(root, SCALES[type].steps)}
-          onBeatDemo={(bpm, beats) => audio().engine.playBeats(bpm, beats)}
+          onBlank={blankSong}
         />
       )}
 

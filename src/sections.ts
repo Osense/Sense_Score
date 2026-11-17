@@ -28,7 +28,7 @@ export interface Structure {
   parts: PartSpec[]
 }
 
-/** 시작 마법사에서 고르는 곡 구성(형식). 고르면서 음악 형식을 자연스럽게 배운다. */
+/** 시작 인터뷰·구성 탭에서 고르는 곡 구성(형식). 고르면서 음악 형식을 자연스럽게 배운다. */
 export const STRUCTURES: Structure[] = [
   {
     id: 'ab',
