@@ -1858,3 +1858,32 @@ select, input[type='number'], input:not([type]), input[type='text'] { background
   .track .name { min-width: 0; flex: 1 1 60px; font-size: 13px; }
   .track select { min-width: 0; font-size: 13px; }
 }
+
+/* ---------- 직접 정하기 편집기 (칸 크기·길게 끌기) ---------- */
+.pe { display: grid; gap: 6px; user-select: none; -webkit-user-select: none; }
+.pe-grids { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 4px; }
+.pe-grids > span { font-size: 13px; font-weight: 700; color: var(--muted); margin-right: 4px; }
+.pe-grids button { display: inline-flex; align-items: baseline; gap: 6px; padding: 7px 12px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--panel); color: var(--text); }
+.pe-grids button small { font-size: 11.5px; color: var(--muted); }
+.pe-grids button.on { border-color: transparent; background: var(--brand-grad); color: var(--on-brand); }
+.pe-grids button.on small { color: inherit; opacity: .85; }
+.pe-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 6px; align-items: center; }
+.pe-label { font-size: 13px; font-weight: 700; color: var(--muted); text-align: right; white-space: nowrap; }
+.pe-cells { display: grid; grid-template-columns: repeat(var(--cells), minmax(0, 1fr)); }
+.pe-cells span { text-align: center; font: 600 12px var(--font-mono); color: var(--muted); }
+.pe-cells span.sub { color: var(--dim); font-weight: 400; }
+.pe-track { position: relative; height: 44px; border-radius: 10px; background: var(--raised); border: 1.5px solid var(--border); overflow: hidden; touch-action: none; cursor: pointer; }
+.pe-cell { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); pointer-events: none; }
+.pe-cell.beat { width: 2px; background: var(--border-strong); }
+.pe-cell:first-child { display: none; }
+.pe-note { position: absolute; top: 5px; bottom: 5px; margin-left: 1.5px; border-radius: 7px; background: var(--c); box-shadow: 0 4px 12px -6px var(--c); pointer-events: none; }
+.pe-note.long em { position: absolute; right: 4px; top: 50%; width: 4px; height: 55%; transform: translateY(-50%); border-radius: 2px; background: rgba(255, 255, 255, .7); }
+@media (max-width: 700px) {
+  .pe-row { grid-template-columns: 46px minmax(0, 1fr); gap: 4px; }
+  .pe-label { font-size: 11px; }
+  .pe-track { height: 38px; border-radius: 8px; }
+  .pe-cells span { font-size: 10px; }
+  .pe-grids button { padding: 6px 9px; }
+  .pe-grids button small { display: none; }
+}
+@media (pointer: coarse) and (min-width: 700px) { .pe-track { height: 48px; } }

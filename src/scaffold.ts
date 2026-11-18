@@ -14,8 +14,14 @@ export type DrumStyle = 'none' | 'basic8' | 'basic4' | 'floor4' | 'sixteen' | 's
 export type BassStyle = 'none' | 'roots' | 'roots-pass' | 'walking' | 'finger' | 'octave' | 'whole' | 'custom'
 
 /** 직접 정한 리듬: 한 마디를 8분음표 칸(박 수 × 2)으로 나눈 칸 번호들 */
+/** 예전 ‘직접 정하기’의 8분음표 칸(옛 곡을 읽을 때만 쓴다) */
 export const STEP = PPQ / 2
 export interface CustomDrum { kick: number[]; snare: number[]; hat: number[]; crash?: number[] }
+/** 직접 정한 리듬의 음 하나: 마디 안 위치와 길이(tick) */
+export interface PatNote { t: number; d: number }
+export interface BassNote extends PatNote { tone: 0 | 1 | 2 }
+export interface DrumPat { crash?: PatNote[]; open?: PatNote[]; hat: PatNote[]; snare: PatNote[]; tom?: PatNote[]; kick: PatNote[] }
+export type DrumLaneKey = keyof DrumPat
 /** 베이스 칸마다 어떤 음을 칠지: 0 = 근음(루트), 1 = 5도, 2 = 한 옥타브 위 근음, null = 쉼 */
 export type BassTone = 0 | 1 | 2 | null
 export type ChordSpeed = 'slow' | 'normal' | 'fast'
@@ -35,9 +41,52 @@ export interface PartPlan {
   linked?: boolean
   /** 인터뷰에서 학생이 직접 확인한 파트 (자동 추천이 다시 바꾸지 않는다) */
   picked?: boolean
+  /** 옛 형식(8분음표 칸 번호). 새로 저장할 때는 compPat·drumPat·bassPat을 쓴다 */
   customComp?: number[]
   customDrum?: CustomDrum
   customBass?: BassTone[]
+  compPat?: PatNote[]
+  drumPat?: DrumPat
+  bassPat?: BassNote[]
+  /** 직접 정하기 칸 크기: 한 박을 몇 칸으로 (2=8분음표, 4=16분음표, 3=셋잇단음표) */
+  grid?: number
+}
+
+/* ---------- 직접 정한 리듬 읽기 (옛 형식도 새 형식으로) ---------- */
+export function compPatOf(p: PartPlan, bar: number): PatNote[] {
+  if (p.compPat) return p.compPat
+  const s = [...new Set(p.customComp ?? [])].sort((a, b) => a - b).filter((x) => x * STEP < bar)
+  return s.map((st, i) => ({ t: st * STEP, d: ((s[i + 1] ?? bar / STEP) - st) * STEP }))
+}
+export function drumPatOf(p: PartPlan): DrumPat {
+  if (p.drumPat) return p.drumPat
+  const c = p.customDrum
+  const m = (xs?: number[]) => (xs ?? []).map((st) => ({ t: st * STEP, d: STEP }))
+  return { crash: m(c?.crash), hat: m(c?.hat), snare: m(c?.snare), kick: m(c?.kick) }
+}
+export function bassPatOf(p: PartPlan, bar: number): BassNote[] {
+  if (p.bassPat) return p.bassPat
+  const tones = p.customBass ?? []
+  const on = tones.flatMap((x, k) => (x == null || k * STEP >= bar ? [] : [k]))
+  return on.map((k, i) => ({ t: k * STEP, d: ((on[i + 1] ?? bar / STEP) - k) * STEP, tone: tones[k] as 0 | 1 | 2 }))
+}
+
+/**
+ * 직접 정한 음들이 이 구간(화음 하나가 이어지는 길이) 안에서 어디에 오는지.
+ * segOffset = 구간이 자기 마디 시작에서 얼마나 떨어져 있는지. 구간 앞에서 시작해 이어지는 음은 구간 첫머리에 다시 친다(cont).
+ */
+export function patInSeg<T extends PatNote>(notes: T[], barTicks: number, segOffset: number, len: number): { t: number; d: number; n: T; cont: boolean }[] {
+  const out: { t: number; d: number; n: T; cont: boolean }[] = []
+  const bars = Math.ceil((segOffset + len) / barTicks)
+  for (let b = 0; b < bars; b++)
+    for (const n of notes) {
+      const t = b * barTicks + n.t - segOffset
+      const end = t + n.d
+      if (end <= 0 || t >= len) continue
+      const st = Math.max(0, t)
+      out.push({ t: st, d: Math.min(end, len) - st, n, cont: t < 0 })
+    }
+  return out.sort((a, b) => a.t - b.t)
 }
 
 /* ---------- 화음 진행 ---------- */
@@ -216,7 +265,7 @@ const HO = 46
 const CR = 49
 
 /** 드럼 한 마디 (ticks 기준, 마디 시작이 0). 박자 수가 달라도 자연스럽게 맞춘다. */
-export function drumBar(style: DrumStyle, beats: number, custom?: CustomDrum): Hit[] {
+export function drumBar(style: DrumStyle, beats: number, custom?: DrumPat): Hit[] {
   if (style === 'custom') return customDrumBar(custom)
   const out: Hit[] = []
   const add = (t: number, pitch: number, vel: number, d = 120) => out.push({ t, d, vel, pitch })
@@ -308,8 +357,8 @@ export interface BassCtx {
   kicks: number[]
   barIndex: number
   /** 직접 정한 베이스: 칸별 음, 그리고 이 구간 안의 [위치, 칸 번호] */
-  custom?: BassTone[]
-  onsets?: [number, number][]
+  /** 직접 정한 베이스: 이 구간 안의 음들 */
+  pat?: { t: number; d: number; n: BassNote; cont: boolean }[]
 }
 
 export function bassSeg(style: BassStyle, len: number, c: BassCtx): { t: number; d: number; vel: number; pitch: number }[] {
@@ -345,44 +394,27 @@ export function bassSeg(style: BassStyle, len: number, c: BassCtx): { t: number;
       for (let t = 0, i = 0; t < len; t += 240, i++) add(t, 200, i % 2 ? c.rootP + 12 : c.rootP, i % 2 ? 66 : 88)
       break
     case 'whole': add(0, len - 20, c.rootP, 80); break
-    case 'custom': {
-      const tones = c.custom ?? []
-      const on = c.onsets ?? []
-      on.forEach(([t, step], i) => {
-        const tone = tones[step]
-        if (tone == null) return
-        const pitch = tone === 0 ? c.rootP : tone === 1 ? c.rootP + c.fifthInt : c.rootP + 12
-        add(t, (on[i + 1]?.[0] ?? len) - t - 20, pitch, t % PPQ === 0 ? 90 : 78)
-      })
+    case 'custom':
+      for (const h of c.pat ?? []) {
+        const pitch = h.n.tone === 0 ? c.rootP : h.n.tone === 1 ? c.rootP + c.fifthInt : c.rootP + 12
+        add(h.t, h.d - 20, pitch, h.cont ? 72 : h.n.t % PPQ === 0 ? 90 : 78)
+      }
       break
-    }
   }
   return out
 }
 
-/**
- * 직접 정한 리듬의 칸들이 이 구간(seg) 안에서 어디에 오는지.
- * segOffset = 구간이 자기 마디 시작에서 얼마나 떨어져 있는지. [구간 안 위치, 칸 번호] 목록
- */
-export function stepOnsets(steps: number[], barTicks: number, segOffset: number, len: number): [number, number][] {
-  const out: [number, number][] = []
-  const bars = Math.ceil((segOffset + len) / barTicks)
-  for (let b = 0; b < bars; b++)
-    for (const st of [...steps].sort((x, y) => x - y)) {
-      const t = b * barTicks + st * STEP - segOffset
-      if (t >= 0 && t < len) out.push([t, st])
-    }
-  return out.sort((a, b) => a[0] - b[0])
-}
-
-/** 직접 정한 드럼 한 마디 */
-export function customDrumBar(c: CustomDrum | undefined): Hit[] {
+/** 직접 정한 드럼 한 마디. 박 위치에 따라 세기를 다르게(센 박 > 뒷박 > 16분·셋잇단) */
+export function customDrumBar(c: DrumPat | undefined): Hit[] {
   if (!c) return []
   const out: Hit[] = []
-  for (const st of c.hat) out.push({ t: st * STEP, d: 110, vel: st % 2 ? 62 : 80, pitch: HC })
-  for (const st of c.snare) out.push({ t: st * STEP, d: 110, vel: 100, pitch: S })
-  for (const st of c.kick) out.push({ t: st * STEP, d: 110, vel: 104, pitch: K })
-  for (const st of c.crash ?? []) out.push({ t: st * STEP, d: 900, vel: 100, pitch: CR })
+  const lv = (t: number, a: number, b: number, d: number) => (t % PPQ === 0 ? a : t % (PPQ / 2) === 0 ? b : d)
+  for (const n of c.hat) out.push({ t: n.t, d: 110, vel: lv(n.t, 82, 66, 54), pitch: HC })
+  for (const n of c.open ?? []) out.push({ t: n.t, d: Math.max(200, n.d), vel: lv(n.t, 84, 74, 64), pitch: HO })
+  for (const n of c.snare) out.push({ t: n.t, d: 110, vel: lv(n.t, 102, 92, 68), pitch: S })
+  for (const n of c.tom ?? []) out.push({ t: n.t, d: 160, vel: lv(n.t, 96, 88, 78), pitch: 45 })
+  for (const n of c.kick) out.push({ t: n.t, d: 110, vel: lv(n.t, 106, 98, 90), pitch: K })
+  for (const n of c.crash ?? []) out.push({ t: n.t, d: 900, vel: 100, pitch: CR })
   return out
 }
 
@@ -391,16 +423,15 @@ export function sampleBar(beats: number) {
   const len = beats * PPQ
   const v = [60, 64, 67]
   return {
-    comp: (s: ChordRhythm, custom?: number[]): CompHit[] => {
+    comp: (s: ChordRhythm, custom?: PatNote[]): CompHit[] => {
       if (s !== 'custom') return compSeg(s, len, v)
-      const on = stepOnsets(custom ?? [], len, 0, len)
-      return on.map(([t], k) => ({ t, d: (on[k + 1]?.[0] ?? len) - t - 20, vel: 76, pitches: v }))
+      return [...(custom ?? [])].sort((a, b) => a.t - b.t).map((n) => ({ t: n.t, d: Math.max(60, n.d - 20), vel: 76, pitches: v }))
     },
-    drum: (s: DrumStyle, custom?: CustomDrum) => drumBar(s, beats, custom),
-    bass: (s: BassStyle, drum: DrumStyle, custom?: BassTone[], customDrum?: CustomDrum) =>
+    drum: (s: DrumStyle, custom?: DrumPat) => drumBar(s, beats, custom),
+    bass: (s: BassStyle, drum: DrumStyle, custom?: BassNote[], customDrum?: DrumPat) =>
       bassSeg(s, len, {
         rootP: 36, thirdInt: 4, fifthInt: 7, nextRootP: 41, kicks: drumBar(drum, beats, customDrum).filter((h) => h.pitch === K).map((h) => h.t), barIndex: 1,
-        custom, onsets: s === 'custom' ? stepOnsets((custom ?? []).flatMap((x, k) => (x == null ? [] : [k])), len, 0, len) : undefined,
+        pat: s === 'custom' ? patInSeg(custom ?? [], len, 0, len) : undefined,
       }),
   }
 }
@@ -496,25 +527,22 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
     )
     prevCenter = v.reduce((a, b) => a + b, 0) / v.length
     // 코러스·B는 맨 아래 음을 한 옥타브 위에 겹쳐서 소리를 넓고 밝게(같은 화음이어도 ‘커졌다’는 느낌)
-    if ((sec.kind === 'chorus' || sec.kind === 'b') && v[0] + 12 <= cr.high && !v.includes(v[0] + 12)) v.push(v[0] + 12)
+    const voice = (sec.kind === 'chorus' || sec.kind === 'b') && v[0] + 12 <= cr.high && !v.includes(v[0] + 12) ? [...v, v[0] + 12] : v
     const off = (sg.t0 - ranges.get(sec.id)!.start) % barTicks
     if (plan.comp === 'custom') {
-      const on = stepOnsets(plan.customComp ?? [], barTicks, off, sg.len)
-      on.forEach(([t], k) => {
-        const d = (on[k + 1]?.[0] ?? sg.len) - t - 20
-        for (const p of v) chordsT.notes.push(note(p, sg.t0 + t, Math.max(60, d), t % PPQ === 0 ? 80 : 68))
-      })
+      for (const h of patInSeg(compPatOf(plan, barTicks), barTicks, off, sg.len))
+        for (const p of voice) chordsT.notes.push(note(p, sg.t0 + h.t, Math.max(60, h.d - 20), h.cont ? 66 : h.n.t % PPQ === 0 ? 80 : 68))
     } else
-      for (const h of compSeg(plan.comp, sg.len, v))
+      for (const h of compSeg(plan.comp, sg.len, voice))
         for (const p of h.pitches) chordsT.notes.push(note(p, sg.t0 + h.t, h.d, h.vel))
 
     // 베이스
     const rootP = Math.min(br.high, Math.max(br.low, 36 + ((chord.rootPc - 36) % 12 + 12) % 12))
     const nextRootP = Math.min(br.high, Math.max(br.low, 36 + ((nextChord.rootPc - 36) % 12 + 12) % 12))
     const barStart = sg.t0 - ((sg.t0 - ranges.get(sec.id)!.start) % barTicks)
-    const kicks = drumBar(plan.drum, beats, plan.customDrum).filter((h) => h.pitch === K).map((h) => h.t - (sg.t0 - barStart)).filter((t) => t >= 0 && t < sg.len)
-    const onsets = plan.bass === 'custom' ? stepOnsets((plan.customBass ?? []).flatMap((x, k) => (x == null ? [] : [k])), barTicks, off, sg.len) : undefined
-    for (const h of bassSeg(plan.bass, sg.len, { rootP, thirdInt: chord.thirdInt, fifthInt: chord.fifthInt, nextRootP, kicks, barIndex: sg.bar, custom: plan.customBass, onsets }))
+    const kicks = drumBar(plan.drum, beats, drumPatOf(plan)).filter((h) => h.pitch === K).map((h) => h.t - (sg.t0 - barStart)).filter((t) => t >= 0 && t < sg.len)
+    const pat = plan.bass === 'custom' ? patInSeg(bassPatOf(plan, barTicks), barTicks, off, sg.len) : undefined
+    for (const h of bassSeg(plan.bass, sg.len, { rootP, thirdInt: chord.thirdInt, fifthInt: chord.fifthInt, nextRootP, kicks, barIndex: sg.bar, pat }))
       bassT.notes.push(note(h.pitch, sg.t0 + h.t, h.d, h.vel))
   })
 
@@ -525,7 +553,7 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
     if (!plan || plan.drum === 'none') return
     const r = ranges.get(sec.id)!
     for (let bar = 0; bar < sec.bars; bar++) {
-      let hits = drumBar(plan.drum, beats, plan.customDrum)
+      let hits = drumBar(plan.drum, beats, drumPatOf(plan))
       if (plan.fill && bar === sec.bars - 1 && beats >= 2) hits = withFill(hits, beats)
       if (plan.crash && bar === 0) hits = [...hits, { t: 0, d: 960, vel: 104, pitch: CR }]
       for (const h of hits) drumsT.notes.push(note(h.pitch, r.start + bar * barTicks + h.t, h.d, h.vel))

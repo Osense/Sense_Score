@@ -1,15 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Icon, type IconName } from './Icon'
 import type { Workspace } from './WorkspaceTabs'
-import { PatternView, StepGrid, type Lane, type PlayMark } from './PatternView'
+import { guessGrid, PatternEditor, PatternView, type Lane, type PatValue, type PlayMark } from './PatternView'
 import { NOTE_NAMES_EN, NOTE_NAMES_KO, SCALES } from '../music'
 import type { Answers } from '../template'
 import { autoName, KINDS, planOf, stepBars, STRUCTURES, TYPICAL_BARS, type PlanItem } from '../sections'
 import {
-  autoPlans, chordOf, chordSegments, DEFAULT_PLAN, findRoleTrack, isMinorScale, neighborCtx, progressionsFor, rankProgressions, sampleBar, STEP,
-  type BassStyle, type BassTone, type ChordRhythm, type ChordSpeed, type CustomDrum, type DrumStyle, type PartPlan,
+  autoPlans, bassPatOf, chordOf, chordSegments, compPatOf, DEFAULT_PLAN, drumPatOf, findRoleTrack, isMinorScale, neighborCtx, progressionsFor, rankProgressions, sampleBar,
+  type BassNote, type BassStyle, type ChordRhythm, type ChordSpeed, type DrumPat, type DrumStyle, type PartPlan, type PatNote,
 } from '../scaffold'
-import type { ScaleType, SectionKind, Settings, Song } from '../types'
+import { PPQ, type ScaleType, type SectionKind, type Settings, type Song } from '../types'
 
 /* ======================================================================
    시작 인터뷰: 네 마당(준비 → 곡의 모양 → 반주 → 멜로디)을 한 화면에 한 질문씩 묻는다.
@@ -132,12 +132,12 @@ const DRUM_ROWS: { label: string; color: string; match: (p: number) => boolean }
   { label: '탐', color: '#9c7bb5', match: (p) => [41, 43, 45, 47, 48, 50].includes(p) },
   { label: '킥', color: '#7c5cf0', match: (p) => p === 35 || p === 36 },
 ]
-function drumLanes(beats: number, style: DrumStyle, custom?: CustomDrum): Lane[] {
+function drumLanes(beats: number, style: DrumStyle, custom?: DrumPat): Lane[] {
   const hits = sampleBar(beats).drum(style, custom)
   return DRUM_ROWS.map((r) => ({ label: r.label, color: r.color, hits: hits.filter((h) => r.match(h.pitch)).map((h) => ({ t: h.t, d: Math.min(h.d, 180) })) }))
     .filter((l) => l.hits.length || l.label === '킥' || l.label === '스네어' || l.label === '하이햇')
 }
-function compLanes(beats: number, style: ChordRhythm, custom?: number[]): Lane[] {
+function compLanes(beats: number, style: ChordRhythm, custom?: PatNote[]): Lane[] {
   const hits = sampleBar(beats).comp(style, custom)
   if (style === 'arpeggio') {
     // 아르페지오는 음 높이(아래·가운데·위)를 나눠서 보여 준다
@@ -146,13 +146,11 @@ function compLanes(beats: number, style: ChordRhythm, custom?: number[]): Lane[]
   }
   return [{ label: '화음', color: '#7c5cf0', hits: hits.map((h) => ({ t: h.t, d: h.d })) }]
 }
-function bassLanes(beats: number, style: BassStyle, drum: DrumStyle, custom?: BassTone[], customDrum?: CustomDrum): Lane[] {
+function bassLanes(beats: number, style: BassStyle, drum: DrumStyle, custom?: BassNote[], customDrum?: DrumPat): Lane[] {
   const hits = sampleBar(beats).bass(style, drum, custom, customDrum)
   const row = (p: number) => (p - 36 >= 12 ? 2 : p - 36 > 0 ? 1 : 0)
   return [{ label: '베이스', color: '#2fa3c4', rows: ['근음', '3·5도', '옥타브'], hits: hits.map((h) => ({ t: h.t, d: h.d, row: row(h.pitch) })) }]
 }
-/** 정해진 리듬을 8분음표 칸으로 바꿔서 ‘직접 정하기’의 출발점으로 쓴다 */
-const toSteps = (ts: number[], beats: number) => [...new Set(ts.map((t) => Math.round(t / STEP)))].filter((x) => x >= 0 && x < beats * 2).sort((a, b) => a - b)
 
 interface Props {
   song: Song
@@ -476,7 +474,7 @@ export function Interview(p: Props) {
         q: <>「{name}」에서 화음은 어떤 리듬으로 칠까요?</>,
         items: COMP_PICK as Style<string>[],
         value: plan.comp as string,
-        lanes: (id: string) => compLanes(beats, id as ChordRhythm, plan.customComp),
+        lanes: (id: string) => compLanes(beats, id as ChordRhythm, compPatOf(plan, beats * PPQ)),
         learn: <>같은 화음도 치는 리듬(<b>리듬꼴</b>)에 따라 느낌이 완전히 달라져요. 그림의 막대 하나가 화음 한 번이고, 막대가 길수록 소리가 오래 울려요. 위 숫자 1 2 3 4는 박이에요.</>,
         patch: (id: string) => ({ comp: id as ChordRhythm }),
       },
@@ -484,7 +482,7 @@ export function Interview(p: Props) {
         q: <>「{name}」에서 드럼은 어떤 리듬으로 칠까요?</>,
         items: DRUM_PICK as Style<string>[],
         value: plan.drum as string,
-        lanes: (id: string) => drumLanes(beats, id as DrumStyle, plan.customDrum),
+        lanes: (id: string) => drumLanes(beats, id as DrumStyle, drumPatOf(plan)),
         learn: <>드럼은 <b>킥</b>(쿵, 발로 밟는 큰북), <b>스네어</b>(짝, 작은북), <b>하이햇</b>(츠, 두 장 겹친 심벌)으로 리듬을 만들어요. 그림에서 한 줄이 악기 하나예요. 실제 드럼 악보도 이렇게 악기마다 자리가 정해져 있어요.</>,
         patch: (id: string) => ({ drum: id as DrumStyle }),
       },
@@ -492,7 +490,7 @@ export function Interview(p: Props) {
         q: <>「{name}」에서 베이스는 어떻게 움직일까요?</>,
         items: BASS_PICK as Style<string>[],
         value: plan.bass as string,
-        lanes: (id: string) => bassLanes(beats, id as BassStyle, plan.drum, plan.customBass, plan.customDrum),
+        lanes: (id: string) => bassLanes(beats, id as BassStyle, plan.drum, bassPatOf(plan, beats * PPQ), drumPatOf(plan)),
         learn: <>베이스는 보통 화음의 맨 아래 음인 <b>근음</b>(루트)을 쳐요. 그림의 아래 줄이 근음, 가운데가 3도·5도, 위가 한 옥타브 위 근음이에요. 드럼의 킥과 같은 자리에서 치면 둘이 한 몸처럼 들려요.</>,
         patch: (id: string) => ({ bass: id as BassStyle }),
       },
@@ -528,7 +526,7 @@ export function Interview(p: Props) {
           <div className="iv-editor">
             <div className="iv-editor-head">
               <b>직접 정하기 · 한 마디</b>
-              <span>칸을 누르면 켜지고 다시 누르면 꺼져요. 숫자는 박, &는 박과 박 사이(뒷박)예요.</span>
+              <span>{sub === 'drum' ? '칸을 누르면 소리가 생기고, 누른 채로 옆으로 밀면 여러 칸을 한 번에 쳐요. 막대를 누르면 지워져요.' : '빈 칸을 누르고 오른쪽으로 끌면 길게 울려요. 막대를 끌면 길이가 바뀌고, 그냥 누르면 지워져요.'} 숫자는 박, &는 박과 박 사이(뒷박)예요.</span>
               <button type="button" className="iv-secondary small" onClick={() => listen(`${sub}-custom`, k, {})}><Icon name="play" size={14} />들어보기</button>
             </div>
             <CustomEditor sub={sub} beats={beats} plan={plan} onChange={(patch) => setKind(k, patch)} />
@@ -840,62 +838,71 @@ export function Interview(p: Props) {
   )
 }
 
-/** ‘직접 정하기’를 처음 열 때: 지금 고른 리듬을 칸으로 옮겨서 출발점으로 쓴다 */
+/** ‘직접 정하기’를 처음 열 때: 지금 고른 리듬(길이까지)을 그대로 옮겨서 출발점으로 쓴다 */
 function fromPreset(sub: Sub, plan: PartPlan, beats: number): Partial<PartPlan> {
   const sb = sampleBar(beats)
-  if (sub === 'comp' && !plan.customComp) {
+  const bar = beats * PPQ
+  const fresh = (x: PatNote[]) => x.filter((n) => n.t >= 0 && n.t < bar).map((n) => ({ t: n.t, d: Math.max(30, Math.min(n.d, bar - n.t)) }))
+  if (sub === 'comp' && !plan.compPat && !plan.customComp) {
     const src = plan.comp === 'custom' || plan.comp === 'none' ? 'beats' : plan.comp
-    return { customComp: toSteps(sb.comp(src).map((h) => h.t), beats) }
+    const hits = sb.comp(src)
+    const ts = [...new Set(hits.map((h) => h.t))].sort((x, y) => x - y)
+    return { compPat: fresh(ts.map((t) => ({ t, d: Math.max(...hits.filter((h) => h.t === t).map((h) => h.d)) + 20 }))) }
   }
-  if (sub === 'drum' && !plan.customDrum) {
+  if (sub === 'drum' && !plan.drumPat && !plan.customDrum) {
     const src = plan.drum === 'custom' || plan.drum === 'none' ? 'basic8' : plan.drum
     const h = sb.drum(src)
-    const pick = (f: (p: number) => boolean) => toSteps(h.filter((x) => f(x.pitch)).map((x) => x.t), beats)
-    return { customDrum: { kick: pick((p) => p === 36 || p === 35), snare: pick((p) => p === 38 || p === 37), hat: pick((p) => p === 42 || p === 46), crash: [] } }
-  }
-  if (sub === 'bass' && !plan.customBass) {
-    const src = plan.bass === 'custom' || plan.bass === 'none' ? 'roots' : plan.bass
-    const tones: BassTone[] = Array(beats * 2).fill(null)
-    for (const h of sb.bass(src, plan.drum === 'custom' ? 'basic8' : plan.drum)) {
-      const st = Math.round(h.t / STEP)
-      if (st < tones.length) tones[st] = h.pitch - 36 >= 12 ? 2 : h.pitch - 36 > 0 ? 1 : 0
+    const pick = (f: (p: number) => boolean) => fresh(h.filter((x) => f(x.pitch)).map((x) => ({ t: x.t, d: 120 })))
+    return {
+      drumPat: {
+        crash: pick((p) => p === 49 || p === 57), open: pick((p) => p === 46), hat: pick((p) => p === 42 || p === 44 || p === 51),
+        snare: pick((p) => p === 38 || p === 37 || p === 40), tom: pick((p) => [41, 43, 45, 47, 48, 50].includes(p)), kick: pick((p) => p === 36 || p === 35),
+      },
     }
-    return { customBass: tones }
+  }
+  if (sub === 'bass' && !plan.bassPat && !plan.customBass) {
+    const src = plan.bass === 'custom' || plan.bass === 'none' ? 'roots' : plan.bass
+    const hits = sb.bass(src, plan.drum === 'custom' ? 'basic8' : plan.drum)
+    return { bassPat: hits.filter((x) => x.t < bar).map((x) => ({ t: x.t, d: Math.min(x.d + 20, bar - x.t), tone: (x.pitch - 36 >= 12 ? 2 : x.pitch - 36 > 0 ? 1 : 0) as 0 | 1 | 2 })) }
   }
   return {}
 }
 
 function CustomEditor({ sub, beats, plan, onChange }: { sub: Sub; beats: number; plan: PartPlan; onChange: (patch: Partial<PartPlan>) => void }) {
-  const steps = beats * 2
-  const inBar = (xs: number[]) => xs.filter((x) => x < steps)
-  const flip = (xs: number[], s: number) => (xs.includes(s) ? xs.filter((x) => x !== s) : [...xs, s].sort((a, b) => a - b))
-  if (sub === 'comp') {
-    const cur = inBar(plan.customComp ?? [])
+  const bar = beats * PPQ
+  const comp = compPatOf(plan, bar)
+  const drum = drumPatOf(plan)
+  const bass = bassPatOf(plan, bar)
+  const all = sub === 'comp' ? comp : sub === 'drum' ? Object.values(drum).flat() : bass
+  const grid = plan.grid ?? guessGrid(all)
+  const onGrid = (div: number) => onChange({ grid: div })
+  if (sub === 'comp')
     return (
       <>
-        <StepGrid beats={beats} rows={[{ label: '화음', color: '#7c5cf0', on: (s) => cur.includes(s), toggle: (s) => onChange({ comp: 'custom', customComp: flip(cur, s) }) }]} />
-        <PatternView beats={beats} lanes={compLanes(beats, 'custom', cur)} />
+        <PatternEditor beats={beats} grid={grid} onGrid={onGrid} sustain lanes={[{ key: 'c', label: '화음', color: '#7c5cf0' }]}
+          value={{ c: comp }} onChange={(v) => onChange({ comp: 'custom', compPat: v.c, grid })} />
+        <PatternView beats={beats} lanes={compLanes(beats, 'custom', comp)} />
       </>
     )
-  }
   if (sub === 'drum') {
-    const d: CustomDrum = plan.customDrum ?? { kick: [], snare: [], hat: [] }
-    const row = (key: 'hat' | 'snare' | 'kick' | 'crash', label: string, color: string) => ({
-      label, color, on: (s: number) => (d[key] ?? []).includes(s),
-      toggle: (s: number) => onChange({ drum: 'custom', customDrum: { ...d, [key]: flip(inBar(d[key] ?? []), s) } }),
-    })
-    return <StepGrid beats={beats} rows={[row('crash', '심벌', '#e0a83a'), row('hat', '하이햇', '#38bcd8'), row('snare', '스네어', '#e05c8a'), row('kick', '킥', '#7c5cf0')]} />
+    const lanes = [
+      { key: 'crash', label: '심벌', color: '#e0a83a' }, { key: 'open', label: '열린 햇', color: '#2b9bb8' }, { key: 'hat', label: '하이햇', color: '#38bcd8' },
+      { key: 'snare', label: '스네어', color: '#e05c8a' }, { key: 'tom', label: '탐', color: '#9c7bb5' }, { key: 'kick', label: '킥', color: '#7c5cf0' },
+    ]
+    return <PatternEditor beats={beats} grid={grid} onGrid={onGrid} sustain={false} lanes={lanes} value={drum as unknown as PatValue}
+      onChange={(v) => onChange({ drum: 'custom', drumPat: { crash: v.crash ?? [], open: v.open ?? [], hat: v.hat ?? [], snare: v.snare ?? [], tom: v.tom ?? [], kick: v.kick ?? [] }, grid })} />
   }
-  const tones: BassTone[] = Array.from({ length: steps }, (_, i) => plan.customBass?.[i] ?? null)
-  const row = (tone: 0 | 1 | 2, label: string) => ({
-    label, color: '#2fa3c4', on: (s: number) => tones[s] === tone,
-    toggle: (s: number) => {
-      const next = tones.slice()
-      next[s] = next[s] === tone ? null : tone
-      onChange({ bass: 'custom', customBass: next })
-    },
-  })
-  return <StepGrid beats={beats} rows={[row(2, '옥타브'), row(1, '5도'), row(0, '근음')]} />
+  const value: PatValue = { '2': [], '1': [], '0': [] }
+  for (const n of bass) value[String(n.tone)].push(n)
+  return (
+    <>
+      <PatternEditor beats={beats} grid={grid} onGrid={onGrid} sustain exclusive
+        lanes={[{ key: '2', label: '옥타브', color: '#2fa3c4' }, { key: '1', label: '5도', color: '#2fa3c4' }, { key: '0', label: '근음', color: '#2fa3c4' }]}
+        value={value}
+        onChange={(v) => onChange({ bass: 'custom', grid, bassPat: (['0', '1', '2'] as const).flatMap((k) => (v[k] ?? []).map((n) => ({ t: n.t, d: n.d, tone: +k as 0 | 1 | 2 }))).sort((a, b) => a.t - b.t) })} />
+      <PatternView beats={beats} lanes={bassLanes(beats, 'custom', plan.drum, bass, drum)} />
+    </>
+  )
 }
 
 function Q({ n, say }: { n: ReactNode; say: string }) {
