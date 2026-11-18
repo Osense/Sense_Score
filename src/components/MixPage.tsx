@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Song, Track } from '../types'
-import { ProgramSelect } from './TrackPanel'
+import { DrumKitSelect, ProgramSelect } from './TrackPanel'
 import { SongStrip } from './SongStrip'
 import { Icon } from './Icon'
 
@@ -35,7 +35,7 @@ export function MixPage({ song, master, onMaster, onChange, onAdd, onRemove, chi
           <div key={t.id} className={`mix-row ${t.mute ? 'is-mute' : ''} ${t.solo ? 'is-solo' : ''}`} style={{ ['--tc' as string]: t.color }}>
             <div className="mix-id">
               <input className="mix-name" value={t.name} onChange={(e) => onChange(t.id, { name: e.target.value })} aria-label="트랙 이름" />
-              {t.drum ? <span className="mix-inst drum-label">드럼</span> : <ProgramSelect value={t.program} onChange={(v) => onChange(t.id, { program: v })} />}
+              {t.drum ? <DrumKitSelect value={t.program} onChange={(v) => onChange(t.id, { program: v })} /> : <ProgramSelect value={t.program} onChange={(v) => onChange(t.id, { program: v })} />}
             </div>
             <div className="mix-vol">
               <input className="mix-fader" type="range" min={0} max={1} step={0.01} value={t.volume}

@@ -140,7 +140,7 @@ export function importMidi(buf: ArrayBuffer, fileName: string): Song {
     tracks.push({
       id: uid(),
       name: name || `트랙 ${tracks.length + 1}`,
-      program: drum ? 0 : t.instrument.number,
+      program: t.instrument.number, // 드럼이면 드럼 세트 번호
       drum,
       volume: vol !== undefined ? Math.max(0.05, vol / 127) : 0.8,
       mute: false,

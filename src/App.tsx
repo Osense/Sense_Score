@@ -222,7 +222,16 @@ export default function App() {
     if (patch.program !== undefined) {
       const idx = song.tracks.findIndex((t) => t.id === id)
       const t = song.tracks[idx]
-      if (t && !t.drum) audio().engine.preview(Player.channelFor(song, idx), patch.program, false, t.volume, 64, 90, 0.5)
+      if (t && !t.drum) {
+        // 고른 악기의 음역 가운데쯤에서 들려준다 (튜바·피콜로처럼 음역이 치우친 악기도 제소리로)
+        const r = rangeOf(patch.program)
+        audio().engine.preview(Player.channelFor(song, idx), patch.program, false, t.volume, Math.round((Math.max(r.low, 36) + Math.min(r.high, 96)) / 2), 90, 0.5)
+      } else if (t) {
+        // 드럼 세트: 킥과 스네어를 한 번씩
+        const ch = Player.channelFor(song, idx)
+        audio().engine.preview(ch, patch.program, true, t.volume, 36, 100, 0.3)
+        setTimeout(() => audio().engine.preview(ch, patch.program ?? 0, true, t.volume, 38, 100, 0.3), 260)
+      }
     }
   }
 

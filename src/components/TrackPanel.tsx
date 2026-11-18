@@ -1,5 +1,5 @@
 import { instrumentByPatchID } from '@tonejs/midi/dist/InstrumentMaps'
-import { INSTRUMENTS, instrumentOf, rangeLabel, rangeOf } from '../instruments'
+import { DRUM_KITS, drumKitOf, INSTRUMENT_GROUPS, INSTRUMENTS, instrumentOf, rangeLabel, rangeOf } from '../instruments'
 import type { Song, Track } from '../types'
 
 /** 악기(음색) 고르기 */
@@ -11,10 +11,24 @@ export function ProgramSelect({ value, onChange }: { value: number; onChange: (p
       onChange={(e) => onChange(+e.target.value)}
       title={`음역: ${rangeLabel(rangeOf(value))}`}
     >
-      {INSTRUMENTS.map((i) => (
-        <option key={i.program} value={i.program}>{i.icon} {i.name}</option>
+      {INSTRUMENT_GROUPS.map((g) => (
+        <optgroup key={g} label={g}>
+          {INSTRUMENTS.filter((i) => i.group === g).map((i) => (
+            <option key={i.program} value={i.program} title={i.hint}>{i.name}</option>
+          ))}
+        </optgroup>
       ))}
       {!instrumentOf(value) && <option value={value}>불러온 소리 · {instrumentByPatchID[value] ?? value + 1}</option>}
+    </select>
+  )
+}
+
+/** 드럼 트랙의 드럼 세트 고르기 */
+export function DrumKitSelect({ value, onChange }: { value: number; onChange: (program: number) => void }) {
+  return (
+    <select value={value} onClick={(e) => e.stopPropagation()} onChange={(e) => onChange(+e.target.value)} title="드럼 세트 · 실감 나는 소리에서 소리가 달라져요" aria-label="드럼 세트">
+      {DRUM_KITS.map((k) => <option key={k.program} value={k.program} title={k.hint}>드럼 · {k.name}</option>)}
+      {!drumKitOf(value) && <option value={value}>드럼 · 불러온 세트 {value + 1}</option>}
     </select>
   )
 }
@@ -69,7 +83,7 @@ export function TrackPanel({ song, activeId, onSelect, onChange, onCheckpoint, o
             </div>
             <div className="track-bottom">
               {t.drum ? (
-                <span className="drum-label">드럼 (음 높이마다 다른 타악기)</span>
+                <DrumKitSelect value={t.program} onChange={(v) => onChange(t.id, { program: v })} />
               ) : (
                 <ProgramSelect value={t.program} onChange={(v) => onChange(t.id, { program: v })} />
               )}
