@@ -54,6 +54,8 @@ export interface Section {
 }
 
 export interface Song {
+  /** 프로젝트 번호(클라우드 저장용, 처음 저장할 때 정해짐) */
+  id?: string
   title: string
   bpm: number
   beatsPerBar: number

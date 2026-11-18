@@ -50,7 +50,7 @@ export function ExportMenu({ exporting, onAudio, onMidi, onShare }: Props) {
           <p className="eyebrow">악보 데이터</p>
           <button role="menuitem" onClick={() => pick(onMidi)}>
             <b>MIDI</b>
-            <span>.mid · 다른 음악 프로그램에서 열기</span>
+            <span>.mid · 다른 음악 프로그램에서도 열려요. 여기서 다시 열면 파트 · 반주 설정까지 그대로 이어서 만들어요</span>
           </button>
           <p className="eyebrow">공유</p>
           <button role="menuitem" onClick={() => pick(onShare)}>

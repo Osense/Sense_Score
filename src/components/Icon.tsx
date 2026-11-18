@@ -37,6 +37,7 @@ const PATHS = {
   right: 'M9 18l6-6-6-6',
   next: 'M5 12h14m-6-6 6 6-6 6',
   check: 'M5 12.5l4.5 4.5L19 7.5',
+  down: 'M6 9l6 6 6-6',
   listen: 'M3 14v-2a9 9 0 0 1 18 0v2M21 15a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2zM3 15a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2z',
 } as const
 

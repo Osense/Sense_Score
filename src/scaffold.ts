@@ -1,4 +1,4 @@
-import { fitGroup, rangeOf } from './instruments'
+import { fitGroup, soundRangeOf as rangeOf } from './instruments'
 import { NOTE_NAMES_EN, SCALES } from './music'
 import { rangesOf } from './sections'
 import { newTrack } from './storage'

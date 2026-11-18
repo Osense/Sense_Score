@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_CORRECTION, PRESETS, type Correction } from '../correct'
 import { nearestInScale } from '../editActions'
-import { fitPitch, rangeLabel, rangeOf } from '../instruments'
+import { fitPitch, rangeLabel, rangeOf, soundRangeOf } from '../instruments'
 import { inScale } from '../music'
 import { useChordPcs } from '../useChordPcs'
 import { KINDS } from '../sections'
@@ -70,8 +70,10 @@ export function MelodyPage(p: Props) {
   const range = rangeOf(track?.program ?? 0)
   const scaleOn = settings.scaleType !== 'none'
 
+  const sound = soundRangeOf(track?.program ?? 0)
   const defaultBase = () => {
-    const c = Math.floor((((range.low + range.high) / 2 - 12) / 12)) * 12
+    // 처음 보이는 건반은 그 악기가 잘 어울리는 음역 가운데쯤
+    const c = Math.floor((((sound.low + sound.high) / 2 - 12) / 12)) * 12
     return Math.max(Math.floor(range.low / 12) * 12, c)
   }
   const [base, setBase] = useState(defaultBase)
@@ -280,7 +282,7 @@ export function MelodyPage(p: Props) {
                     <button key={v} className={assist === v ? 'on' : ''} onClick={() => setAssist(v)} disabled={v !== 'free' && !scaleOn}>{t}</button>
                   ))}
                 </span>
-                {track && <span className="range-badge" title="이 악기가 낼 수 있는 음역">음역 {rangeLabel(range)}</span>}
+                {track && <span className="range-badge" title="이 악기에 잘 어울리는 음 높이예요. 밖에도 칠 수 있어요.">어울리는 음역 {rangeLabel(sound)}</span>}
               </div>
             )}
             <div className="mel-pop-row">

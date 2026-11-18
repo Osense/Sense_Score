@@ -908,19 +908,6 @@ export function StaffEditor(p: Props) {
             {multi && b.track.id === active.id && (
               <rect x={s.x0 - 4} y={b.y - 2} width={w + 8} height={b.h + 4} rx={6} className="active-band" />
             )}
-            {!b.track.drum &&
-              (() => {
-                // 악기가 낼 수 없는 높이는 흐리게 막아 둔다
-                const r = rangeOf(b.track.program)
-                const yHi = yS(spell(r.high, ks).step, b) - STEP
-                const yLo = yS(spell(r.low, ks).step, b) + STEP
-                return (
-                  <>
-                    {yHi > b.y && <rect className="off-range-svg" x={s.x0} y={b.y} width={w} height={yHi - b.y} />}
-                    {yLo < b.y + b.h && <rect className="off-range-svg" x={s.x0} y={yLo} width={w} height={b.y + b.h - yLo} />}
-                  </>
-                )
-              })()}
             {staffLines(b, page ? MARGIN : s.x0, s.x0 + w)}
             {Array.from({ length: s.bars * song.beatsPerBar + 1 }, (_, i) => {
               const x = s.x0 + i * PPQ * s.ppt

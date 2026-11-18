@@ -31,8 +31,10 @@ export function decodeMidiText(raw: string | undefined): string {
 /** 저장할 때는 UTF-8 바이트로 적는다 (파일 작성기가 글자 하나를 바이트 하나로 쓰기 때문) */
 const encodeMidiText = (text: string) => String.fromCharCode(...new TextEncoder().encode(text))
 
-export function exportMidi(song: Song): Uint8Array<ArrayBuffer> {
+/** metaText: 첫 트랙에 넣을 텍스트 메타 이벤트(프로젝트 저장용 쎈스 컴포즈 정보) */
+export function exportMidi(song: Song, metaText?: string): Uint8Array<ArrayBuffer> {
   const midi = new Midi()
+  if (metaText) midi.header.meta.push({ type: 'text', text: metaText, ticks: 0 })
   midi.name = encodeMidiText(song.title)
   midi.header.setTempo(song.bpm)
   midi.header.timeSignatures.push({ ticks: 0, timeSignature: [song.beatsPerBar, 4] })

@@ -5,7 +5,7 @@ import { Ruler } from './Ruler'
 import { ContextMenu } from './ContextMenu'
 import { copyToClip, hasClip, menuGroups, planPaste, trackOp, type ActionId } from '../editActions'
 import { useLongPress } from '../useLongPress'
-import { rangeOf } from '../instruments'
+import { rangeOf, soundRangeOf } from '../instruments'
 import { useChordPcs } from '../useChordPcs'
 
 const RULER_H = 36
@@ -46,7 +46,7 @@ export function PianoRoll(p: Props) {
   const pxPerTick = ppb / PPQ
   const gridW = song.bars * song.beatsPerBar * ppb
 
-  // 악기가 낼 수 있는 음역만 건반으로 보여 준다. (음역 밖에 이미 있는 음표가 있으면 흐리게 함께 보여 준다)
+  // 건반은 피아노 88건반 전체를 보여 주고, 어디든 쓸 수 있다
   const inst = rangeOf(track.program)
   const { top, bottom } = useMemo(() => {
     let hi = inst.high
@@ -97,7 +97,7 @@ export function PianoRoll(p: Props) {
       return
     }
     const ns = track.notes
-    const mid = ns.length ? Math.round(ns.reduce((s, n) => s + n.pitch, 0) / ns.length) : Math.round((inst.low + inst.high) / 2)
+    const mid = ns.length ? Math.round(ns.reduce((s, n) => s + n.pitch, 0) / ns.length) : Math.round((soundRangeOf(track.program).low + soundRangeOf(track.program).high) / 2)
     el.scrollTop = (top - mid) * rowH - el.clientHeight / 2 + RULER_H
   }, [track.id]) // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -176,6 +176,8 @@ export class AudioEngine {
   /** 지금 나는 소리와 이미 예약된 소리를 모두 즉시 끊는다. */
   allOff() {
     const now = this.ctx.currentTime
+    for (const id of this.demoTimers) clearTimeout(id)
+    this.demoTimers = []
 
     // 내장 소리: 통로(bus)와 채널 노드를 빠르게 줄이고 새것으로 교체 → 이미 끝 시각이 예약된 긴 음(온음표 등),
     // 드럼, 메트로놈, 아직 시작 전인 음까지 전부 바로 사라진다
@@ -219,11 +221,25 @@ export class AudioEngine {
     this.configure(0, 0, false)
     this.setVolume(0, 0.9)
     const base = 60 + (root > 6 ? root - 12 : root)
-    const t0 = this.startAt(0.05)
+    // 음을 미리 몇 초 앞까지 예약하지 않고 한 음씩 보낸다: 사운드폰트 엔진은 예약된 음을 정지로 지우지 못해서,
+    // 다른 음계를 누르면 앞 음계의 남은 음이 겹쳐 나왔다. 타이머는 allOff()에서 모두 취소된다.
     ;[...steps, 12].forEach((st, i) => {
-      this.noteOn(0, base + st, 90, t0 + i * 0.32)
-      this.noteOff(0, base + st, t0 + i * 0.32 + 0.28)
+      this.later(i * 0.32, () => {
+        const t = this.startAt(0.01)
+        this.noteOn(0, base + st, 90, t)
+        this.noteOff(0, base + st, t + 0.28)
+      })
     })
+  }
+
+  /** 시연 소리용 타이머 (allOff에서 모두 취소) */
+  private demoTimers: ReturnType<typeof setTimeout>[] = []
+  later(sec: number, fn: () => void) {
+    const id = setTimeout(() => {
+      this.demoTimers = this.demoTimers.filter((x) => x !== id)
+      fn()
+    }, sec * 1000)
+    this.demoTimers.push(id)
   }
 
   /** 박자 들려주기: 첫 박이 강한 ‘딱 딱 딱’ 두 마디 */

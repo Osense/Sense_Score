@@ -1952,3 +1952,72 @@ b.mix-name { display: flex; align-items: center; }
   .transport .time-clock { display: none; } /* 폰: 시계는 빼고 ‘몇 마디 몇 박’만 */
   .mix-row .mix-fader { height: 22px; }
 }
+
+/* ---------- 악기 고르기 창 ---------- */
+.ip-trigger {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; height: 34px; padding: 0 10px;
+  border-radius: 9px; border: 1px solid var(--border); background: var(--raised); color: var(--text); text-align: left; font-size: 13px;
+}
+.ip-trigger b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.ip-trigger-g { flex: none; font-size: 11px; color: var(--muted); padding: 1px 6px; border-radius: 6px; background: var(--accent-bg); color: var(--accent); }
+.ip-trigger .icon { flex: none; margin-left: auto; color: var(--muted); }
+.mix-id .ip-trigger { flex: 1 1 60%; }
+.ip-back { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: var(--scrim); animation: fade-in .18s both; }
+.ip { width: min(960px, 100%); max-height: min(760px, 100%); display: flex; flex-direction: column; overflow: hidden; background: var(--panel); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow-pop); }
+.ip-head { display: flex; align-items: flex-start; gap: 16px; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); }
+.ip-head h2 { margin: 0; font-size: 20px; letter-spacing: -.4px; }
+.ip-head p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.ip-done { margin-left: auto; flex: none; height: 40px; padding: 0 18px; border-radius: 12px; border: 0; background: var(--brand-grad); color: var(--on-brand); font-weight: 800; }
+.ip-body { display: grid; grid-template-columns: 180px minmax(0, 1fr); min-height: 0; flex: 1; }
+.ip-groups { display: flex; flex-direction: column; gap: 3px; padding: 12px; border-right: 1px solid var(--border); overflow-y: auto; background: var(--bg); }
+.ip-groups button { position: relative; display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 0; background: transparent; color: var(--text); font-weight: 700; font-size: 14px; text-align: left; }
+.ip-groups button small { margin-left: auto; font: 500 11px var(--font-mono); color: var(--muted); }
+.ip-groups button.on { background: var(--brand-grad); color: var(--on-brand); }
+.ip-groups button.on small { color: inherit; opacity: .8; }
+.ip-dot { position: absolute; left: 4px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: var(--accent); }
+.ip-groups button.on .ip-dot { background: var(--on-brand); }
+.ip-main { min-height: 0; overflow-y: auto; padding: 14px 18px 18px; }
+.ip-main.solo { flex: 1; }
+.ip-learn { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--accent-bg); margin-bottom: 12px; }
+.ip-learn b { font-size: 15px; color: var(--accent); }
+.ip-learn p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--text); }
+.ip-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.ip-card { display: grid; gap: 4px; align-content: start; text-align: left; padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--border); background: var(--panel); color: var(--text); min-height: 0; height: auto; }
+.ip-card:hover { border-color: var(--accent); }
+.ip-card.on { border-color: var(--accent); background: var(--accent-bg); box-shadow: 0 10px 24px -16px var(--accent); }
+.ip-card-top { display: flex; align-items: center; gap: 6px; }
+.ip-card-top b { font-size: 15.5px; letter-spacing: -.3px; }
+.ip-check, .ip-play { margin-left: auto; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; flex: none; }
+.ip-check { background: var(--brand-grad); color: var(--on-brand); }
+.ip-play { background: var(--accent-bg); color: var(--accent); }
+.ip-feel { font-size: 13px; font-weight: 700; color: var(--accent); line-height: 1.4; }
+.ip-card small { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.ip-card em { font-style: normal; font: 500 11px var(--font-mono); color: var(--dim); }
+@media (max-width: 640px) {
+  .ip-back { padding: 0; place-items: end stretch; }
+  .ip { width: 100%; max-height: 92vh; border-radius: 18px 18px 0 0; }
+  .ip-head { padding: 14px 14px 10px; }
+  .ip-head h2 { font-size: 17px; }
+  .ip-head p { font-size: 12px; }
+  .ip-done { height: 36px; padding: 0 12px; font-size: 13px; }
+  .ip-body { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .ip-groups { flex-direction: row; flex-wrap: wrap; gap: 4px; padding: 8px 10px; border-right: 0; border-bottom: 1px solid var(--border); overflow: visible; }
+  .ip-groups button { min-height: 30px; padding: 0 9px; font-size: 12.5px; border-radius: 999px; background: var(--panel); border: 1px solid var(--border); }
+  .ip-groups button small { display: none; }
+  .ip-dot { left: auto; right: 3px; top: 3px; margin: 0; }
+  .ip-main { padding: 10px 12px 14px; }
+  .ip-cards { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .ip-card { padding: 9px 10px; }
+  .ip-card small { display: none; }
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  .ip-back { padding: 6px; }
+  .ip { max-height: 100%; }
+  .ip-head p { display: none; }
+  .ip-body { grid-template-columns: 140px minmax(0, 1fr); }
+  .ip-groups button { min-height: 30px; font-size: 12.5px; }
+}
+.ip-card { display: grid !important; justify-content: stretch; justify-items: stretch; align-items: start; }
+.ip-card-top { width: 100%; }
+.ip-card > * { text-align: left; }
+.ip-card em { font: 500 11.5px var(--font-ui); color: var(--dim); }

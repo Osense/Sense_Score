@@ -27,8 +27,10 @@ import { Icon } from './components/Icon'
 import { ExportMenu } from './components/ExportMenu'
 import { defaultSettings, defaultSong, loadSaved, newTrack, parseProject, save } from './storage'
 import { diatonicChords, DRUM_PARTS, SCALES } from './music'
-import { fitGroup, fitPitch, rangeLabel, rangeOf } from './instruments'
+import { fitGroup, rangeLabel, rangeOf, soundRangeOf } from './instruments'
 import { codeFromHash, decodeSong, encodeSong, shareUrl } from './share'
+import { decodeProject, encodeProject } from './cloud'
+import { useCloudAutosave } from './cloud/useCloudAutosave'
 import { applySections, ceil4, KINDS, namesFor, normalizeSong, rangesOf, STRUCTURES, type PlanItem } from './sections'
 import { autoPlans, findRoleTrack, generate, type PartPlan } from './scaffold'
 import { PPQ, uid, type Note, type Section, type SectionKind, type Settings, type Song, type Tool, type Track } from './types'
@@ -42,6 +44,8 @@ const SNAPS = [
 ]
 
 const saved = loadSaved()
+/** 프로젝트 번호를 붙인다 (fresh: 남의 곡 · 새 곡이라 새 번호) */
+const withId = (s: Song, fresh = false): Song => (s.id && !fresh ? s : { ...s, id: uid() })
 const HELP_FLAG = 'composing-sense:help-seen'
 const THEME_KEY = 'sense-score:theme'
 const SOUND_KEY = 'sense-score:sound'
@@ -88,7 +92,7 @@ function download(data: BlobPart, name: string, type: string) {
 }
 
 export default function App() {
-  const hist = useHistory<Song>(saved?.song ?? defaultSong())
+  const hist = useHistory<Song>(withId(saved?.song ?? defaultSong()))
   const song = hist.value
   const [settings, setSettingsState] = useState<Settings>(saved?.settings ?? defaultSettings(song))
   const settingsRef = useRef(settings)
@@ -160,6 +164,8 @@ export default function App() {
   }
 
   /* ---------- 자동 저장 ---------- */
+  // 로그인 후 계정 자동 저장(.mid). 지금은 서버 주소(VITE_CLOUD_API)가 없어서 꺼져 있다 → docs/cloud-save.md
+  useCloudAutosave(song, settings, plans)
   useEffect(() => {
     setDirty('saving')
     const t = setTimeout(() => {
@@ -205,18 +211,6 @@ export default function App() {
   )
 
   const changeTrack = (id: string, patch: Partial<Track>) => {
-    // 악기를 바꾸면 새 악기의 음역을 벗어난 음표는 옥타브를 옮겨 음역 안으로 넣는다
-    if (patch.program !== undefined) {
-      const t = song.tracks.find((x) => x.id === id)
-      if (t && !t.drum) {
-        const r = rangeOf(patch.program)
-        const moved = t.notes.filter((n) => fitPitch(n.pitch, r.low, r.high) !== n.pitch).length
-        if (moved) {
-          patch = { ...patch, notes: t.notes.map((n) => ({ ...n, pitch: fitPitch(n.pitch, r.low, r.high) })) }
-          flash(`새 악기의 음역(${rangeLabel(r)}) 밖에 있던 음표 ${moved}개를 옥타브 옮겨 맞췄어요.`)
-        }
-      }
-    }
     hist.set((s) => ({ ...s, tracks: s.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) }), 'program' in patch)
     // 악기를 바꾸면 바로 들려줘서 적용됐는지 확인할 수 있게
     if (patch.program !== undefined) {
@@ -224,13 +218,13 @@ export default function App() {
       const t = song.tracks[idx]
       if (t && !t.drum) {
         // 고른 악기의 음역 가운데쯤에서 들려준다 (튜바·피콜로처럼 음역이 치우친 악기도 제소리로)
-        const r = rangeOf(patch.program)
+        const r = soundRangeOf(patch.program)
         audio().engine.preview(Player.channelFor(song, idx), patch.program, false, t.volume, Math.round((Math.max(r.low, 36) + Math.min(r.high, 96)) / 2), 90, 0.5)
       } else if (t) {
         // 드럼 세트: 킥과 스네어를 한 번씩
         const ch = Player.channelFor(song, idx)
         audio().engine.preview(ch, patch.program, true, t.volume, 36, 100, 0.3)
-        setTimeout(() => audio().engine.preview(ch, patch.program ?? 0, true, t.volume, 38, 100, 0.3), 260)
+        audio().engine.later(0.26, () => audio().engine.preview(ch, patch.program ?? 0, true, t.volume, 38, 100, 0.3))
       }
     }
   }
@@ -486,7 +480,7 @@ export default function App() {
   const openIncoming = () => {
     if (!incoming) return
     stop()
-    hist.reset(incoming.song)
+    hist.reset(withId(incoming.song, true))
     setActiveId(incoming.song.tracks[0].id)
     setSettingsState({ ...defaultSettings(incoming.song), ...incoming.scale })
     history.replaceState(null, '', location.pathname)
@@ -570,7 +564,20 @@ export default function App() {
 
   const openMidi = async (f: File) => {
     try {
-      const s = importMidi(await f.arrayBuffer(), f.name)
+      // 쎈스 컴포즈가 저장한 .mid면 파트 · 반주 설정 · 음계까지 그대로 되살린다
+      const bytes = new Uint8Array(await f.arrayBuffer())
+      const proj = await decodeProject(bytes, f.name).catch(() => null)
+      if (proj?.restored) {
+        stop()
+        hist.reset(withId(proj.song))
+        setActiveId(proj.song.tracks[0]?.id ?? '')
+        setSettingsState(proj.settings)
+        setPlans(proj.plans)
+        setWs('compose')
+        flash(`"${f.name}"을(를) 쎈스 컴포즈 프로젝트로 불러왔어요. 파트와 반주 설정도 그대로예요.`)
+        return
+      }
+      const s = withId(importMidi(bytes.buffer, f.name), true)
       if (!s.tracks.length) return flash('음표가 있는 트랙이 없는 파일이에요.')
       stop()
       hist.reset(s)
@@ -584,7 +591,10 @@ export default function App() {
   }
 
   const saveMidi = () => {
-    download(exportMidi(song), `${song.title || '내 곡'}.mid`, 'audio/midi')
+    // 보통 MIDI 파일이면서, 쎈스 컴포즈에서 다시 열면 파트 · 반주 설정까지 되살아나는 프로젝트 파일
+    void encodeProject({ song, settings, plans })
+      .then((b) => download(b as BlobPart, `${song.title || '내 곡'}.mid`, 'audio/midi'))
+      .catch(() => download(exportMidi(song), `${song.title || '내 곡'}.mid`, 'audio/midi'))
     flash('.mid 파일로 저장했어요.')
   }
 
@@ -600,7 +610,7 @@ export default function App() {
       const data = parseProject(await file.text())
       if (!confirm('현재 곡을 백업 파일의 곡으로 바꿀까요? 필요한 곡은 먼저 백업해 주세요.')) return
       stop()
-      hist.reset(data.song)
+      hist.reset(withId(data.song))
       setSettingsState(data.settings)
       setActiveId(data.song.tracks[0].id)
       setPlans({})
@@ -685,7 +695,7 @@ export default function App() {
       !confirm('지금 열려 있는 곡 대신 새 곡을 만들까요? 필요하면 먼저 위쪽 "백업"으로 내려받아 두세요.')) return false
     const r = buildTemplate(a)
     stop()
-    hist.reset(r.song)
+    hist.reset(withId(r.song, true))
     setActiveId(r.song.tracks[0].id)
     setSettingsState(r.settings)
     setSelectedSec(r.song.sections[0]?.id ?? null)
@@ -711,7 +721,7 @@ export default function App() {
   const blankSong = () => {
     stop()
     const s = defaultSong()
-    hist.reset(s)
+    hist.reset(withId(s, true))
     setActiveId(s.tracks[0].id)
     setSettingsState(defaultSettings(s))
     setWs('compose')
@@ -1089,7 +1099,7 @@ export default function App() {
             </div>
             <span className="cur-track" title="지금 쓰고 있는 트랙과, 그 악기가 낼 수 있는 음역">
               <i style={{ background: active.color }} /> {active.name}
-              {!active.drum && <small className="range-badge">음역 {rangeLabel(rangeOf(active.program))}</small>}
+              {!active.drum && <small className="range-badge" title="이 악기에 잘 어울리는 음 높이예요. 밖에도 음을 쓸 수 있어요.">어울리는 음역 {rangeLabel(soundRangeOf(active.program))}</small>}
             </span>
             </div>
             <div className="view-bar" role="group" aria-label="보기 설정">
