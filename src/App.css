@@ -1887,3 +1887,68 @@ select, input[type='number'], input:not([type]), input[type='text'] { background
   .pe-grids button small { display: none; }
 }
 @media (pointer: coarse) and (min-width: 700px) { .pe-track { height: 48px; } }
+
+/* ---------- 믹스: 트랙을 가로 한 줄씩 (좁은 화면에서도 옆으로 밀지 않게) ---------- */
+.mix-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 8px; margin-bottom: 4px; }
+.mix-row {
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  padding: 8px 10px 8px 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--border);
+  box-shadow: inset 4px 0 0 var(--tc); min-width: 0;
+}
+.mix-row.is-mute { opacity: .55; }
+.mix-row.is-solo { border-color: var(--amber); }
+.mix-row.master { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto; background: var(--accent-bg); }
+.mix-id { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.mix-name { flex: 1 1 40%; min-width: 0; height: 34px; padding: 0 8px; border-radius: 9px; font-weight: 700; font-size: 14px; border: 1px solid transparent; background: transparent; color: var(--text); text-overflow: ellipsis; }
+input.mix-name:hover, input.mix-name:focus { border-color: var(--border); background: var(--raised); }
+b.mix-name { display: flex; align-items: center; }
+.mix-id select { flex: 1 1 60%; min-width: 0; height: 34px; font-size: 13px; }
+.mix-inst.drum-label { flex: 1 1 60%; font-size: 13px; color: var(--muted); padding-left: 8px; }
+.mix-vol { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.mix-vol b { width: 28px; flex: none; text-align: right; font: 600 13px var(--font-mono); color: var(--muted); }
+.mix-fader { flex: 1; min-width: 0; width: 100%; height: 28px; margin: 0; accent-color: var(--tc); background: transparent; }
+.mix-btns { display: flex; gap: 4px; }
+.mix-row .ms, .mix-row .x { min-width: 0 !important; min-height: 0 !important; height: 32px; padding: 0 10px; font-size: 12.5px; border-radius: 9px; }
+.mix-row .x { width: 32px; padding: 0; display: grid; place-items: center; }
+.mix-row .ms.on.mute { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.mix-row .ms.on.solo { background: var(--amber); border-color: var(--amber); color: #fff; }
+.mix-row.master .mix-vol { grid-column: 2 / 4; }
+@media (pointer: coarse) and (min-width: 700px) {
+  .mix-row .ms, .mix-row .x { height: 40px; }
+  .mix-row .x { width: 40px; }
+  .mix-name, .mix-id select { height: 40px; }
+}
+/* 폰: 위 줄 = 이름·악기·버튼, 아래 줄 = 음량 */
+@media (max-width: 640px) {
+  .mix-list { gap: 6px; }
+  .mix-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'id btns' 'vol vol'; gap: 4px 8px; padding: 6px 8px 6px 12px; border-radius: 12px; }
+  .mix-id { grid-area: id; }
+  .mix-vol { grid-area: vol; }
+  .mix-btns { grid-area: btns; }
+  .mix-row.master { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'id vol'; }
+  .mix-row.master .mix-vol { grid-column: auto; }
+  .mix-name { height: 32px; font-size: 13.5px; padding: 0 4px; }
+  .mix-id select { height: 32px; font-size: 12.5px; }
+  .mix-fader { height: 24px; }
+  .mix-row .ms, .mix-row .x { height: 30px; padding: 0 8px; font-size: 12px; }
+  .mix-row .x { width: 30px; padding: 0; }
+}
+
+/* 믹스 줄 높이: 터치 화면의 ‘누르는 곳 44px’ 규칙이 입력칸을 키우지 않게 */
+.mix-row input.mix-name, .mix-row select { min-height: 0 !important; }
+.mix-row input.mix-name { border-color: transparent; background: transparent; box-shadow: none; }
+.mix-row input.mix-name:hover, .mix-row input.mix-name:focus { border-color: var(--border); background: var(--raised); }
+@media (max-width: 640px) {
+  /* 재생 줄이 한 줄에 다 들어가게: BPM 글자 빼고, 시간 글자 좁게 */
+  .transport .tempo-control span { display: none; }
+  .transport .tempo-control input { width: 38px; }
+  .transport .time { font-size: 11px; letter-spacing: -.2px; }
+  .transport { gap: 3px; padding: 4px 6px; }
+  .transport .t-btn { width: 32px; height: 32px; min-height: 32px; }
+  .transport .toggle, .transport .t-group > button:not(.t-btn) { width: 32px; }
+}
+.mix-row .mix-fader { min-height: 0 !important; }
+@media (max-width: 640px) {
+  .transport .time-clock { display: none; } /* 폰: 시계는 빼고 ‘몇 마디 몇 박’만 */
+  .mix-row .mix-fader { height: 22px; }
+}

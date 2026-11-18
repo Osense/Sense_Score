@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { Song, Track } from '../types'
 import { ProgramSelect } from './TrackPanel'
 import { SongStrip } from './SongStrip'
+import { Icon } from './Icon'
 
 interface Props {
   song: Song
@@ -29,37 +30,33 @@ export function MixPage({ song, master, onMaster, onChange, onAdd, onRemove, chi
       <div className="mix-where">
         <SongStrip song={song} getTick={getTick} onSeek={onSeek} label="지금 위치" />
       </div>
-      <div className="mixer">
+      <div className="mix-list">
         {song.tracks.map((t) => (
-          <div key={t.id} className="strip">
-            <span className="strip-color" style={{ background: t.color }} />
-            <input className="strip-name" value={t.name} onChange={(e) => onChange(t.id, { name: e.target.value })} aria-label="트랙 이름" />
-            {t.drum ? <span className="drum-label">드럼</span> : <ProgramSelect value={t.program} onChange={(v) => onChange(t.id, { program: v })} />}
-            <div className="fader-wrap">
-              <input
-                className="fader"
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={t.volume}
-                onChange={(e) => onChange(t.id, { volume: +e.target.value })}
-                aria-label={`${t.name} 음량`}
-              />
+          <div key={t.id} className={`mix-row ${t.mute ? 'is-mute' : ''} ${t.solo ? 'is-solo' : ''}`} style={{ ['--tc' as string]: t.color }}>
+            <div className="mix-id">
+              <input className="mix-name" value={t.name} onChange={(e) => onChange(t.id, { name: e.target.value })} aria-label="트랙 이름" />
+              {t.drum ? <span className="mix-inst drum-label">드럼</span> : <ProgramSelect value={t.program} onChange={(v) => onChange(t.id, { program: v })} />}
+            </div>
+            <div className="mix-vol">
+              <input className="mix-fader" type="range" min={0} max={1} step={0.01} value={t.volume}
+                style={{ ['--v' as string]: `${t.volume * 100}%` }}
+                onChange={(e) => onChange(t.id, { volume: +e.target.value })} aria-label={`${t.name} 음량`} />
               <b>{Math.round(t.volume * 100)}</b>
             </div>
-            <div className="strip-btns">
-              <button className={t.mute ? 'ms on mute' : 'ms'} onClick={() => onChange(t.id, { mute: !t.mute })}>끄기</button>
-              <button className={t.solo ? 'ms on solo' : 'ms'} onClick={() => onChange(t.id, { solo: !t.solo })}>혼자</button>
-              <button className="x" onClick={() => onRemove(t.id)} disabled={song.tracks.length <= 1} title="트랙 지우기">✕</button>
+            <div className="mix-btns">
+              <button type="button" className={t.mute ? 'ms on mute' : 'ms'} aria-pressed={t.mute} onClick={() => onChange(t.id, { mute: !t.mute })}>끄기</button>
+              <button type="button" className={t.solo ? 'ms on solo' : 'ms'} aria-pressed={t.solo} onClick={() => onChange(t.id, { solo: !t.solo })}>혼자</button>
+              <button type="button" className="x" onClick={() => onRemove(t.id)} disabled={song.tracks.length <= 1} title="트랙 지우기" aria-label={`${t.name} 지우기`}>
+                <Icon name="close" size={14} />
+              </button>
             </div>
           </div>
         ))}
-        <div className="strip master">
-          <span className="strip-color" style={{ background: 'var(--accent)' }} />
-          <b className="strip-name">전체 음량</b>
-          <div className="fader-wrap">
-            <input className="fader" type="range" min={0} max={1} step={0.01} value={master} onChange={(e) => onMaster(+e.target.value)} aria-label="전체 음량" />
+        <div className="mix-row master" style={{ ['--tc' as string]: 'var(--accent)' }}>
+          <div className="mix-id"><b className="mix-name">전체 음량</b></div>
+          <div className="mix-vol">
+            <input className="mix-fader" type="range" min={0} max={1} step={0.01} value={master} style={{ ['--v' as string]: `${master * 100}%` }}
+              onChange={(e) => onMaster(+e.target.value)} aria-label="전체 음량" />
             <b>{Math.round(master * 100)}</b>
           </div>
         </div>

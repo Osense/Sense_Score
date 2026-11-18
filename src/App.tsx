@@ -54,6 +54,7 @@ const partsKey = (a: Answers) => [a.melody, a.chords, a.bass, a.drums].map(Numbe
 
 function TimeDisplay({ getTick, song, speed }: { getTick: () => number; song: Song; speed: number }) {
   const ref = useRef<HTMLSpanElement>(null)
+  const clock = useRef<HTMLSpanElement>(null)
   useEffect(() => {
     let raf = 0
     const barTicks = song.beatsPerBar * PPQ
@@ -64,13 +65,14 @@ function TimeDisplay({ getTick, song, speed }: { getTick: () => number; song: So
       const sec = (t / PPQ) * (60 / (song.bpm * speed))
       const m = Math.floor(sec / 60)
       const s = (sec % 60).toFixed(1).padStart(4, '0')
-      if (ref.current) ref.current.textContent = `${bar}마디 ${beat}박  ${m}:${s}`
+      if (ref.current) ref.current.textContent = `${bar}마디 ${beat}박`
+      if (clock.current) clock.current.textContent = `  ${m}:${s}`
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
   }, [getTick, song.beatsPerBar, song.bpm, speed])
-  return <span className="time" ref={ref} aria-label="재생 위치" />
+  return <span className="time" aria-label="재생 위치"><span ref={ref} /><span className="time-clock" ref={clock} /></span>
 }
 
 function download(data: BlobPart, name: string, type: string) {

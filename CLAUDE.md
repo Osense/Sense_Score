@@ -24,6 +24,7 @@ Vite + React + TypeScript. MIDI 파싱/생성은 `@tonejs/midi`, 사운드폰트
 ## 현재 상태
 `docs/analysis.md`의 "먼저 만들 것" 1~5번 구현 완료(빌드 통과, 브라우저 실사용 검증은 아직).
 - `src/engine/audio.ts` 내장 WebAudio 신스 + 사운드폰트(spessasynth) 전환, `player.ts` 룩어헤드 스케줄러(반복·카운트인·메트로놈·스피드 트레이너)
+- 믹스 탭(`MixPage`): 트랙마다 가로 한 줄(`.mix-row`: 이름·악기 | 가로 음량 막대 | 끄기·혼자·지우기), 넓은 화면은 2열, 폰(≤640)은 두 줄(위 이름·악기·버튼, 아래 음량). 폰 재생 줄은 시계를 숨기고 ‘몇 마디 몇 박’만(`.time-clock`)
 - `src/components/` 피아노 롤, 트랙 믹서, 음계/코드 도우미, 연습 패널. `midi.ts` 입출력, `storage.ts` 자동 저장, `history.ts` Undo/Redo
 - 편집 모드 2개: 건반(`PianoRoll`, 드럼 트랙이면 드럼 파트 레인 + 키보드 Q W E R T A S D F 연계) / 악보(`StaffEditor`, 대보표·타악 오선). 드럼 파트 정의는 `music.ts`의 `DRUM_PARTS`
 - 도구 모음(`Toolbar`, 단축키 1~4): 연필(쓰기·끌어서 길이)/지우개(문질러 지우기)/손바닥(이동·끝 손잡이로 길이·빈 곳 끌면 화면 이동)/선택(네모 선택). 우클릭·Shift 없이 터치로 모든 편집 가능
