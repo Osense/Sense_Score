@@ -709,7 +709,7 @@ export function Interview(p: Props) {
     return (
       <div className="iv iv-scroll">
         <div className="iv-welcome">
-          <p className="iv-eyebrow">쎈스 스코어 · 작곡 놀이터</p>
+          <p className="iv-eyebrow">쎈스 컴포즈 · 작곡 놀이터</p>
           <h1>질문에 답하다 보면<br /><span className="grad">나만의 노래</span>가 완성돼요</h1>
           <p className="iv-say">한 번에 하나씩 물어볼게요. 카드를 누르면 바로 소리가 나니까 귀로 듣고 골라 보세요.</p>
           {p.incoming && (

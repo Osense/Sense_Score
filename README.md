@@ -1,4 +1,4 @@
-﻿# Sense Score · 작곡 놀이터
+﻿# Sense Compose · 작곡 놀이터
 
 React + TypeScript 기반 태블릿용 음악 작업실. 곡 구성, 건반 녹음, 피아노 롤·악보 편집, 믹스, MIDI 내보내기를 제공합니다.
 

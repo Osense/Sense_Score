@@ -595,7 +595,7 @@ export default function App() {
       setWs('compose')
       flash('프로젝트 백업을 복원했어요.')
     } catch {
-      flash('올바른 Sense Score 프로젝트 파일을 선택해 주세요.')
+      flash('올바른 Sense Compose 프로젝트 파일을 선택해 주세요.')
     }
   }
 
@@ -816,10 +816,10 @@ export default function App() {
     <div className="app">
       <header className="top">
         <div className="top-main">
-          <a className="wordmark" href="https://osense.github.io/WesNS/" target="_blank" rel="noopener" title="WSNS studio 홈페이지" aria-label="쎈스 스코어 — WSNS studio 홈페이지">
+          <a className="wordmark" href="https://osense.github.io/WesNS/" target="_blank" rel="noopener" title="WSNS studio 홈페이지" aria-label="쎈스 컴포즈 — WSNS studio 홈페이지">
             <img className="mark" src="./brand/wsns-mark.svg" alt="" width="166" height="212" draggable={false} />
             <span className="bn">
-              <b>쎈스 스코어</b>
+              <b>쎈스 컴포즈</b>
               <small className="pron"><span className="pn-en">WSNS studio</span> <span className="pn-k">[웨스엔에스 스튜디오]</span></small>
             </span>
           </a>
