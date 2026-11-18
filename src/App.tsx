@@ -113,6 +113,7 @@ export default function App() {
   const [ivStructure, setIvStructure] = useState<string | null>(null)
   const [ivBuilt, setIvBuilt] = useState(false)
   const [theme, setTheme] = useState<Theme>(initialTheme)
+  const [filesOpen, setFilesOpen] = useState(false)
   const [master, setMaster] = useState(0.8)
   const hasSaved = useRef(!!saved).current
   // 멜로디 쓰기(라이브 녹음)
@@ -813,7 +814,7 @@ export default function App() {
   )
 
   return (
-    <div className="app">
+    <div className={`app ws-${ws}`}>
       <header className="top">
         <div className="top-main">
           <a className="wordmark" href="https://osense.github.io/WesNS/" target="_blank" rel="noopener" title="WSNS studio 홈페이지" aria-label="쎈스 컴포즈 — WSNS studio 홈페이지">
@@ -836,12 +837,16 @@ export default function App() {
           <button className="icon-btn" onClick={hist.redo} disabled={!hist.canRedo} title="다시하기 (Ctrl+Y)" aria-label="다시하기">
             <Icon name="redo" />
           </button>
+          <span className={`save-dot is-${dirty}`} title={dirty === 'saved' ? '이 기기에 저장됨' : dirty === 'error' ? '저장 실패' : '저장 중'} aria-hidden />
+          <button className={`icon-btn top-more-btn ${filesOpen ? 'on' : ''}`} onClick={() => setFilesOpen(!filesOpen)} aria-expanded={filesOpen} aria-label="파일·설정 메뉴" title="파일·설정">
+            <Icon name="more" />
+          </button>
           <ExportMenu exporting={exporting} onAudio={(f) => void saveAudio(f)} onMidi={saveMidi} onShare={() => {
             setDeliverView('share')
             setWs('deliver')
           }} />
         </div>
-        <div className="top-files">
+        <div className={`top-files ${filesOpen ? 'open' : ''}`} onClick={(e) => { if ((e.target as HTMLElement).closest('button')) setFilesOpen(false) }}>
           <button onClick={newSong}><Icon name="file" size={15} />새 곡</button>
           <button onClick={() => fileRef.current?.click()} title="다른 프로그램에서 만든 MIDI 파일도 열 수 있어요"><Icon name="folder" size={15} />MIDI 열기</button>
           <button onClick={backupProject} title="이 곡을 프로젝트 파일(.json)로 내려받아 보관"><Icon name="save" size={15} />백업</button>
@@ -927,13 +932,13 @@ export default function App() {
               }}
               title="눈금자(위쪽 마디 숫자)를 끌거나 파트 이름을 눌러서 반복할 구간을 정해요"
             >
-              <Icon name="loop" size={15} />반복
+              <Icon name="loop" size={15} /><span className="t-word">반복</span>
             </button>
             <button className={settings.metronome ? 'toggle on' : 'toggle'} aria-pressed={settings.metronome} onClick={() => setSettings({ metronome: !settings.metronome })} title="박자를 알려주는 딱딱 소리">
-              <Icon name="metronome" size={15} />메트로놈
+              <Icon name="metronome" size={15} /><span className="t-word">메트로놈</span>
             </button>
             <button className={settings.countIn ? 'toggle on' : 'toggle'} aria-pressed={settings.countIn} onClick={() => setSettings({ countIn: !settings.countIn })} title="재생 전에 한 마디 박자를 세어줘요">
-              <Icon name="countin" size={15} />먼저 세기
+              <Icon name="countin" size={15} /><span className="t-word">먼저 세기</span>
             </button>
           </div>
         </div>

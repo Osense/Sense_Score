@@ -1599,3 +1599,262 @@ select, input[type='number'], input:not([type]), input[type='text'] { background
 
 /* 태블릿에서도 건반 위 키보드 글자를 늘 보여 준다 (키보드를 연결해 쓰는 경우가 많다) */
 .hkeyboard kbd { display: inline-block !important; }
+
+/* ======================================================================
+   폰 다듬기 (세로 600px 이하 · 가로 높이 560px 이하)
+   위쪽의 "손가락이면 모든 버튼 44px" 규칙 때문에 폰에서 버튼이 커지고 줄이 깨졌다.
+   폰에서는 36px을 기본으로 맞추고, 머리줄·재생 줄을 한 줄로, 내용이 화면을 쓰게 한다.
+   ====================================================================== */
+.top-more-btn, .save-dot { display: none; }
+.save-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.save-dot.is-saving { background: var(--amber); }
+.save-dot.is-error { background: #e5484d; }
+
+@media (max-width: 600px), (orientation: landscape) and (max-height: 560px) {
+  button, select, input:not([type='checkbox']):not([type='radio']):not([type='range']), summary { min-height: 36px; min-width: 0; }
+  button { min-width: 0; }
+  input, select { font-size: 16px; } /* iOS 확대 방지 */
+
+  /* 머리줄: 한 줄. 파일·설정은 ⋯ 메뉴로 */
+  .top { flex-wrap: nowrap; gap: 6px; padding: 4px 8px; padding-top: max(4px, env(safe-area-inset-top)); }
+  .top-main { flex: 1 1 auto; gap: 4px; }
+  .wordmark { gap: 6px; padding-right: 0; }
+  .wordmark .mark { height: 28px; }
+  .wordmark .bn b { font-size: 12.5px; }
+  .wordmark .bn small { font-size: 8.5px; margin-top: 0; max-width: none; white-space: nowrap; }
+  .wordmark .pron .pn-en { display: none; }
+  .top .title { flex: 1 1 60px; min-width: 40px; height: 34px; min-height: 34px; padding: 2px 6px; font-size: 14px; }
+  .icon-btn { width: 34px; height: 34px; min-height: 34px; }
+  .export-btn { height: 34px; min-height: 34px; padding: 0 10px; font-size: 13px; }
+  .top-more-btn, .save-dot { display: inline-flex; }
+  .top-more-btn.on { background: var(--accent-bg); color: var(--accent); border-color: transparent; }
+  .top-files { display: none; }
+  .top-files.open {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px; position: absolute; z-index: 60; top: calc(100% + 4px); right: 8px;
+    width: min(320px, calc(100vw - 16px)); padding: 8px; border-radius: 14px; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow-pop);
+  }
+  .top-files.open button { justify-content: flex-start; min-height: 42px; padding: 0 10px; font-size: 14px; color: var(--text); background: var(--raised); border-radius: 10px; }
+  .top-files.open .save-state { grid-column: 1 / -1; margin: 2px 0 0; justify-content: center; font: 600 12px var(--font-ui); }
+
+  /* 재생 줄: 한 줄. 반복·메트로놈·먼저 세기는 아이콘만, 속도 막대는 숨김 */
+  .transport { flex-wrap: nowrap; gap: 4px; padding: 4px 8px; overflow: hidden; }
+  .transport .t-group { display: contents; }
+  .t-btn { width: 34px; height: 34px; min-height: 34px; flex: none; }
+  .time { font-size: 11.5px; min-width: 0; white-space: nowrap; }
+  .tempo-control { gap: 2px; }
+  .tempo-control button { width: 28px; height: 30px; min-width: 28px; min-height: 30px; }
+  .tempo-control input { width: 42px; min-height: 30px; padding: 0 2px; text-align: center; }
+  .tempo-control .bpm, .tempo-control small { display: none; }
+  .transport select { min-height: 30px; padding: 0 4px; font-size: 14px; }
+  .inline.speed { display: none; }
+  .transport .toggle, .transport .t-group > button:not(.t-btn) { min-height: 30px; width: 34px; padding: 0; justify-content: center; flex: none; }
+  .transport .toggle .icon { display: inline-block; }
+  .transport .t-word { display: none; }
+  .ws-melody .transport, .ws-start .transport { display: none; }
+
+  /* 아래 단계 탭 */
+  .ws-tab { min-height: 48px; padding: 4px 2px; gap: 1px; }
+  .ws-no { display: none; }
+  .ws-label { font-size: 10.5px; }
+
+  /* ---------- 인터뷰 ---------- */
+  .iv-head { padding: 4px 8px 0; }
+  .iv-chapters { gap: 2px; }
+  .iv-chapters button { min-height: 32px; padding: 2px 4px; gap: 5px; flex-direction: row; justify-content: center; }
+  .iv-chapters span { width: 22px; height: 22px; border-radius: 6px; font-size: 10.5px; }
+  .iv-chapters b { font-size: 12px; }
+  .iv-chapters li:not(.on) b { display: none; }
+  .iv-chapters li.on { flex: 2; }
+  .iv-chapters { display: flex; }
+  .iv-chapters li { flex: 1; min-width: 0; }
+  .iv-partbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-top: 4px; gap: 4px; }
+  .iv-partbar button { min-height: 28px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
+  .iv-progress { margin-top: 4px; height: 3px; }
+  .iv-body { padding: 14px 14px 20px; }
+  .iv-eyebrow { font-size: 11.5px; margin-bottom: 4px; }
+  .iv-q { font-size: 20px; line-height: 1.35; letter-spacing: -0.03em; }
+  .iv-say { font-size: 14px; margin: 6px 0 14px; line-height: 1.55; }
+  .iv-grid, .iv-grid.wide, .iv-grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .iv-grid.two { grid-template-columns: 1fr; }
+  .iv-card { min-height: 0; padding: 12px 12px 10px; gap: 3px; border-radius: 14px; }
+  .iv-card b { font-size: 15.5px; }
+  .iv-card small { font-size: 12.5px; line-height: 1.45; }
+  .iv-termtitle { font-size: 16px !important; }
+  .iv-kid { font-size: 13px; }
+  .iv-term { font-size: 11px; padding-top: 2px; }
+  .iv-play { font-size: 11px; padding: 2px 8px 2px 6px; }
+  .iv-check { top: 8px; right: 8px; width: 22px; height: 22px; }
+  .iv-badge { top: -8px; left: 10px; font-size: 10.5px; padding: 1px 8px; }
+  .iv-big { font-size: 26px; }
+  .iv-icon { width: 40px; height: 40px; border-radius: 12px; }
+  .iv-icon svg { width: 22px; height: 22px; }
+  .iv-beats { height: 26px; }
+  .iv-chords.big { font-size: 14px; }
+  .iv-bars i { font-size: 11px; padding: 6px 1px; }
+  .iv-title { height: 50px; font-size: 19px !important; border-radius: 12px !important; }
+  .iv-chips { gap: 6px; margin-top: 10px; }
+  .iv-chips button { min-height: 36px; padding: 0 12px; font-size: 13.5px; }
+  .iv-learn, .iv-open, .iv-part { margin-top: 12px; padding: 12px; border-radius: 12px; }
+  .iv-learn-t { font-size: 13.5px; }
+  .iv-learn > div { font-size: 13.5px; line-height: 1.65; }
+  .iv-open-t { font-size: 13.5px; margin-bottom: 8px; }
+  .iv-keys { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; row-gap: 12px; }
+  .iv-keys button { min-height: 44px; font-size: 14px; }
+  .iv-keys button em { font-size: 8.5px; bottom: -8px; }
+  .iv-fine { gap: 6px; }
+  .iv-step { width: 36px; height: 36px; }
+  .iv-part { gap: 10px; margin-bottom: 12px; }
+  .iv-part-chip { font-size: 13px; padding: 4px 8px; }
+  .iv-part b { font-size: 14.5px; }
+  .iv-part p { font-size: 13px; }
+  .iv-reuse { font-size: 13px; padding: 8px 10px; }
+  .iv-order { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .iv-block { min-height: 64px; padding: 10px 12px; }
+  .iv-block b { font-size: 16px; }
+  .iv-block small { font-size: 12px; }
+  .iv-block.add { min-height: 100px; }
+  .iv-block-tools button { min-height: 36px; }
+  .iv-block-tools svg { width: 15px; height: 15px; }
+  .iv-strip button { min-height: 44px; font-size: 12px; }
+  .iv-summary li { font-size: 13px; padding: 8px 10px; }
+  .iv-go { min-height: 0; }
+  .iv-after { gap: 6px; margin-top: 14px; }
+  .iv-after button { min-height: 38px; font-size: 13.5px; padding: 0 10px; }
+  .iv-nav { gap: 8px; padding: 8px 12px; }
+  .iv-primary, .iv-secondary, .iv-stop { min-height: 44px; padding: 0 14px; font-size: 15px; border-radius: 12px; }
+  .iv-primary { min-width: 0; }
+  .iv-primary.big, .iv-secondary.big { min-height: 50px; font-size: 16px; padding: 0 20px; }
+  .iv-secondary.small { min-height: 36px; font-size: 13px; }
+  .iv-navhint { display: none; }
+  .pv { --pv-label: 40px; }
+  .pv-label { font-size: 10px; }
+  .sg-row { grid-template-columns: 44px repeat(var(--steps), minmax(0, 1fr)); gap: 3px; }
+  .sg-cell { height: 38px; min-height: 38px !important; border-radius: 8px; }
+  .sg-head span { font-size: 11px; }
+  .sg-label { font-size: 11.5px; padding-right: 2px; }
+  .iv-editor { padding: 10px; }
+  .iv-pop { padding: 18px 14px 14px; border-radius: 18px; }
+  .iv-pop-title { font-size: 22px; padding-right: 36px; }
+  .iv-pop-x { width: 36px; height: 36px; top: 10px; right: 10px; }
+  .iv-pop-list li { padding: 10px; gap: 8px; }
+  .iv-pop-list span { font-size: 13.5px; }
+  .iv-scale-notes span { min-width: 42px; padding: 6px 4px; }
+  .iv-add-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .iv-add-grid button { min-height: 60px; padding: 8px 10px; }
+  .iv-add-grid button b { font-size: 14.5px; }
+  .iv-add-grid button small { font-size: 11.5px; }
+  .iv-seg button { min-height: 44px; font-size: 15px; }
+  .iv-welcome { padding: 24px 16px 28px; }
+  .iv-welcome h1 { font-size: 28px; }
+  .iv-map { margin-top: 24px; gap: 8px; }
+  .iv-map li { padding: 12px; }
+
+  /* ---------- 멜로디 녹음 ---------- */
+  .melody { padding: 6px 8px 6px; gap: 6px; }
+  .mel-top { gap: 4px; }
+  .mel-top .rec-btn { min-height: 36px; padding: 0 12px; font-size: 14px; }
+  .mel-btn, .mel-top .toggle, .mel-more > summary { min-height: 36px; padding: 0 9px; font-size: 13px; }
+  .mel-track select { min-height: 36px; max-width: 110px; font-size: 14px; }
+  .mel-where .chip { min-height: 32px; padding: 0 10px; }
+  .ss-label { display: none; }
+  .ss-track { height: 32px; }
+  .melody .kb-bar > button { min-height: 32px; font-size: 12.5px; }
+  .hkeyboard { height: clamp(110px, 22vh, 170px); }
+  .mel-stage { min-height: 120px; }
+  .cue-n { font-size: clamp(64px, 16vh, 120px); }
+  .cue-text { font-size: 15px; }
+  .drumkit { height: clamp(120px, 24vh, 200px); }
+  .dr-heads b { font-size: 10px; }
+  .dr-heads kbd { font-size: 10.5px; padding: 0 4px; }
+  .melody .kb-hint { display: none; }
+
+  /* ---------- 직접 쓰기 ---------- */
+  .toolbar { padding: 4px 3px; gap: 3px; }
+  .tool { min-height: 44px; padding: 3px 1px; font-size: 10px; border-radius: 10px; }
+  .tool svg { width: 19px; height: 19px; }
+  .view-bar select, .view-bar button, .roll-status button, .transpose button { min-height: 30px; }
+  .chip { min-height: 30px; padding: 0 10px; }
+  .track .ms, .track .x { min-height: 30px; min-width: 30px; }
+
+  /* ---------- 구성·믹스·완성 ---------- */
+  .page { padding: 12px 10px 18px; }
+  .mix-where { margin-bottom: 10px; padding: 6px 8px; }
+}
+
+/* 폰 세로 */
+@media (max-width: 600px) {
+  .main { grid-template-columns: 54px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(88px, 24%); }
+  .toolbar { width: 54px; }
+}
+
+/* 폰 가로: 높이가 가장 귀하다 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .app { padding-left: calc(56px + env(safe-area-inset-left)); }
+  .ws-tabs { width: calc(56px + env(safe-area-inset-left)); }
+  .ws-tab { min-height: 0; }
+  .wordmark .bn small { display: none; }
+  .top { padding: 2px 8px; }
+  .icon-btn, .export-btn, .t-btn, .top .title { height: 30px; min-height: 30px; }
+  .icon-btn { width: 30px; }
+  .transport { padding: 2px 8px; }
+  /* 인터뷰: 마당 줄과 진행 막대를 한 줄로, 아래 이동 줄도 얇게 */
+  .iv-head { display: flex; align-items: center; gap: 8px; padding: 2px 10px; }
+  .iv-chapters { flex: 1; margin: 0; }
+  .iv-chapters button { min-height: 28px; }
+  .iv-partbar { margin: 0; flex: 0 1 auto; max-width: 45%; }
+  .iv-progress { display: none; }
+  .iv-body { padding: 10px 16px 14px; }
+  .iv-q { font-size: 18px; }
+  .iv-say { font-size: 13px; margin: 4px 0 10px; }
+  .iv-grid, .iv-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .iv-grid.wide { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .iv-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .iv-order { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .iv-keys { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .iv-keys button { min-height: 40px; }
+  .iv-nav { padding: 4px 12px; }
+  .iv-primary, .iv-secondary, .iv-stop { min-height: 38px; font-size: 14px; }
+  .iv-welcome { padding: 14px 16px 18px; }
+  .iv-welcome h1 { font-size: 24px; }
+  .iv-welcome .iv-say { margin: 8px auto 14px; }
+  .iv-map { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 14px; }
+  .iv-pop { max-height: calc(100% - 8px); padding: 14px; }
+  .iv-pop-back { padding: 4px; }
+  /* 직접 쓰기: 도구 | 편집기 | 트랙 */
+  .main { display: grid; grid-template-columns: 50px minmax(0, 1fr) 210px; grid-template-rows: minmax(0, 1fr); flex-direction: row; }
+  .main > .toolbar { grid-column: 1; grid-row: 1; width: auto; border-right: 1px solid var(--divider); }
+  .main > .editor { grid-column: 2; grid-row: 1; }
+  .main > .side { grid-column: 3; grid-row: 1; width: auto; max-height: none; border-top: 0; border-left: 1px solid var(--divider); overflow-y: auto; }
+  .tool { min-height: 38px; }
+  .tool span, .tool small { display: none; }
+  /* 멜로디 녹음 */
+  .melody { padding: 4px 8px; gap: 4px; }
+  .mel-top .rec-btn, .mel-btn, .mel-top .toggle, .mel-more > summary, .mel-track select { min-height: 32px; }
+  .mel-where .chip { min-height: 28px; }
+  .ss-track { height: 28px; }
+  .hkeyboard { height: clamp(90px, 28vh, 130px); }
+  .melody .kb-bar { display: none; }
+  .mel-stage { min-height: 70px; }
+  .drumkit { height: clamp(90px, 30vh, 140px); }
+}
+
+/* 폰 세로 마무리: 머리줄이 넘치지 않게 내보내기는 아이콘만, 직접 쓰기 보기 줄은 꼭 필요한 것만 */
+@media (max-width: 600px) {
+  .export-btn { width: 38px; padding: 0; justify-content: center; }
+  .export-btn .export-word { display: none; }
+  .time { min-width: 52px; }
+  .view-bar .key-display-controls, .view-bar .lbl-word { display: none; }
+  .view-bar { gap: 4px 8px; }
+}
+@media (max-width: 380px) {
+  .wordmark .bn small { display: none; }
+}
+@media (max-width: 420px) {
+  .transport .t-group > button:last-child { display: none; } /* 먼저 세기: 멜로디 녹음에는 예비박이 따로 있다 */
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  .main { grid-template-columns: 50px minmax(0, 1fr) 236px; }
+  .view-bar .key-display-controls { display: none; }
+  .track .name { min-width: 0; flex: 1 1 60px; font-size: 13px; }
+  .track select { min-width: 0; font-size: 13px; }
+}

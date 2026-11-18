@@ -32,9 +32,9 @@ export function ExportMenu({ exporting, onAudio, onMidi, onShare }: Props) {
   }
   return (
     <div className="export" ref={ref}>
-      <button className="primary export-btn" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
+      <button className="primary export-btn" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu" aria-label="내보내기" title="내보내기 (MP3 · WAV · MIDI · 링크)">
         <Icon name="download" size={16} />
-        {exporting ? `${exporting.format.toUpperCase()} ${Math.round(exporting.progress * 100)}%` : '내보내기'}
+        <span className="export-word">{exporting ? `${exporting.format.toUpperCase()} ${Math.round(exporting.progress * 100)}%` : '내보내기'}</span>
       </button>
       {open && (
         <div className="export-pop" role="menu">
