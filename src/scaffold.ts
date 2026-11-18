@@ -60,6 +60,7 @@ export const PROG_MAJOR: Progression[] = [
   { id: 'build', name: 'ⅵ–Ⅴ–Ⅳ–Ⅴ', degrees: [5, 4, 3, 4], mood: '긴장이 쌓이는 진행', theory: 'Ⅴ(딸림화음)로 끝나서 ‘다음에 뭔가 나온다’는 기대를 만들어 프리코러스에 좋아요.' },
   { id: 'canon', name: '캐논 Ⅰ–Ⅴ–ⅵ–ⅲ–Ⅳ–Ⅰ–Ⅳ–Ⅴ', degrees: [0, 4, 5, 2, 3, 0, 3, 4], mood: '차분하게 흘러가는 8마디', theory: '파헬벨의 캐논에서 온 진행. 베이스가 계단처럼 내려와요.' },
   { id: 'royal', name: 'Ⅳ–Ⅴ–ⅲ–ⅵ', degrees: [3, 4, 2, 5], mood: '벅차오르다 촉촉해지는 후렴', theory: '버금딸림(Ⅳ)에서 딸림(Ⅴ)으로 올라갔다가 단조 화음으로 내려앉아요. 일본·한국 가요 후렴에 정말 많아요.' },
+  { id: 'soar', name: 'Ⅳ–Ⅴ–Ⅰ–ⅵ', degrees: [3, 4, 0, 5], mood: '올라가서 활짝 터지는 후렴', theory: 'Ⅳ→Ⅴ로 한 칸씩 올라가 3마디째에 으뜸화음(Ⅰ)이 쾅 하고 터져요. 후렴 한가운데에 ‘도착’이 있어서 시원해요.' },
   { id: 'climb', name: 'Ⅳ–Ⅴ–Ⅰ–Ⅰ', degrees: [3, 4, 0, 0], mood: '계단을 올라 활짝 도착', theory: 'Ⅳ→Ⅴ→Ⅰ로 한 칸씩 올라가 으뜸화음에 도착해요. 마무리나 후렴 끝에 시원해요.' },
 ]
 
@@ -185,7 +186,7 @@ export const DEFAULT_PLAN: Record<SectionKind, Omit<PartPlan, 'prog'>> = {
   chorus: { speed: 'normal', seventh: false, comp: 'eighths', drum: 'basic8', fill: false, crash: true, bass: 'roots-pass' },
   bridge: { speed: 'normal', seventh: true, comp: 'whole', drum: 'halftime', fill: true, crash: false, bass: 'whole' },
   interlude: { speed: 'normal', seventh: false, comp: 'arpeggio', drum: 'basic4', fill: false, crash: false, bass: 'roots' },
-  outro: { speed: 'slow', seventh: false, comp: 'whole', drum: 'none', fill: false, crash: false, bass: 'whole' },
+  outro: { speed: 'normal', seventh: false, comp: 'whole', drum: 'none', fill: false, crash: false, bass: 'whole' },
   a: { speed: 'normal', seventh: false, comp: 'beats', drum: 'basic8', fill: false, crash: false, bass: 'roots' },
   b: { speed: 'normal', seventh: false, comp: 'arpeggio', drum: 'basic4', fill: false, crash: false, bass: 'roots-pass' },
   free: { speed: 'normal', seventh: false, comp: 'beats', drum: 'basic8', fill: false, crash: false, bass: 'roots' },
@@ -456,10 +457,17 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
     const prog = progressionsFor(minor).find((p) => p.id === plan.prog) ?? progressionsFor(minor)[0]
     const degs = chordSegments(sec.bars, prog, plan.speed)
     const per = plan.speed === 'fast' ? 2 : 1
+    const nextSec = song.sections[pi + 1]
+    const turn = turnaroundOf(sec.kind, nextSec?.kind, degs[degs.length - 1], minor)
     degs.forEach((degree, i) => {
       const bar = Math.floor(i / per)
       const sub = i % per
-      segs.push({ part: pi, bar, t0: ranges.get(sec.id)!.start + bar * barTicks + (sub * barTicks) / per, len: barTicks / per, degree, sub })
+      const t0 = ranges.get(sec.id)!.start + bar * barTicks + (sub * barTicks) / per
+      if (turn !== null && i === degs.length - 1 && per === 1) {
+        // 마지막 마디: 앞 반은 원래 화음, 뒤 반은 딸림화음
+        segs.push({ part: pi, bar, t0, len: barTicks / 2, degree, sub: 0 })
+        segs.push({ part: pi, bar, t0: t0 + barTicks / 2, len: barTicks / 2, degree: turn, sub: 1 })
+      } else segs.push({ part: pi, bar, t0, len: barTicks / per, degree: turn !== null && i === degs.length - 1 ? turn : degree, sub })
     })
   })
 
@@ -487,6 +495,8 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
       cr.high,
     )
     prevCenter = v.reduce((a, b) => a + b, 0) / v.length
+    // 코러스·B는 맨 아래 음을 한 옥타브 위에 겹쳐서 소리를 넓고 밝게(같은 화음이어도 ‘커졌다’는 느낌)
+    if ((sec.kind === 'chorus' || sec.kind === 'b') && v[0] + 12 <= cr.high && !v.includes(v[0] + 12)) v.push(v[0] + 12)
     const off = (sg.t0 - ranges.get(sec.id)!.start) % barTicks
     if (plan.comp === 'custom') {
       const on = stepOnsets(plan.customComp ?? [], barTicks, off, sg.len)
@@ -501,7 +511,7 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
     // 베이스
     const rootP = Math.min(br.high, Math.max(br.low, 36 + ((chord.rootPc - 36) % 12 + 12) % 12))
     const nextRootP = Math.min(br.high, Math.max(br.low, 36 + ((nextChord.rootPc - 36) % 12 + 12) % 12))
-    const barStart = sg.t0 - (sg.sub * barTicks) / (plan.speed === 'fast' ? 2 : 1)
+    const barStart = sg.t0 - ((sg.t0 - ranges.get(sec.id)!.start) % barTicks)
     const kicks = drumBar(plan.drum, beats, plan.customDrum).filter((h) => h.pitch === K).map((h) => h.t - (sg.t0 - barStart)).filter((t) => t >= 0 && t < sg.len)
     const onsets = plan.bass === 'custom' ? stepOnsets((plan.customBass ?? []).flatMap((x, k) => (x == null ? [] : [k])), barTicks, off, sg.len) : undefined
     for (const h of bassSeg(plan.bass, sg.len, { rootP, thirdInt: chord.thirdInt, fifthInt: chord.fifthInt, nextRootP, kicks, barIndex: sg.bar, custom: plan.customBass, onsets }))
@@ -526,11 +536,24 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
   return { ...song, tracks }
 }
 
-/** 파트의 마지막 화음(다음 파트 추천용) */
-export function lastChordOf(bars: number, plan: PartPlan, minor: boolean): number {
+/**
+ * 턴어라운드: 벌스·A·프리코러스가 코러스·B 바로 앞에서 딸림화음이 아닌 화음으로 끝나면,
+ * 마지막 마디의 뒤쪽 반을 딸림화음(Ⅴ, 단조는 Ⅶ)으로 바꿔 ‘이제 터진다!’는 긴장을 만들어 넘겨 준다.
+ */
+export function turnaroundOf(kind: SectionKind, nextKind: SectionKind | null | undefined, last: number, minor: boolean): number | null {
+  if (!(kind === 'verse' || kind === 'a' || kind === 'prechorus' || kind === 'free')) return null
+  if (!(nextKind === 'chorus' || nextKind === 'b')) return null
+  const domDeg = minor ? 6 : 4
+  if (last === domDeg || (minor && last === 4)) return null
+  return domDeg
+}
+
+/** 파트의 마지막 화음(다음 파트 추천용). nextKind를 주면 턴어라운드까지 따진다 */
+export function lastChordOf(bars: number, plan: PartPlan, minor: boolean, kind?: SectionKind, nextKind?: SectionKind | null): number {
   const prog = progressionsFor(minor).find((p) => p.id === plan.prog) ?? progressionsFor(minor)[0]
   const d = chordSegments(bars, prog, plan.speed)
-  return d[d.length - 1]
+  const last = d[d.length - 1]
+  return (kind && turnaroundOf(kind, nextKind, last, minor)) ?? last
 }
 
 /* ======================================================================
@@ -549,12 +572,23 @@ export interface RankCtx {
   nextKind: SectionKind | null
   /** 이 파트보다 앞에 나온, 종류가 다른 기둥 파트들(벌스·코러스·A·B…)의 선택. 대비를 따질 때 쓴다 */
   peers: { name: string; kind: SectionKind; prog: string; first: number }[]
+  /** 이 파트의 화음 속도(마지막 화음을 정확히 알려고) */
+  speed?: ChordSpeed
+  /** 앞 파트의 끝이 턴어라운드(마지막 반 마디를 딸림화음으로)로 바뀌었는지 */
+  prevTurn?: boolean
+}
+
+/** 진행 b가 진행 a의 고리를 시작만 바꾼 것인지 (C G Am F ↔ F C G Am). 같은 고리라 결국 같은 진행으로 들린다 */
+function isRotation(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false
+  for (let k = 1; k < a.length; k++) if (a.every((_, i) => a[(i + k) % a.length] === b[i])) return true
+  return false
 }
 
 const BUILD = new Set(['build', 'm-build', 'm-v'])
 const CONTRAST = new Set(['emo', 'jazz', 'm-dark', 'm-sad', 'andalus', 'm-major', 'royal'])
 const HOME = new Set(['basic', 'm-basic', 'climb'])
-const LIFT = new Set(['lift', 'royal', 'm-lift', 'm-pop', 'm-major'])
+const LIFT = new Set(['lift', 'royal', 'soar', 'm-lift', 'm-pop', 'm-major'])
 const PILLAR = new Set<SectionKind>(['a', 'b', 'verse', 'chorus', 'free'])
 
 /**
@@ -582,7 +616,9 @@ export function rankProgressions(c: RankCtx): Rank[] {
     let score = 0
     const reasons: string[] = []
     const first = prog.degrees[0]
-    const last = prog.degrees[(c.bars - 1 + prog.degrees.length * 8) % prog.degrees.length]
+    const segs = chordSegments(c.bars, prog, c.speed ?? 'normal')
+    const last = segs[segs.length - 1]
+    const dom = (d: number) => (c.minor ? d === 4 || d === 6 : d === 4)
 
     // 1) 앞 파트에서 이어지기
     if (c.prevLast !== null) {
@@ -592,6 +628,15 @@ export function rankProgressions(c: RankCtx): Rank[] {
         reasons.push(`앞 파트${c.prevName ? `(${c.prevName})` : ''}가 ${nm(c.prevLast)}로 끝나서 ${nm(first)}로 자연스럽게 이어져요`)
       }
     }
+    if (c.prevLast !== null && c.prevLast === first && c.kind !== 'outro') {
+      score -= c.kind === 'chorus' || c.kind === 'b' ? 24 : 16
+      reasons.push(`앞 파트의 마지막 화음(${nm(first)})이 그대로 이어져서 파트가 바뀐 게 잘 안 느껴져요`)
+    }
+    if ((c.kind === 'chorus' || c.kind === 'b') && c.prevLast !== null && dom(c.prevLast)) {
+      if (c.prevTurn) reasons.push(`${c.prevName ?? '앞 파트'} 마지막 반 마디를 ${nm(c.prevLast)}(딸림화음)로 바꿔서 코러스로 힘 있게 넘겨 줘요`)
+      if (first === 0) { score += 20; reasons.push(`앞 파트가 ${nm(c.prevLast)}(딸림화음)로 긴장을 쌓고, 코러스 첫 박에 ${nm(0)}(으뜸화음)이 터져요`) }
+      else if (c.minor ? first === 5 || first === 2 : first === 3) { score += 12; reasons.push(`${nm(c.prevLast)}에서 ${nm(first)}로 확 열리며 후렴이 시작돼요`) }
+    }
     // 다음 파트로 잘 풀리기 (뒤 파트는 아직 바뀔 수 있어서 가볍게)
     if (c.nextFirst !== null) {
       const i = suggestNext(last, c.minor).findIndex((s) => s.degree === c.nextFirst)
@@ -599,9 +644,13 @@ export function rankProgressions(c: RankCtx): Rank[] {
     }
     // 2) 대비
     for (const r of rivals) {
+      const rp = list.find((x) => x.id === r.prog)
       if (r.prog === prog.id) {
         score -= 46
         reasons.push(`${r.name}와 똑같은 진행이라 ${kindLabel(c.kind)}가 새롭게 들리지 않아요`)
+      } else if (rp && isRotation(rp.degrees, prog.degrees) && c.kind !== 'prechorus') {
+        score -= 34
+        reasons.push(`${r.name}와 같은 화음 고리를 시작만 바꾼 거라, 들으면 결국 같은 진행처럼 이어져요`)
       } else if (r.first === first) {
         score -= c.kind === 'prechorus' ? 8 : 24
         reasons.push(`${r.name}와 같은 ${nm(first)}로 시작해서 바뀐 느낌이 약해요`)
@@ -610,9 +659,20 @@ export function rankProgressions(c: RankCtx): Rank[] {
         reasons.push(`${r.name}(${nm(r.first)})와 다른 ${nm(first)}로 시작해서 ‘${kindLabel(c.kind)}가 왔다!’는 느낌이 나요`)
       }
     }
+    if ((c.kind === 'chorus' || c.kind === 'b' || c.kind === 'bridge') && rivals.length) {
+      const used = new Set(rivals.flatMap((r) => list.find((x) => x.id === r.prog)?.degrees ?? []))
+      const fresh = [...new Set(prog.degrees)].filter((d) => !used.has(d))
+      if (fresh.length) { score += 8 + 4 * Math.min(2, fresh.length - 1); reasons.push(`${rivals[0].name}에 없던 ${fresh.map(nm).join('·')} 화음이 나와 색깔이 바뀌어요`) }
+      // 후렴 안에서 딸림→으뜸으로 ‘도착’하는 순간이 있으면 시원하다
+      const ds = prog.degrees
+      if (c.kind !== 'bridge' && ds.some((d, i) => i > 0 && d === 0 && dom(ds[i - 1]))) { score += 8; reasons.push('진행 안에서 딸림화음에서 으뜸화음으로 ‘쾅’ 도착해요') }
+    }
     if (c.kind === 'chorus' || c.kind === 'b') {
       const bright = c.minor ? first === 2 || first === 5 : first === 3 || first === 5
-      if (bright) { score += 10; reasons.push(c.minor ? `밝은 ${nm(first)}로 열려서 후렴이 환해져요` : `${nm(first)}로 열어서 분위기가 확 바뀌어요`) }
+      if (bright) { score += 10; if (!reasons.some((r) => r.includes('열리며'))) reasons.push(c.minor ? `밝은 ${nm(first)}로 열려서 후렴이 환해져요` : `${nm(first)}로 열어서 분위기가 확 바뀌어요`) }
+      // 긴장만 쌓고 풀리지 않는 진행·재즈 진행은 후렴의 ‘터지는’ 역할에 덜 어울린다
+      if (BUILD.has(prog.id)) { score -= 16; reasons.push('긴장을 쌓는 진행이라 후렴보다는 프리코러스에 더 어울려요') }
+      if (prog.id === 'jazz') score -= 8
       if (LIFT.has(prog.id)) { score += 10; reasons.push('후렴에 많이 쓰는, 시원하게 열리는 진행이에요') }
     }
     // 3) 역할
@@ -620,7 +680,11 @@ export function rankProgressions(c: RankCtx): Rank[] {
       score += 14
       reasons.push(`으뜸화음(${nm(0)})으로 시작해서 곡의 ‘집’을 먼저 들려줘요`)
     }
-    const dominant = c.minor ? last === 4 || last === 6 : last === 4
+    const dominant = dom(last)
+    if ((c.kind === 'verse' || c.kind === 'a') && (c.nextKind === 'chorus' || c.nextKind === 'b')) {
+      if (dominant) { score += 14; reasons.push(`${nm(last)}(딸림화음)로 끝나서 ${kindLabel(c.nextKind)}가 터지기 직전처럼 기다려져요`) }
+      else if (last === 0) score -= 8 // 벌스가 으뜸으로 닫히면 코러스가 덜 터진다
+    }
     if (dominant && (c.kind === 'prechorus' || c.kind === 'bridge' || c.kind === 'intro' || c.kind === 'interlude')) {
       score += 22
       reasons.push(`${nm(last)}(딸림화음)로 끝나 긴장이 쌓이고 다음 파트가 기다려져요`)
@@ -668,11 +732,13 @@ export function neighborCtx(song: Song, plans: Record<string, PartPlan>, index: 
     minor,
     root,
     bars: sec.bars,
-    prevLast: p >= 0 ? lastChordOf(secs[p].bars, plans[secs[p].id], minor) : null,
+    prevTurn: p >= 0 && lastChordOf(secs[p].bars, plans[secs[p].id], minor) !== lastChordOf(secs[p].bars, plans[secs[p].id], minor, secs[p].kind, p + 1 < secs.length ? secs[p + 1].kind : null),
+    prevLast: p >= 0 ? lastChordOf(secs[p].bars, plans[secs[p].id], minor, secs[p].kind, p + 1 < secs.length ? secs[p + 1].kind : null) : null,
     prevName: p >= 0 ? secs[p].name : undefined,
     nextFirst: n < secs.length ? progOf(plans[secs[n].id]).degrees[0] : null,
-    nextKind: n < secs.length ? secs[n].kind : null,
+    nextKind: (() => { let m = index + 1; while (m < secs.length && secs[m].kind === sec.kind) m++; return m < secs.length ? secs[m].kind : null })(),
     peers,
+    speed: plans[sec.id]?.speed ?? DEFAULT_PLAN[sec.kind].speed,
   }
 }
 
