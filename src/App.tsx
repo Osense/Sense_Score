@@ -352,6 +352,7 @@ export default function App() {
       const sf = audioRef.current?.engine.soundfontData ?? null
       const blob = await exportAudio(song, format, sf, (progress) => setExporting({ format, progress }))
       download(blob, `${song.title || L("내 곡")}.${format}`, blob.type)
+      flash(L("{0} 파일로 저장했어요.", format.toUpperCase()))
     } catch (e) {
       console.error(e)
       flash(L("소리 파일을 만들지 못했어요. 다시 해 보거나 .mid로 저장해 주세요."))

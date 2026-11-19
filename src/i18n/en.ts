@@ -1530,4 +1530,5 @@ export const EN: Record<string, string> = {
   "는​": " starts on the",
   "밝게​": "brightly",
   "마디​": "bar",
+  "{0} 파일로 저장했어요.": "{0} file saved.",
 }
