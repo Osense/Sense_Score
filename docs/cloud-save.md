@@ -50,7 +50,7 @@ WSNS 계정으로 로그인하면 곡을 계정에 자동 저장하려고 미리
 - WSNS 사이트에서 로그인한 뒤 쎈스 컴포즈로 돌려보낼 때 주소 끝에 `#wsns-token=<토큰>&uid=<사용자>&name=<이름>&exp=<ISO 시각>`을 붙인다.
 - 앱이 열리면 `takeSessionFromUrl()`이 받아 `localStorage 'sense-compose:session'`에 두고 주소에서 바로 지운다.
 - 로그아웃: `setSession(null)`. 만료 시각이 지나면 세션 없음으로 본다.
-- 지금 WSNS 사이트(Osense/WesNS)의 로그인은 브라우저 안 임시 구현(`src/lib/auth/auth-provider.tsx`)이라, 실제 서버 인증을 붙일 때 토큰을 위 방식으로 넘겨 주면 된다.
+- 지금 WSNS 사이트(소스 kwonohhwan-wes/WesNS)의 로그인은 브라우저 안 임시 구현(`src/lib/auth/auth-provider.tsx`)이라, 실제 서버 인증을 붙일 때 토큰을 위 방식으로 넘겨 주면 된다.
 
 ## 5. 자동 저장
 
