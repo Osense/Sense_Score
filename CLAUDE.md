@@ -18,7 +18,7 @@ Vite + React + TypeScript. MIDI 파싱/생성은 `@tonejs/midi`, 사운드폰트
 
 ## 연결된 웹
 - 이 앱 레포(Osense/Sense_Score)는 그대로 유지하고 GitHub Pages(https://osense.github.io/Sense_Score/)로 배포한다.
-- 앱이 연결되는 WSNS 웹사이트(제품 페이지 · 로그인 등)의 소스는 https://github.com/kwonohhwan-wes/WesNS (2026-11-19부터, 예전 Osense/WesNS 아님). 머리줄 로고 링크는 https://wes-ns.vercel.app/
+- 앱이 연결되는 WSNS 웹사이트(제품 페이지 · 로그인 등)의 소스는 https://github.com/kwonohhwan-wes/WesNS (2026-11-19부터, 예전 Osense/WesNS 아님. 비공개 레포, 사용자는 콜라보레이터). 실제 웹은 Vercel https://wes-ns.vercel.app/ (도메인은 나중에 붙일 예정 — 붙이면 머리줄 로고 링크 등 주소를 바꿀 것). 머리줄 로고 링크는 https://wes-ns.vercel.app/
 
 ## 명령어
 - `npm run dev` 개발 서버
