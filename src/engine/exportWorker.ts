@@ -75,15 +75,59 @@ async function renderSoundfont(job: Extract<ExportJob, { type: 'soundfont' }>, p
   return { left, right }
 }
 
-/** 소리가 찢어지지 않도록 너무 크면 전체를 살짝 줄인다 */
-function limit(left: Float32Array, right: Float32Array) {
-  let peak = 0
-  for (let i = 0; i < left.length; i++) peak = Math.max(peak, Math.abs(left[i]), Math.abs(right[i]))
-  if (peak <= 0.98) return
-  const scale = 0.98 / peak
-  for (let i = 0; i < left.length; i++) {
-    left[i] *= scale
-    right[i] *= scale
+/**
+ * 피크 리미터(-1 dBFS): 튀는 순간만 눌러서 소리가 찢어지지 않게 한다. (예전에는 피크 하나 때문에 곡 전체를 줄였다)
+ * 계산: 샘플마다 필요한 줄임 → 앞을 내다보는 최솟값(lookahead 1.5ms) → 천천히 돌아오기(release 80ms) → 평균으로 부드럽게.
+ * ‘앞으로 lookahead 최솟값’에 ‘뒤로 같은 길이 평균’을 씌우면 피크 지점에서 반드시 필요한 만큼 이상 줄어든다.
+ */
+function limit(left: Float32Array, right: Float32Array, sr = 44100) {
+  const CEIL = 0.891 // -1 dBFS
+  const n = left.length
+  let over = false
+  for (let i = 0; i < n; i++) if (Math.abs(left[i]) > CEIL || Math.abs(right[i]) > CEIL) { over = true; break }
+  if (!over) return
+  const la = Math.max(1, Math.round(0.0015 * sr))
+  const req = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    const a = Math.max(Math.abs(left[i]), Math.abs(right[i]))
+    req[i] = a > CEIL ? CEIL / a : 1
+  }
+  // 앞으로 la 칸 최솟값 (단조 덱)
+  const minF = new Float32Array(n)
+  const dq = new Int32Array(n)
+  let h = 0
+  let t = 0
+  let next = 0
+  for (let i = 0; i < n; i++) {
+    const end = Math.min(n - 1, i + la)
+    while (next <= end) {
+      while (t > h && req[dq[t - 1]] >= req[next]) t--
+      dq[t++] = next++
+    }
+    while (dq[h] < i) h++
+    minF[i] = req[dq[h]]
+  }
+  // 천천히 돌아오기
+  const rc = 1 - Math.exp(-1 / (0.08 * sr))
+  let g = 1
+  for (let i = 0; i < n; i++) {
+    const target = minF[i]
+    g = target < g ? target : g + (target - g) * rc
+    minF[i] = g
+  }
+  // 뒤로 la 칸 평균
+  let acc = 0
+  for (let i = 0; i < n; i++) {
+    acc += minF[i]
+    if (i > la) acc -= minF[i - la - 1]
+    const gg = acc / Math.min(i + 1, la + 1)
+    left[i] *= gg
+    right[i] *= gg
+  }
+  // 반올림 오차로 남은 아주 작은 넘침은 잘라 둔다
+  for (let i = 0; i < n; i++) {
+    if (left[i] > CEIL) left[i] = CEIL; else if (left[i] < -CEIL) left[i] = -CEIL
+    if (right[i] > CEIL) right[i] = CEIL; else if (right[i] < -CEIL) right[i] = -CEIL
   }
 }
 

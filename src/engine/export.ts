@@ -1,5 +1,5 @@
 import { PPQ, type Song } from '../types'
-import { AudioEngine, MASTER_GAIN } from './audio'
+import { AudioEngine, MASTER_GAIN, SF_GAIN } from './audio'
 import { Player } from './player'
 import type { BendEvent, ChannelSetup, ExportJob, ExportReply, NoteEvent } from './exportWorker'
 
@@ -157,7 +157,7 @@ export async function exportAudio(song: Song, format: AudioFormat, soundfont: Ar
     const { channels, events, bends, duration } = plan(song)
     const sf = soundfont.slice(0)
     data = await runWorker(
-      { type: 'soundfont', format, sampleRate: SAMPLE_RATE, gain: MASTER_GAIN, soundfont: sf, channels, events, bends, duration },
+      { type: 'soundfont', format, sampleRate: SAMPLE_RATE, gain: MASTER_GAIN * SF_GAIN, soundfont: sf, channels, events, bends, duration },
       [sf],
       onProgress,
       0,

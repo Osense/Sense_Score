@@ -3,6 +3,13 @@ import processorUrl from 'spessasynth_lib/dist/spessasynth_processor.min.js?url'
 
 /** 전체 음량 (내보내기에서도 같은 값을 쓴다) */
 export const MASTER_GAIN = 0.8
+/**
+ * 소리 크기 맞추기(메이크업 게인). 기본 곡(멜로디+화음+베이스+드럼, 기본 트랙 음량)이
+ * 약 -16 LUFS(음원 사이트보다 조금 작게)로 나오도록 잰 값. 사운드폰트 엔진은 원래 출력이 아주 작다(-30 LUFS).
+ * 피크는 출력 앞 리미터(재생)와 lookahead 리미터(소리 파일)가 -1 dBFS 아래로 막는다.
+ */
+export const SF_GAIN = 5
+export const BUILTIN_GAIN = 1.25
 
 /** 채널 단위로 소리를 내는 엔진. 내장 신디사이저 또는 사운드폰트(SF2/SF3). */
 export class AudioEngine {
@@ -35,7 +42,18 @@ export class AudioEngine {
     this.bus = this.makeBus()
     this.sfGate = this.makeSfGate()
     this.master.gain.value = MASTER_GAIN
-    this.master.connect(this.ctx.destination)
+    // 출력 앞 리미터: 트랙을 많이 쌓거나 음량을 끝까지 올려도 소리가 찢어지지(클리핑) 않게 피크만 누른다
+    const lim = ctx.createDynamicsCompressor()
+    lim.threshold.value = -3
+    lim.knee.value = 2
+    lim.ratio.value = 20
+    lim.attack.value = 0.002
+    lim.release.value = 0.12
+    // 크롬의 압축기는 스스로 소리를 키우는 보정(약 +1.7dB, threshold -3·ratio 20 기준)을 넣는다.
+    // 그만큼 되돌려서 재생 크기를 소리 파일(따로 계산하는 리미터)과 맞춘다.
+    const post = ctx.createGain()
+    post.gain.value = 0.82
+    this.master.connect(lim).connect(post).connect(this.ctx.destination)
     this.chGain = this.makeChannels()
     for (let i = 0; i < 16; i++) {
       const b = this.ctx.createConstantSource()
@@ -47,6 +65,7 @@ export class AudioEngine {
 
   private makeBus() {
     const g = this.ctx.createGain()
+    g.gain.value = BUILTIN_GAIN
     g.connect(this.master)
     return g
   }
@@ -67,6 +86,7 @@ export class AudioEngine {
 
   private makeSfGate() {
     const g = this.ctx.createGain()
+    g.gain.value = SF_GAIN
     g.connect(this.master)
     return g
   }
@@ -206,7 +226,7 @@ export class AudioEngine {
       const until = now + 0.22
       this.sfGate.gain.cancelScheduledValues(now)
       this.sfGate.gain.setValueAtTime(0, now)
-      this.sfGate.gain.setValueAtTime(1, until)
+      this.sfGate.gain.setValueAtTime(SF_GAIN, until)
       for (let ch = 0; ch < 16; ch++) {
         this.sf.controllerChange(ch, 120 as never, 0, { time: until - 0.01 })
         this.sf.pitchWheel(ch, 8192, { time: until - 0.01 })
