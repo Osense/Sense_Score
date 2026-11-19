@@ -839,7 +839,7 @@ export default function App() {
     <div className={`app ws-${ws}`}>
       <header className="top">
         <div className="top-main">
-          <a className="wordmark" href="https://wes-ns.vercel.app/" target="_blank" rel="noopener" title={L("WSNS studio 홈페이지")} aria-label={L("쎈스 컴포즈 — WSNS studio 홈페이지")}>
+          <a className="wordmark" href="https://wsns.studio/" target="_blank" rel="noopener" title={L("WSNS studio 홈페이지")} aria-label={L("쎈스 컴포즈 — WSNS studio 홈페이지")}>
             <img className="mark" src="./brand/wsns-mark.svg" alt="" width="166" height="212" draggable={false} />
             <span className="bn">
               <b>{L("쎈스 컴포즈")}</b>

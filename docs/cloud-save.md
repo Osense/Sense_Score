@@ -40,7 +40,7 @@ WSNS 계정으로 로그인하면 곡을 계정에 자동 저장하려고 미리
 
 - `id`는 앱이 만든다(`song.id`, 곡을 새로 만들거나 남의 곡 · 보통 MIDI를 열면 새 번호, 내 백업 · 내 프로젝트 .mid는 번호 유지).
 - 크기: 보통 수~수십 KB. 1MB 제한이면 충분하다.
-- CORS: `https://osense.github.io` 허용, 위 헤더(`If-Match`, `X-Project-Title`, `ETag` 노출) 허용.
+- CORS: `https://osense.github.io`(앱) 허용, 위 헤더(`If-Match`, `X-Project-Title`, `ETag` 노출) 허용.
 - 서버 쪽 판 기록(rev별 보관)을 두면 “예전 판으로 되돌리기”를 나중에 붙일 수 있다.
 
 ## 4. 로그인 세션
@@ -50,7 +50,7 @@ WSNS 계정으로 로그인하면 곡을 계정에 자동 저장하려고 미리
 - WSNS 사이트에서 로그인한 뒤 쎈스 컴포즈로 돌려보낼 때 주소 끝에 `#wsns-token=<토큰>&uid=<사용자>&name=<이름>&exp=<ISO 시각>`을 붙인다.
 - 앱이 열리면 `takeSessionFromUrl()`이 받아 `localStorage 'sense-compose:session'`에 두고 주소에서 바로 지운다.
 - 로그아웃: `setSession(null)`. 만료 시각이 지나면 세션 없음으로 본다.
-- 지금 WSNS 사이트(소스 kwonohhwan-wes/WesNS)의 로그인은 브라우저 안 임시 구현(`src/lib/auth/auth-provider.tsx`)이라, 실제 서버 인증을 붙일 때 토큰을 위 방식으로 넘겨 주면 된다.
+- 지금 WSNS 홈페이지(소스 kwonohhwan-wes/WSNS, https://wsns.studio)의 로그인은 브라우저 안 임시 구현(`src/lib/auth/auth-provider.tsx`)이라, 실제 서버 인증을 붙일 때 토큰을 위 방식으로 넘겨 주면 된다.
 
 ## 5. 자동 저장
 
