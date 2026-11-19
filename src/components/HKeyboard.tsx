@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { useRef } from 'react'
 import { inScale, isBlack, NOTE_NAMES_KO } from '../music'
 import type { KeyHighlights, ScaleType } from '../types'
@@ -91,7 +92,7 @@ export function HKeyboard(p: Props) {
   }
 
   return (
-    <div className="hkeyboard" role="group" aria-label="건반">
+    <div className="hkeyboard" role="group" aria-label={L("건반")}>
       {whites.map((k) => (
         <div key={k.pitch} {...props(k)}>
           {p.letters.has(k.pitch) && <kbd>{p.letters.get(k.pitch)}</kbd>}

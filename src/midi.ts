@@ -1,3 +1,4 @@
+import { L } from './i18n'
 import { Midi } from '@tonejs/midi'
 import { Player } from './engine/player'
 import { PPQ, uid, type Bend, type Note, type Song, type Track } from './types'
@@ -61,9 +62,9 @@ type MidiTrack = Midi['tracks'][number]
 
 /** 악기 계열 → 트랙 이름이 없을 때 쓸 한글 이름 */
 const FAMILY_KO: Record<string, string> = {
-  piano: '피아노', 'chromatic percussion': '건반 타악기', organ: '오르간', guitar: '기타', bass: '베이스',
-  strings: '현악기', ensemble: '합주', brass: '금관', reed: '리드 악기', pipe: '관악기', 'synth lead': '신스 리드',
-  'synth pad': '신스 패드', 'synth effects': '신스 효과', world: '민속 악기', percussive: '타악기', 'sound effects': '효과음',
+  piano: L("피아노"), 'chromatic percussion': L("건반 타악기"), organ: L("오르간"), guitar: L("기타"), bass: L("베이스"),
+  strings: L("현악기"), ensemble: L("합주"), brass: L("금관"), reed: L("리드 악기"), pipe: L("관악기"), 'synth lead': L("신스 리드"),
+  'synth pad': L("신스 패드"), 'synth effects': L("신스 효과"), world: L("민속 악기"), percussive: L("타악기"), 'sound effects': L("효과음"),
 }
 
 const ccValue = (t: MidiTrack, n: number) => t.controlChanges[n]?.map((c) => ({ ticks: c.ticks, v: Math.round(c.value * 127) })) ?? []
@@ -135,13 +136,13 @@ export function importMidi(buf: ArrayBuffer, fileName: string): Song {
       }
     }
     const vol = ccValue(t, 7).find((c) => c.ticks <= (t.notes[0]?.ticks ?? 0))?.v
-    const fallback = drum ? '드럼' : FAMILY_KO[t.instrument.family] ?? t.instrument.name
+    const fallback = drum ? L("드럼") : FAMILY_KO[t.instrument.family] ?? t.instrument.name
     // 한 트랙짜리(포맷 0) 파일은 곡 이름이 첫 트랙 이름에도 붙어 나온다 → 악기 이름을 쓴다
     const own = decodeMidiText(t.name)
     const name = own && !(own === title && midi.tracks.filter((x) => x.notes.length).length > 1) ? own : fallback
     tracks.push({
       id: uid(),
-      name: name || `트랙 ${tracks.length + 1}`,
+      name: name || L("트랙 {0}", tracks.length + 1),
       program: t.instrument.number, // 드럼이면 드럼 세트 번호
       drum,
       volume: vol !== undefined ? Math.max(0.05, vol / 127) : 0.8,

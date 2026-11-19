@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { PPQ, type Song } from '../types'
 import { AudioEngine, MASTER_GAIN, SF_GAIN } from './audio'
 import { Player } from './player'
@@ -140,7 +141,7 @@ function runWorker(job: ExportJob, transfer: Transferable[], onProgress: (p: num
     }
     w.onerror = (e) => {
       w.terminate()
-      reject(new Error(e.message || '내보내기 작업이 멈췄어요'))
+      reject(new Error(e.message || L("내보내기 작업이 멈췄어요")))
     }
     w.postMessage(job, transfer)
   })

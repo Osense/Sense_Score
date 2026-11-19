@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { useEffect, useRef } from 'react'
 import { KINDS, rangesOf } from '../sections'
 import { PPQ, type Note, type Song } from '../types'
@@ -17,18 +18,18 @@ export interface DrumLane {
   also: number[]
   keys: { code: string; label: string; pitch?: number }[]
   color: string
-  hand: '왼손' | '오른손' | '발'
+  hand: string
 }
 
 export const DRUM_LANES: DrumLane[] = [
-  { id: 'crash', label: '크래시', pitch: 49, also: [52, 55, 57], keys: [{ code: 'KeyR', label: 'R' }], color: '#e0a83a', hand: '왼손' },
-  { id: 'hihat', label: '하이햇', pitch: 42, also: [44, 46], keys: [{ code: 'KeyJ', label: 'J' }, { code: 'KeyK', label: 'K', pitch: 46 }], color: '#38bcd8', hand: '오른손' },
-  { id: 'snare', label: '스네어', pitch: 38, also: [37, 40], keys: [{ code: 'KeyF', label: 'F' }, { code: 'KeyD', label: 'D' }], color: '#e05c8a', hand: '왼손' },
-  { id: 'kick', label: '킥', pitch: 36, also: [35], keys: [{ code: 'Space', label: 'Space' }, { code: 'KeyB', label: 'B' }], color: '#7c5cf0', hand: '발' },
-  { id: 'tomH', label: '하이 탐', pitch: 50, also: [48], keys: [{ code: 'KeyG', label: 'G' }], color: '#f08c3a', hand: '왼손' },
-  { id: 'tomM', label: '미드 탐', pitch: 47, also: [45], keys: [{ code: 'KeyH', label: 'H' }], color: '#d9703a', hand: '오른손' },
-  { id: 'tomF', label: '플로어 탐', pitch: 43, also: [41], keys: [{ code: 'KeyL', label: 'L' }], color: '#b85a2b', hand: '오른손' },
-  { id: 'ride', label: '라이드', pitch: 51, also: [53, 59], keys: [{ code: 'KeyO', label: 'O' }], color: '#2fa38a', hand: '오른손' },
+  { id: 'crash', label: L("크래시"), pitch: 49, also: [52, 55, 57], keys: [{ code: 'KeyR', label: 'R' }], color: '#e0a83a', hand: L("왼손") },
+  { id: 'hihat', label: L("하이햇"), pitch: 42, also: [44, 46], keys: [{ code: 'KeyJ', label: 'J' }, { code: 'KeyK', label: 'K', pitch: 46 }], color: '#38bcd8', hand: L("오른손") },
+  { id: 'snare', label: L("스네어"), pitch: 38, also: [37, 40], keys: [{ code: 'KeyF', label: 'F' }, { code: 'KeyD', label: 'D' }], color: '#e05c8a', hand: L("왼손") },
+  { id: 'kick', label: L("킥"), pitch: 36, also: [35], keys: [{ code: 'Space', label: 'Space' }, { code: 'KeyB', label: 'B' }], color: '#7c5cf0', hand: L("발") },
+  { id: 'tomH', label: L("하이 탐"), pitch: 50, also: [48], keys: [{ code: 'KeyG', label: 'G' }], color: '#f08c3a', hand: L("왼손") },
+  { id: 'tomM', label: L("미드 탐"), pitch: 47, also: [45], keys: [{ code: 'KeyH', label: 'H' }], color: '#d9703a', hand: L("오른손") },
+  { id: 'tomF', label: L("플로어 탐"), pitch: 43, also: [41], keys: [{ code: 'KeyL', label: 'L' }], color: '#b85a2b', hand: L("오른손") },
+  { id: 'ride', label: L("라이드"), pitch: 51, also: [53, 59], keys: [{ code: 'KeyO', label: 'O' }], color: '#2fa38a', hand: L("오른손") },
 ]
 
 export const laneOf = (pitch: number) => DRUM_LANES.findIndex((l) => l.pitch === pitch || l.also.includes(pitch))
@@ -99,7 +100,7 @@ export function DrumRoll({ song, trackId, getTick, getLive, flash }: { song: Son
           g.stroke()
           if (isBar && b >= 0) {
             g.fillStyle = css('--muted', '#777')
-            g.fillText(`${b / song.beatsPerBar + 1}마디`, 6, y - 4)
+            g.fillText(L("{0}마디", b / song.beatsPerBar + 1), 6, y - 4)
           }
         }
         // 지금 파트
@@ -184,7 +185,7 @@ export function DrumKitView({ onHit, flash }: { onHit: (lane: number, pitch?: nu
     )
   }
   return (
-    <svg className="drumkit" viewBox="0 0 760 300" role="group" aria-label="드럼 세트">
+    <svg className="drumkit" viewBox="0 0 760 300" role="group" aria-label={L("드럼 세트")}>
       {/* 크래시 · 하이햇 · 스네어 · 킥 · 탐 · 플로어 · 라이드 */}
       {pad(0, <ellipse cx={130} cy={62} rx={92} ry={32} className="dk-cym" />, 130, 58)}
       {pad(1, <><line x1={92} y1={204} x2={92} y2={296} className="dk-stand" /><ellipse cx={92} cy={180} rx={74} ry={26} className="dk-cym" /></>, 92, 176)}
@@ -194,9 +195,9 @@ export function DrumKitView({ onHit, flash }: { onHit: (lane: number, pitch?: nu
       {pad(5, <ellipse cx={452} cy={80} rx={60} ry={30} className="dk-drum" />, 452, 76)}
       {pad(6, <ellipse cx={556} cy={205} rx={80} ry={36} className="dk-drum" />, 556, 200)}
       {pad(7, <ellipse cx={650} cy={72} rx={98} ry={34} className="dk-cym" />, 650, 68)}
-      <text x={92} y={146} className="dk-hand">오른손을 엇갈려 쳐요</text>
-      <text x={228} y={256} className="dk-hand">왼손으로 쳐요</text>
-      <text x={385} y={286} className="dk-hand">발로 밟아요</text>
+      <text x={92} y={146} className="dk-hand">{L("오른손을 엇갈려 쳐요")}</text>
+      <text x={228} y={256} className="dk-hand">{L("왼손으로 쳐요")}</text>
+      <text x={385} y={286} className="dk-hand">{L("발로 밟아요")}</text>
     </svg>
   )
 }

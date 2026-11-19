@@ -1,3 +1,4 @@
+import { L } from './i18n'
 import { normalizeSong } from './sections'
 import { uid, type ScaleType, type SectionKind, type Settings, type Song } from './types'
 
@@ -49,7 +50,7 @@ export async function encodeSong(song: Song, settings: Settings): Promise<string
 export async function decodeSong(code: string): Promise<{ song: Song; settings: Pick<Settings, 'scaleRoot' | 'scaleType'> }> {
   const json = new TextDecoder().decode(await pipe(fromB64(code), new DecompressionStream('deflate-raw')))
   const p = JSON.parse(json) as Packed
-  if (p.v !== 1) throw new Error('지원하지 않는 곡 형식')
+  if (p.v !== 1) throw new Error(L("지원하지 않는 곡 형식"))
   const song = normalizeSong({
     title: p.t,
     bpm: p.b,

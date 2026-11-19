@@ -1,3 +1,4 @@
+import { L } from './i18n'
 import { inScale } from './music'
 import { uid, type Note, type ScaleType } from './types'
 
@@ -128,55 +129,55 @@ export function menuGroups(o: { selected: number; hasClip: boolean; drumOnly: bo
   const has = o.selected > 0
   const g: MenuGroup[] = [
     {
-      title: has ? `선택한 음표 ${o.selected}개` : '여기에서',
+      title: has ? L("선택한 음표 {0}개", o.selected) : L("여기에서"),
       items: [
-        { id: 'cut', icon: '', label: '잘라내기', hint: 'Ctrl+X', disabled: !has },
-        { id: 'copy', icon: '⧉', label: '복사', hint: 'Ctrl+C', disabled: !has },
-        { id: 'paste', icon: '', label: '여기에 붙여넣기', hint: 'Ctrl+V', disabled: !o.hasClip },
-        { id: 'dup', icon: '', label: '바로 뒤에 복제', hint: 'Ctrl+D', disabled: !has },
-        { id: 'del', icon: '', label: '지우기', hint: 'Delete', disabled: !has, danger: true },
+        { id: 'cut', icon: '', label: L("잘라내기"), hint: 'Ctrl+X', disabled: !has },
+        { id: 'copy', icon: '⧉', label: L("복사"), hint: 'Ctrl+C', disabled: !has },
+        { id: 'paste', icon: '', label: L("여기에 붙여넣기"), hint: 'Ctrl+V', disabled: !o.hasClip },
+        { id: 'dup', icon: '', label: L("바로 뒤에 복제"), hint: 'Ctrl+D', disabled: !has },
+        { id: 'del', icon: '', label: L("지우기"), hint: 'Delete', disabled: !has, danger: true },
       ],
     },
   ]
   if (has) {
     g.push({
-      title: '길이',
+      title: L("길이"),
       items: [
-        { id: 'double', icon: '↔️', label: '2배로 늘리기' },
-        { id: 'half', icon: '⇤⇥', label: '반으로 줄이기' },
-        { id: 'split', icon: '', label: '둘로 쪼개기' },
-        { id: 'merge', icon: '', label: '이어진 음 합치기' },
-        { id: 'legato', icon: '〰️', label: '다음 음까지 이어 붙이기' },
+        { id: 'double', icon: '↔️', label: L("2배로 늘리기") },
+        { id: 'half', icon: '⇤⇥', label: L("반으로 줄이기") },
+        { id: 'split', icon: '', label: L("둘로 쪼개기") },
+        { id: 'merge', icon: '', label: L("이어진 음 합치기") },
+        { id: 'legato', icon: '〰️', label: L("다음 음까지 이어 붙이기") },
       ],
     })
     if (!o.drumOnly)
       g.push({
-        title: '음 높이 (전조)',
+        title: L("음 높이 (전조)"),
         items: [
-          { id: 'octUp', icon: '8↑', label: '한 옥타브 위로' },
-          { id: 'octDown', icon: '8↓', label: '한 옥타브 아래로' },
-          { id: 'semiUp', icon: '♯', label: '반음 위로' },
-          { id: 'semiDown', icon: '♭', label: '반음 아래로' },
-          { id: 'toScale', icon: '', label: '음계에 맞추기', disabled: !o.scaleOn },
+          { id: 'octUp', icon: '8↑', label: L("한 옥타브 위로") },
+          { id: 'octDown', icon: '8↓', label: L("한 옥타브 아래로") },
+          { id: 'semiUp', icon: '♯', label: L("반음 위로") },
+          { id: 'semiDown', icon: '♭', label: L("반음 아래로") },
+          { id: 'toScale', icon: '', label: L("음계에 맞추기"), disabled: !o.scaleOn },
         ],
       })
     g.push({
-      title: '정리',
+      title: L("정리"),
       items: [
-        { id: 'quantize', icon: '▦', label: '칸에 딱 맞추기' },
-        { id: 'louder', icon: '', label: '세게' },
-        { id: 'softer', icon: '', label: '약하게' },
-        { id: 'humanize', icon: '', label: '사람처럼 (세기 흔들기)' },
+        { id: 'quantize', icon: '▦', label: L("칸에 딱 맞추기") },
+        { id: 'louder', icon: '', label: L("세게") },
+        { id: 'softer', icon: '', label: L("약하게") },
+        { id: 'humanize', icon: '', label: L("사람처럼 (세기 흔들기)") },
       ],
     })
   }
   g.push({
-    title: '선택',
+    title: L("선택"),
     items: [
-      ...(has && !o.drumOnly ? [{ id: 'selSame' as const, icon: '', label: '같은 음 모두 고르기' }] : []),
-      { id: 'selTrack', icon: '', label: '이 트랙 전체 고르기' },
-      { id: 'selAll', icon: '▣', label: '보이는 음표 전부 고르기', hint: 'Ctrl+A' },
-      { id: 'selNone', icon: '', label: '선택 풀기', hint: 'Esc', disabled: !has },
+      ...(has && !o.drumOnly ? [{ id: 'selSame' as const, icon: '', label: L("같은 음 모두 고르기") }] : []),
+      { id: 'selTrack', icon: '', label: L("이 트랙 전체 고르기") },
+      { id: 'selAll', icon: '▣', label: L("보이는 음표 전부 고르기"), hint: 'Ctrl+A' },
+      { id: 'selNone', icon: '', label: L("선택 풀기"), hint: 'Esc', disabled: !has },
     ],
   })
   return g

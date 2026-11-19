@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { useEffect, useMemo } from 'react'
 import { NOTE_NAMES_KO } from '../music'
 import { KINDS, noteCounts } from '../sections'
@@ -42,9 +43,9 @@ function Strip({ rows, len }: { rows: Row[]; len: number }) {
 }
 
 const SPEEDS: { id: ChordSpeed; name: string; hint: string }[] = [
-  { id: 'slow', name: '느리게', hint: '두 마디에 화음 하나' },
-  { id: 'normal', name: '보통', hint: '한 마디에 화음 하나' },
-  { id: 'fast', name: '빠르게', hint: '한 마디에 화음 둘' },
+  { id: 'slow', name: L("느리게"), hint: L("두 마디에 화음 하나") },
+  { id: 'normal', name: L("보통"), hint: L("한 마디에 화음 하나") },
+  { id: 'fast', name: L("빠르게"), hint: L("한 마디에 화음 둘") },
 ]
 
 function Course({ no, title, sub, onPlay, children }: { no: number; title: string; sub: string; onPlay?: () => void; children: React.ReactNode }) {
@@ -56,7 +57,7 @@ function Course({ no, title, sub, onPlay, children }: { no: number; title: strin
           <h4>{title}</h4>
           <p>{sub}</p>
         </div>
-        {onPlay && <button className="listen" onClick={onPlay} title="지금 고른 설정으로 반주를 들어 봐요">▶ 들어보기</button>}
+        {onPlay && <button className="listen" onClick={onPlay} title={L("지금 고른 설정으로 반주를 들어 봐요")}>{L("▶ 들어보기")}</button>}
       </header>
       {children}
     </section>
@@ -133,8 +134,8 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
 
   return (
     <div className="menuboard">
-      <aside className="mb-parts" aria-label="파트 목록">
-        <h4>파트를 하나씩 주문해요</h4>
+      <aside className="mb-parts" aria-label={L("파트 목록")}>
+        <h4>{L("파트를 하나씩 주문해요")}</h4>
         {song.sections.map((s, i) => {
           const done = noteCounts(song, s.id).some((n) => n > 0)
           return (
@@ -142,10 +143,10 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
               <i style={{ background: KINDS[s.kind].color }}>{i + 1}</i>
               <span>
                 <b>{s.name}</b>
-                <small>{s.bars}마디 · {chordNames(progs.find((p) => p.id === full[s.id]?.prog)?.degrees.slice(0, 4) ?? [])}</small>
+                <small>{s.bars}{L("마디 ·")} {chordNames(progs.find((p) => p.id === full[s.id]?.prog)?.degrees.slice(0, 4) ?? [])}</small>
               </span>
-              {siblingsOf(song, s.id).length > 0 && full[s.id]?.linked !== false && <em className="lnk" title="같은 종류 파트와 설정이 함께 바뀌어요"></em>}
-              {done && <em title="이미 음표가 있어요">✓</em>}
+              {siblingsOf(song, s.id).length > 0 && full[s.id]?.linked !== false && <em className="lnk" title={L("같은 종류 파트와 설정이 함께 바뀌어요")}></em>}
+              {done && <em title={L("이미 음표가 있어요")}>✓</em>}
             </button>
           )
         })}
@@ -155,24 +156,24 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
         <header className="mb-head">
           <span className="mb-badge" style={{ background: KINDS[sec.kind].color }}>{idx + 1}</span>
           <div>
-            <h3>{sec.name} <small>{sec.bars}마디 · {KINDS[sec.kind].label}</small></h3>
+            <h3>{sec.name} <small>{sec.bars}{L("마디 ·")} {KINDS[sec.kind].label}</small></h3>
             <p>{KINDS[sec.kind].hint}</p>
           </div>
         </header>
 
-        <Course no={1} onPlay={() => onAudition(plan, 4, sec.kind)} title="화음 진행" sub={`${NOTE_KEY(root)} ${minor ? '단조' : '장조'} 음계에 어울리는 진행이에요. 화음은 곡의 ‘색깔’을 정해요.`}>
+        <Course no={1} onPlay={() => onAudition(plan, 4, sec.kind)} title={L("화음 진행")} sub={L("{0} {1} 음계에 어울리는 진행이에요. 화음은 곡의 ‘색깔’을 정해요.", NOTE_KEY(root), minor ? L("단조") : L("장조"))}>
           {(ctx.prevLast !== null || ctx.nextFirst !== null) && (
             <div className="mb-hint">
               {ctx.prevLast !== null && (
-                <div>앞 파트 <b>{ctx.prevName}</b>는 <b>{nm(ctx.prevLast)}</b> 화음으로 끝나요.</div>
+                <div>{L("앞 파트")} <b>{ctx.prevName}</b>{L("는")} <b>{nm(ctx.prevLast)}</b> {L("화음으로 끝나요.")}</div>
               )}
               {ctx.nextFirst !== null && (
                 <div>
-                  다음 파트 <b>{KINDS[ctx.nextKind!].label}</b>는 <b>{nm(ctx.nextFirst)}</b> 화음으로 시작해요
-                  {(sec.kind === 'prechorus' || sec.kind === 'bridge' || sec.kind === 'intro') ? ' — 그쪽으로 자연스럽게 이어지는 진행을 추천해요.' : '.'}
+                  {L("다음 파트")} <b>{KINDS[ctx.nextKind!].label}</b>{L("는\u200b")} <b>{nm(ctx.nextFirst)}</b> {L("화음으로 시작해요")}
+                  {(sec.kind === 'prechorus' || sec.kind === 'bridge' || sec.kind === 'intro') ? L(" — 그쪽으로 자연스럽게 이어지는 진행을 추천해요.") : '.'}
                 </div>
               )}
-              <button className="sense" onClick={() => set({ prog: ranks[0].prog.id })}>센스 있게 추천받기</button>
+              <button className="sense" onClick={() => set({ prog: ranks[0].prog.id })}>{L("센스 있게 추천받기")}</button>
             </div>
           )}
           <div className="choice-grid">
@@ -180,7 +181,7 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
               const rec = recOf(p.id)
               return (
                 <button key={p.id} className={`choice ${plan.prog === p.id ? 'on' : ''}`} onClick={() => pick({ prog: p.id }, 4)}>
-                  {rec && <span className="rec" title={rec.reasons.join(' / ')}>추천</span>}
+                  {rec && <span className="rec" title={rec.reasons.join(' / ')}>{L("추천")}</span>}
                   <b className="roman">{p.name}</b>
                   <span className="chords">{chordNames(p.degrees)}</span>
                   <small>{p.mood}</small>
@@ -194,13 +195,13 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
             <div className="mb-row">
               <label className="check-card link-card">
                 <input type="checkbox" checked={linked} onChange={(e) => toggleLink(e.target.checked)} />
-                같은 종류의 파트 ({sibs.map((i) => song.sections[i].name).join(', ')})도 함께 바꾸기
-                <small>{linked ? '여기서 고른 것이 다른 파트에도 자동으로 적용돼요' : '이 파트만 따로 정해요'}</small>
+                {L("같은 종류의 파트 (")}{sibs.map((i) => song.sections[i].name).join(', ')}{L(")도 함께 바꾸기")}
+                <small>{linked ? L("여기서 고른 것이 다른 파트에도 자동으로 적용돼요") : L("이 파트만 따로 정해요")}</small>
               </label>
             </div>
           )}
           <div className="mb-row">
-            <span className="mb-label">화음이 바뀌는 속도</span>
+            <span className="mb-label">{L("화음이 바뀌는 속도")}</span>
             <div className="seg">
               {SPEEDS.map((s) => (
                 <button key={s.id} className={plan.speed === s.id ? 'on' : ''} onClick={() => pick({ speed: s.id }, 4)} title={s.hint}>
@@ -210,35 +211,35 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
             </div>
           </div>
           <div className="mb-row">
-            <span className="mb-label">화음의 색</span>
+            <span className="mb-label">{L("화음의 색")}</span>
             <div className="seg">
-              <button className={!plan.seventh ? 'on' : ''} onClick={() => pick({ seventh: false }, 4)}>3화음<small>단순하고 또렷해요</small></button>
-              <button className={plan.seventh ? 'on' : ''} onClick={() => pick({ seventh: true }, 4)}>7화음<small>세련되고 감성적이에요 (maj7, m7…)</small></button>
+              <button className={!plan.seventh ? 'on' : ''} onClick={() => pick({ seventh: false }, 4)}>{L("3화음")}<small>{L("단순하고 또렷해요")}</small></button>
+              <button className={plan.seventh ? 'on' : ''} onClick={() => pick({ seventh: true }, 4)}>{L("7화음")}<small>{L("세련되고 감성적이에요 (maj7, m7…)")}</small></button>
             </div>
           </div>
         </Course>
 
-        <Course no={2} onPlay={() => onAudition(plan, 2, sec.kind)} title="반주 리듬" sub="박자를 잘게 쪼갤까요, 꽉 채울까요? 화음을 어떻게 연주할지 골라요.">
+        <Course no={2} onPlay={() => onAudition(plan, 2, sec.kind)} title={L("반주 리듬")} sub={L("박자를 잘게 쪼갤까요, 꽉 채울까요? 화음을 어떻게 연주할지 골라요.")}>
           <div className="choice-grid">
             {COMP_STYLES.map((c) => (
               <button key={c.id} className={`choice ${plan.comp === c.id ? 'on' : ''}`} onClick={() => pick({ comp: c.id as ChordRhythm }, 2)}>
                 <b>{c.name}</b>
-                <Strip len={len} rows={[{ label: '화음', hits: sample.comp(c.id), color: 'var(--accent)' }]} />
+                <Strip len={len} rows={[{ label: L("화음"), hits: sample.comp(c.id), color: 'var(--accent)' }]} />
                 <small>{c.desc}</small>
               </button>
             ))}
           </div>
         </Course>
 
-        <Course no={3} onPlay={() => onAudition(plan, 2, sec.kind)} title="드럼" sub="곡의 심장 박동이에요. 기본 박자부터 당김음·셔플까지 골라 보세요.">
+        <Course no={3} onPlay={() => onAudition(plan, 2, sec.kind)} title={L("드럼")} sub={L("곡의 심장 박동이에요. 기본 박자부터 당김음·셔플까지 골라 보세요.")}>
           <div className="choice-grid">
             {DRUM_STYLES.map((c) => (
               <button key={c.id} className={`choice ${plan.drum === c.id ? 'on' : ''}`} onClick={() => pick({ drum: c.id as DrumStyle }, 2)}>
                 <b>{c.icon} {c.name}</b>
                 {c.id !== 'none' && <Strip len={len} rows={[
-                  { label: '하이햇', hits: sample.drum(c.id).filter((h) => h.pitch === 42 || h.pitch === 46), color: '#9acd32' },
-                  { label: '스네어', hits: sample.drum(c.id).filter((h) => h.pitch === 38), color: '#ff5f9e' },
-                  { label: '킥', hits: sample.drum(c.id).filter((h) => h.pitch === 36), color: '#4f8cff' },
+                  { label: L("하이햇"), hits: sample.drum(c.id).filter((h) => h.pitch === 42 || h.pitch === 46), color: '#9acd32' },
+                  { label: L("스네어"), hits: sample.drum(c.id).filter((h) => h.pitch === 38), color: '#ff5f9e' },
+                  { label: L("킥"), hits: sample.drum(c.id).filter((h) => h.pitch === 36), color: '#4f8cff' },
                 ]} />}
                 <small>{c.desc}</small>
               </button>
@@ -246,21 +247,21 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
           </div>
           {plan.drum !== 'none' && (
             <div className="mb-row">
-              <label className="check-card"><input type="checkbox" checked={plan.fill} onChange={(e) => pick({ fill: e.target.checked }, 2)} /> 파트 끝에 작은 연주(필인) 넣기 <small>다음 파트로 넘어가는 신호예요</small></label>
-              <label className="check-card"><input type="checkbox" checked={plan.crash} onChange={(e) => pick({ crash: e.target.checked }, 2)} /> 첫 박에 심벌(크래시) 치기 <small>새 파트가 시작된다는 느낌을 줘요</small></label>
+              <label className="check-card"><input type="checkbox" checked={plan.fill} onChange={(e) => pick({ fill: e.target.checked }, 2)} /> {L("파트 끝에 작은 연주(필인) 넣기")} <small>{L("다음 파트로 넘어가는 신호예요")}</small></label>
+              <label className="check-card"><input type="checkbox" checked={plan.crash} onChange={(e) => pick({ crash: e.target.checked }, 2)} /> {L("첫 박에 심벌(크래시) 치기")} <small>{L("새 파트가 시작된다는 느낌을 줘요")}</small></label>
             </div>
           )}
-          {beats !== 4 && plan.drum !== 'none' && <p className="note-text">{beats}박자에 맞게 자리를 자동으로 조정했어요.</p>}
+          {beats !== 4 && plan.drum !== 'none' && <p className="note-text">{beats}{L("박자에 맞게 자리를 자동으로 조정했어요.")}</p>}
         </Course>
 
-        <Course no={4} onPlay={() => onAudition(plan, 2, sec.kind)} title="베이스" sub={plan.drum === 'none' ? '낮은 음으로 화음의 바닥을 받쳐요.' : '드럼의 킥 자리에 맞춰 루트(화음의 으뜸음)를 놓는 게 기본이에요.'}>
+        <Course no={4} onPlay={() => onAudition(plan, 2, sec.kind)} title={L("베이스")} sub={plan.drum === 'none' ? L("낮은 음으로 화음의 바닥을 받쳐요.") : L("드럼의 킥 자리에 맞춰 루트(화음의 으뜸음)를 놓는 게 기본이에요.")}>
           <div className="choice-grid">
             {BASS_STYLES.map((c) => (
               <button key={c.id} className={`choice ${plan.bass === c.id ? 'on' : ''}`} onClick={() => pick({ bass: c.id as BassStyle }, 2)}>
                 <b>{c.icon} {c.name}</b>
                 {c.id !== 'none' && <Strip len={len} rows={[
-                  { label: '베이스', hits: sample.bass(c.id, plan.drum), color: 'var(--accent)' },
-                  { label: '킥', hits: kicks, color: '#4f8cff88' },
+                  { label: L("베이스"), hits: sample.bass(c.id, plan.drum), color: 'var(--accent)' },
+                  { label: L("킥"), hits: kicks, color: '#4f8cff88' },
                 ]} />}
                 <small>{c.desc}</small>
               </button>
@@ -271,14 +272,14 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
       </div>
 
       <footer className="mb-bar">
-        <span className="mb-count">{idx + 1} / {song.sections.length} 파트</span>
-        <button onClick={gotoPrev} disabled={idx === 0}>← 앞 파트</button>
-        <button onClick={copyPrev} disabled={!prev} title="앞 파트의 반주·드럼·베이스 설정을 그대로 가져와요 (화음 진행은 유지)">앞 파트처럼</button>
-        <button onClick={applyAllSame} title="이 파트의 반주·드럼·베이스 설정을 모든 파트에">모든 파트에 같게</button>
-        <button onClick={() => onApply([sec.id], sec.id)}>▶ 이 파트 적용하고 듣기</button>
-        <button onClick={gotoNext} disabled={idx === song.sections.length - 1}>다음 파트 →</button>
+        <span className="mb-count">{idx + 1} / {song.sections.length} {L("파트")}</span>
+        <button onClick={gotoPrev} disabled={idx === 0}>{L("← 앞 파트")}</button>
+        <button onClick={copyPrev} disabled={!prev} title={L("앞 파트의 반주·드럼·베이스 설정을 그대로 가져와요 (화음 진행은 유지)")}>{L("앞 파트처럼")}</button>
+        <button onClick={applyAllSame} title={L("이 파트의 반주·드럼·베이스 설정을 모든 파트에")}>{L("모든 파트에 같게")}</button>
+        <button onClick={() => onApply([sec.id], sec.id)}>{L("▶ 이 파트 적용하고 듣기")}</button>
+        <button onClick={gotoNext} disabled={idx === song.sections.length - 1}>{L("다음 파트 →")}</button>
         <span className="grow" />
-        <button className="primary big-btn" onClick={() => { onApply(undefined); onDone() }}>전체 뼈대 세우기</button>
+        <button className="primary big-btn" onClick={() => { onApply(undefined); onDone() }}>{L("전체 뼈대 세우기")}</button>
       </footer>
     </div>
   )

@@ -1,3 +1,4 @@
+import { L, lang, setLang } from './i18n'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { PianoRoll } from './components/PianoRoll'
@@ -36,11 +37,11 @@ import { autoPlans, findRoleTrack, generate, type PartPlan } from './scaffold'
 import { PPQ, uid, type Note, type Section, type SectionKind, type Settings, type Song, type Tool, type Track } from './types'
 
 const SNAPS = [
-  { label: '4분음표 (한 박)', v: PPQ },
-  { label: '8분음표 (2등분)', v: PPQ / 2 },
-  { label: '16분음표 (4등분)', v: PPQ / 4 },
-  { label: '32분음표', v: PPQ / 8 },
-  { label: '셋잇단 8분', v: PPQ / 3 },
+  { label: L("4분음표 (한 박)"), v: PPQ },
+  { label: L("8분음표 (2등분)"), v: PPQ / 2 },
+  { label: L("16분음표 (4등분)"), v: PPQ / 4 },
+  { label: L("32분음표"), v: PPQ / 8 },
+  { label: L("셋잇단 8분"), v: PPQ / 3 },
 ]
 
 const saved = loadSaved()
@@ -69,14 +70,14 @@ function TimeDisplay({ getTick, song, speed }: { getTick: () => number; song: So
       const sec = (t / PPQ) * (60 / (song.bpm * speed))
       const m = Math.floor(sec / 60)
       const s = (sec % 60).toFixed(1).padStart(4, '0')
-      if (ref.current) ref.current.textContent = `${bar}마디 ${beat}박`
+      if (ref.current) ref.current.textContent = L("{0}마디 {1}박", bar, beat)
       if (clock.current) clock.current.textContent = `  ${m}:${s}`
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
   }, [getTick, song.beatsPerBar, song.bpm, speed])
-  return <span className="time" aria-label="재생 위치"><span ref={ref} /><span className="time-clock" ref={clock} /></span>
+  return <span className="time" aria-label={L("재생 위치")}><span ref={ref} /><span className="time-clock" ref={clock} /></span>
 }
 
 function download(data: BlobPart, name: string, type: string) {
@@ -239,7 +240,7 @@ export default function App() {
   const removeTrack = (id: string) => {
     const t = song.tracks.find((x) => x.id === id)
     if (!t || song.tracks.length <= 1) return
-    if (t.notes.length && !confirm(`"${t.name}" 트랙을 지울까요? (되돌리기로 복구할 수 있어요)`)) return
+    if (t.notes.length && !confirm(L("\"{0}\" 트랙을 지울까요? (되돌리기로 복구할 수 있어요)", t.name))) return
     hist.set((s) => ({ ...s, tracks: s.tracks.filter((x) => x.id !== id) }))
     if (id === activeId) setActiveId(song.tracks.find((x) => x.id !== id)!.id)
   }
@@ -272,7 +273,7 @@ export default function App() {
   const applyStructure = (id: string, quiet = false): boolean => {
     const st = STRUCTURES.find((x) => x.id === id)
     if (!st) return false
-    if (song.tracks.some((t) => t.notes.length) && !confirm('곡의 틀을 바꾸면 지금 쓴 음표가 모두 지워져요. 바꿀까요? (되돌리기로 복구할 수 있어요)')) return false
+    if (song.tracks.some((t) => t.notes.length) && !confirm(L("곡의 틀을 바꾸면 지금 쓴 음표가 모두 지워져요. 바꿀까요? (되돌리기로 복구할 수 있어요)"))) return false
     const secs = namesFor(st.parts)
     hist.set((x) => applySections(x, secs.map((q) => ({ src: null, kind: q.kind, name: q.name, bars: q.bars }))))
     setPlans({})
@@ -281,7 +282,7 @@ export default function App() {
     setSettings({ loop: false, loopStart: 0, loopEnd: Math.max(8, secs.reduce((n, q) => n + q.bars, 0)) * song.beatsPerBar * PPQ })
     setIvStructure(id)
     setIvBuilt(false)
-    if (!quiet) flash(`${st.label}(으)로 곡의 틀을 만들었어요. 파트를 끌어서 순서를 바꿔 보세요!`)
+    if (!quiet) flash(L("{0}(으)로 곡의 틀을 만들었어요. 파트를 끌어서 순서를 바꿔 보세요!", st.label))
     return true
   }
 
@@ -291,7 +292,7 @@ export default function App() {
     const base: Song = {
       ...real,
       bars,
-      sections: [{ id: '__aud', kind, name: '미리듣기', bars }],
+      sections: [{ id: '__aud', kind, name: L("미리듣기"), bars }],
       tracks: real.tracks.map((t) => ({ ...t, mute: false, solo: false, notes: [] })),
     }
     const tmp = generate(base, settingsRef.current, { __aud: plan })
@@ -307,7 +308,7 @@ export default function App() {
     setPlans(filled)
     hist.set((x) => generate(x, settingsRef.current, filled, ids))
     if (listen) playPart(listen)
-    else if (!quiet) flash('뼈대를 세웠어요! 직접 쓰기에서 멜로디를 얹어 보세요')
+    else if (!quiet) flash(L("뼈대를 세웠어요! 직접 쓰기에서 멜로디를 얹어 보세요"))
   }
 
   const focusSection = (id: string) => {
@@ -350,10 +351,10 @@ export default function App() {
     try {
       const sf = audioRef.current?.engine.soundfontData ?? null
       const blob = await exportAudio(song, format, sf, (progress) => setExporting({ format, progress }))
-      download(blob, `${song.title || '내 곡'}.${format}`, blob.type)
+      download(blob, `${song.title || L("내 곡")}.${format}`, blob.type)
     } catch (e) {
       console.error(e)
-      flash('소리 파일을 만들지 못했어요. 다시 해 보거나 .mid로 저장해 주세요.')
+      flash(L("소리 파일을 만들지 못했어요. 다시 해 보거나 .mid로 저장해 주세요."))
     } finally {
       setExporting(null)
     }
@@ -430,11 +431,11 @@ export default function App() {
       countInBefore.current = null
     }
     const raw = recorder().finish()
-    if (!raw.length) return flash('녹음된 음표가 없어요. 건반을 눌러 연주해 보세요!')
+    if (!raw.length) return flash(L("녹음된 음표가 없어요. 건반을 눌러 연주해 보세요!"))
     const notes = correctTake(raw, info.correction, correctEnv(info.trackId))
     updateNotes(info.trackId, (ns) => [...ns, ...notes], true)
     setLastTake({ count: notes.length, trackId: info.trackId, raw })
-    flash(`음표 ${notes.length}개를 녹음하고 보정했어요!`)
+    flash(L("음표 {0}개를 녹음하고 보정했어요!", notes.length))
   }
 
   /** 보정에 필요한 환경 (템포, 음계, 악기 음역) */
@@ -460,7 +461,7 @@ export default function App() {
     const rawIds = new Set(lastTake.raw.map((n) => n.id))
     updateNotes(lastTake.trackId, (ns) => ns.filter((n) => !rawIds.has(n.id)), true)
     setLastTake(null)
-    flash('방금 녹음을 지웠어요.')
+    flash(L("방금 녹음을 지웠어요."))
   }
   finishTakeRef.current = finishTake
 
@@ -475,7 +476,7 @@ export default function App() {
     if (!code) return
     decodeSong(code)
       .then((r) => setIncoming({ song: r.song, scale: r.settings }))
-      .catch(() => flash('링크 속 곡을 읽지 못했어요.'))
+      .catch(() => flash(L("링크 속 곡을 읽지 못했어요.")))
   }, [])
   const openIncoming = () => {
     if (!incoming) return
@@ -486,7 +487,7 @@ export default function App() {
     history.replaceState(null, '', location.pathname)
     setIncoming(null)
     setWs('deliver')
-    flash('친구의 곡을 열었어요! 먼저 들어 보고 평가도 받아 보세요 ')
+    flash(L("친구의 곡을 열었어요! 먼저 들어 보고 평가도 받아 보세요 "))
   }
   const changeMaster = (v: number) => {
     setMaster(v)
@@ -574,62 +575,62 @@ export default function App() {
         setSettingsState(proj.settings)
         setPlans(proj.plans)
         setWs('compose')
-        flash(`"${f.name}"을(를) 쎈스 컴포즈 프로젝트로 불러왔어요. 파트와 반주 설정도 그대로예요.`)
+        flash(L("\"{0}\"을(를) 쎈스 컴포즈 프로젝트로 불러왔어요. 파트와 반주 설정도 그대로예요.", f.name))
         return
       }
       const s = withId(importMidi(bytes.buffer, f.name), true)
-      if (!s.tracks.length) return flash('음표가 있는 트랙이 없는 파일이에요.')
+      if (!s.tracks.length) return flash(L("음표가 있는 트랙이 없는 파일이에요."))
       stop()
       hist.reset(s)
       setActiveId(s.tracks[0].id)
       setSettingsState(defaultSettings(s))
       setWs('compose')
-      flash(`"${f.name}"을(를) 불러왔어요.`)
+      flash(L("\"{0}\"을(를) 불러왔어요.", f.name))
     } catch {
-      flash('MIDI 파일을 읽지 못했어요.')
+      flash(L("MIDI 파일을 읽지 못했어요."))
     }
   }
 
   const saveMidi = () => {
     // 보통 MIDI 파일이면서, 쎈스 컴포즈에서 다시 열면 파트 · 반주 설정까지 되살아나는 프로젝트 파일
     void encodeProject({ song, settings, plans })
-      .then((b) => download(b as BlobPart, `${song.title || '내 곡'}.mid`, 'audio/midi'))
-      .catch(() => download(exportMidi(song), `${song.title || '내 곡'}.mid`, 'audio/midi'))
-    flash('.mid 파일로 저장했어요.')
+      .then((b) => download(b as BlobPart, `${song.title || L("내 곡")}.mid`, 'audio/midi'))
+      .catch(() => download(exportMidi(song), `${song.title || L("내 곡")}.mid`, 'audio/midi'))
+    flash(L(".mid 파일로 저장했어요."))
   }
 
   const backupProject = () => {
     download(JSON.stringify({ format: 'sense-score', version: 1, song, settings }, null, 2),
-      `${song.title || '내 곡'}.sense.json`, 'application/json')
+      `${song.title || L("내 곡")}.sense.json`, 'application/json')
     void navigator.storage?.persist?.().catch(() => false)
-    flash('곡과 설정을 기기에 백업했어요.')
+    flash(L("곡과 설정을 기기에 백업했어요."))
   }
 
   const restoreProject = async (file: File) => {
     try {
       const data = parseProject(await file.text())
-      if (!confirm('현재 곡을 백업 파일의 곡으로 바꿀까요? 필요한 곡은 먼저 백업해 주세요.')) return
+      if (!confirm(L("현재 곡을 백업 파일의 곡으로 바꿀까요? 필요한 곡은 먼저 백업해 주세요."))) return
       stop()
       hist.reset(withId(data.song))
       setSettingsState(data.settings)
       setActiveId(data.song.tracks[0].id)
       setPlans({})
       setWs('compose')
-      flash('프로젝트 백업을 복원했어요.')
+      flash(L("프로젝트 백업을 복원했어요."))
     } catch {
-      flash('올바른 Sense Compose 프로젝트 파일을 선택해 주세요.')
+      flash(L("올바른 Sense Compose 프로젝트 파일을 선택해 주세요."))
     }
   }
 
   const loadSf = async (f: File) => {
     try {
-      flash('음색 파일을 불러오는 중…')
+      flash(L("음색 파일을 불러오는 중…"))
       await audio().engine.loadSoundfont(await f.arrayBuffer(), f.name)
       setSfName(f.name)
       try { localStorage.setItem(SOUND_KEY, 'custom') } catch { /* 무시 */ }
-      flash(`음색 "${f.name}" 적용!`)
+      flash(L("음색 \"{0}\" 적용!", f.name))
     } catch {
-      flash('음색 파일을 불러오지 못했어요 (.sf2 / .sf3 / .dls).')
+      flash(L("음색 파일을 불러오지 못했어요 (.sf2 / .sf3 / .dls)."))
     }
   }
 
@@ -692,7 +693,7 @@ export default function App() {
       return true
     }
     if (ivCreated === null && song.tracks.some((t) => t.notes.length) &&
-      !confirm('지금 열려 있는 곡 대신 새 곡을 만들까요? 필요하면 먼저 위쪽 "백업"으로 내려받아 두세요.')) return false
+      !confirm(L("지금 열려 있는 곡 대신 새 곡을 만들까요? 필요하면 먼저 위쪽 \"백업\"으로 내려받아 두세요."))) return false
     const r = buildTemplate(a)
     stop()
     hist.reset(withId(r.song, true))
@@ -803,10 +804,9 @@ export default function App() {
 
   const soundfontPanel = (
     <section className="panel">
-      <h3>소리 파일</h3>
+      <h3>{L("소리 파일")}</h3>
       <p className="note-text">
-        지금은 {sfName ? <b>{sfName === DEFAULT_SF_NAME ? '실감 나는 악기 소리(GeneralUser GS)' : sfName}</b> : sfState === 'loading' ? '실감 나는 악기 소리를 불러오는 중이라 잠시 간단한 소리' : '내장 간단한 소리'}를 쓰고 있어요.
-        다른 사운드폰트(.sf2/.sf3)를 불러올 수도 있어요.
+        {L("지금은")} {sfName ? <b>{sfName === DEFAULT_SF_NAME ? L("실감 나는 악기 소리(GeneralUser GS)") : sfName}</b> : sfState === 'loading' ? L("실감 나는 악기 소리를 불러오는 중이라 잠시 간단한 소리") : L("내장 간단한 소리")}{L("를 쓰고 있어요. 다른 사운드폰트(.sf2/.sf3)를 불러올 수도 있어요.")}
       </p>
       <div className="row-btns">
         {sfName !== DEFAULT_SF_NAME && (
@@ -816,9 +816,9 @@ export default function App() {
             setSfName(null)
             if (defaultSf.current) void applyDefaultSf()
             else location.reload()
-          }}>실감 나는 기본 소리로</button>
+          }}>{L("실감 나는 기본 소리로")}</button>
         )}
-        <button onClick={() => sfRef.current?.click()}>사운드폰트 불러오기</button>
+        <button onClick={() => sfRef.current?.click()}>{L("사운드폰트 불러오기")}</button>
         {sfName && (
           <button
             onClick={() => {
@@ -827,7 +827,7 @@ export default function App() {
               try { localStorage.setItem(SOUND_KEY, 'builtin') } catch { /* 무시 */ }
             }}
           >
-            간단한 소리로
+            {L("간단한 소리로")}
           </button>
         )}
       </div>
@@ -838,11 +838,11 @@ export default function App() {
     <div className={`app ws-${ws}`}>
       <header className="top">
         <div className="top-main">
-          <a className="wordmark" href="https://osense.github.io/WesNS/" target="_blank" rel="noopener" title="WSNS studio 홈페이지" aria-label="쎈스 컴포즈 — WSNS studio 홈페이지">
+          <a className="wordmark" href="https://osense.github.io/WesNS/" target="_blank" rel="noopener" title={L("WSNS studio 홈페이지")} aria-label={L("쎈스 컴포즈 — WSNS studio 홈페이지")}>
             <img className="mark" src="./brand/wsns-mark.svg" alt="" width="166" height="212" draggable={false} />
             <span className="bn">
-              <b>쎈스 컴포즈</b>
-              <small className="pron"><span className="pn-en">WSNS studio</span> <span className="pn-k">[웨스엔에스 스튜디오]</span></small>
+              <b>{L("쎈스 컴포즈")}</b>
+              <small className="pron"><span className="pn-en">WSNS studio</span> <span className="pn-k">{L("[웨스엔에스 스튜디오]")}</span></small>
             </span>
           </a>
           <input
@@ -850,42 +850,51 @@ export default function App() {
             value={song.title}
             onFocus={hist.checkpoint}
             onChange={(e) => setSong({ title: e.target.value }, false)}
-            aria-label="곡 제목"
+            aria-label={L("곡 제목")}
           />
-          <button className="icon-btn" onClick={hist.undo} disabled={!hist.canUndo} title="되돌리기 (Ctrl+Z)" aria-label="되돌리기">
+          <button className="icon-btn" onClick={hist.undo} disabled={!hist.canUndo} title={L("되돌리기 (Ctrl+Z)")} aria-label={L("되돌리기")}>
             <Icon name="undo" />
           </button>
-          <button className="icon-btn" onClick={hist.redo} disabled={!hist.canRedo} title="다시하기 (Ctrl+Y)" aria-label="다시하기">
+          <button className="icon-btn" onClick={hist.redo} disabled={!hist.canRedo} title={L("다시하기 (Ctrl+Y)")} aria-label={L("다시하기")}>
             <Icon name="redo" />
           </button>
-          <span className={`save-dot is-${dirty}`} title={dirty === 'saved' ? '이 기기에 저장됨' : dirty === 'error' ? '저장 실패' : '저장 중'} aria-hidden />
-          <button className={`icon-btn top-more-btn ${filesOpen ? 'on' : ''}`} onClick={() => setFilesOpen(!filesOpen)} aria-expanded={filesOpen} aria-label="파일·설정 메뉴" title="파일·설정">
+          <span className={`save-dot is-${dirty}`} title={dirty === 'saved' ? L("이 기기에 저장됨") : dirty === 'error' ? L("저장 실패") : L("저장 중")} aria-hidden />
+          <button className={`icon-btn top-more-btn ${filesOpen ? 'on' : ''}`} onClick={() => setFilesOpen(!filesOpen)} aria-expanded={filesOpen} aria-label={L("파일·설정 메뉴")} title={L("파일·설정")}>
             <Icon name="more" />
           </button>
+          <div className="lang-switch" role="group" aria-label="Language / 언어">
+            {(['ko', 'en'] as const).map((l) => (
+              <button key={l} type="button" className={lang === l ? 'on' : ''} aria-pressed={lang === l} lang={l}
+                title={l === 'ko' ? '한국어로 보기' : 'View in English'}
+                onClick={() => setLang(l, () => { save(song, settings) })}>
+                <span className="lang-full">{l === 'ko' ? '한국어' : 'English'}</span><span className="lang-short">{l.toUpperCase()}</span>
+              </button>
+            ))}
+          </div>
           <ExportMenu exporting={exporting} onAudio={(f) => void saveAudio(f)} onMidi={saveMidi} onShare={() => {
             setDeliverView('share')
             setWs('deliver')
           }} />
         </div>
         <div className={`top-files ${filesOpen ? 'open' : ''}`} onClick={(e) => { if ((e.target as HTMLElement).closest('button')) setFilesOpen(false) }}>
-          <button onClick={newSong}><Icon name="file" size={15} />새 곡</button>
-          <button onClick={() => fileRef.current?.click()} title="다른 프로그램에서 만든 MIDI 파일도 열 수 있어요"><Icon name="folder" size={15} />MIDI 열기</button>
-          <button onClick={backupProject} title="이 곡을 프로젝트 파일(.json)로 내려받아 보관"><Icon name="save" size={15} />백업</button>
-          <button onClick={() => projectRef.current?.click()} title="백업해 둔 프로젝트 파일 열기"><Icon name="upload" size={15} />복원</button>
-          <button onClick={() => setShowHelp(true)} title="도구 사용법"><Icon name="help" size={15} />사용법</button>
-          <button onClick={toggleTheme} title={theme === 'dark' ? '밝은 화면으로' : '어두운 화면으로'} aria-label="화면 밝기 바꾸기">
-            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} />{theme === 'dark' ? '밝게' : '어둡게'}
+          <button onClick={newSong}><Icon name="file" size={15} />{L("새 곡")}</button>
+          <button onClick={() => fileRef.current?.click()} title={L("다른 프로그램에서 만든 MIDI 파일도 열 수 있어요")}><Icon name="folder" size={15} />{L("MIDI 열기")}</button>
+          <button onClick={backupProject} title={L("이 곡을 프로젝트 파일(.json)로 내려받아 보관")}><Icon name="save" size={15} />{L("백업")}</button>
+          <button onClick={() => projectRef.current?.click()} title={L("백업해 둔 프로젝트 파일 열기")}><Icon name="upload" size={15} />{L("복원")}</button>
+          <button onClick={() => setShowHelp(true)} title={L("도구 사용법")}><Icon name="help" size={15} />{L("사용법")}</button>
+          <button onClick={toggleTheme} title={theme === 'dark' ? L("밝은 화면으로") : L("어두운 화면으로")} aria-label={L("화면 밝기 바꾸기")}>
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} />{theme === 'dark' ? L("밝게") : L("어둡게")}
           </button>
-          <span className={`save-state ${dirty}`} role="status" aria-live="polite" title="작업 내용은 서버로 보내지 않고 이 기기에만 저장돼요. 브라우저 데이터를 지우기 전에 백업해 주세요.">
+          <span className={`save-state ${dirty}`} role="status" aria-live="polite" title={L("작업 내용은 서버로 보내지 않고 이 기기에만 저장돼요. 브라우저 데이터를 지우기 전에 백업해 주세요.")}>
             <i />
-            {dirty === 'saved' ? '이 기기에 저장됨' : dirty === 'error' ? '저장 실패' : '저장 중'}
+            {dirty === 'saved' ? L("이 기기에 저장됨") : dirty === 'error' ? L("저장 실패") : L("저장 중")}
           </span>
         </div>
       </header>
       {dirty === 'error' && (
         <div className="local-status error" role="alert">
-          <span>자동 저장 실패 — 저장 공간·브라우저 설정을 확인하고 프로젝트를 백업해 주세요.</span>
-          <button onClick={() => setDirty(save(song, settings) ? 'saved' : 'error')}>저장 재시도</button>
+          <span>{L("자동 저장 실패 — 저장 공간·브라우저 설정을 확인하고 프로젝트를 백업해 주세요.")}</span>
+          <button onClick={() => setDirty(save(song, settings) ? 'saved' : 'error')}>{L("저장 재시도")}</button>
         </div>
       )}
       <input ref={projectRef} type="file" accept=".json,application/json" hidden onChange={(e) => {
@@ -919,26 +928,26 @@ export default function App() {
       {ws !== 'start' && (
         <div className="transport">
           <div className="t-group">
-            <button className="t-btn" onClick={stop} title="처음으로 (Home)" aria-label="처음으로">
+            <button className="t-btn" onClick={stop} title={L("처음으로 (Home)")} aria-label={L("처음으로")}>
               <Icon name="stop" size={16} />
             </button>
-            <button className="t-btn play" onClick={() => void togglePlay()} title="재생/일시정지 (스페이스)" aria-label={playing ? '일시정지' : '재생'}>
+            <button className="t-btn play" onClick={() => void togglePlay()} title={L("재생/일시정지 (스페이스)")} aria-label={playing ? L("일시정지") : L("재생")}>
               <Icon name={playing ? 'pause' : 'play'} size={18} />
             </button>
             <TimeDisplay getTick={getTick} song={song} speed={settings.speed} />
           </div>
           <div className="t-group">
             <TempoControl value={song.bpm} onChange={(bpm) => setSong({ bpm }, false)} onCheckpoint={hist.checkpoint} />
-            <label className="inline" title="한 마디가 몇 박인지">
-              <span className="lbl-word">박자</span>
+            <label className="inline" title={L("한 마디가 몇 박인지")}>
+              <span className="lbl-word">{L("박자")}</span>
               <select value={song.beatsPerBar} onChange={(e) => setSong({ beatsPerBar: +e.target.value })}>
                 {[2, 3, 4, 5, 6, 7].map((n) => (
                   <option key={n} value={n}>{n}/4</option>
                 ))}
               </select>
             </label>
-            <label className="inline speed" title="느리게 연습하거나 빠르게 들어보기 (곡의 빠르기는 바뀌지 않아요)">
-              <span className="lbl-word">속도</span> <b>×{settings.speed.toFixed(2)}</b>
+            <label className="inline speed" title={L("느리게 연습하거나 빠르게 들어보기 (곡의 빠르기는 바뀌지 않아요)")}>
+              <span className="lbl-word">{L("속도")}</span> <b>×{settings.speed.toFixed(2)}</b>
               <input type="range" min={0.25} max={2} step={0.05} value={settings.speed} onChange={(e) => setSettings({ speed: +e.target.value })} />
             </label>
           </div>
@@ -951,15 +960,15 @@ export default function App() {
                 if (!settings.loop && settings.loopEnd <= settings.loopStart) setSettings({ loop: true, loopStart: 0, loopEnd: end })
                 else setSettings({ loop: !settings.loop })
               }}
-              title="눈금자(위쪽 마디 숫자)를 끌거나 파트 이름을 눌러서 반복할 구간을 정해요"
+              title={L("눈금자(위쪽 마디 숫자)를 끌거나 파트 이름을 눌러서 반복할 구간을 정해요")}
             >
-              <Icon name="loop" size={15} /><span className="t-word">반복</span>
+              <Icon name="loop" size={15} /><span className="t-word">{L("반복")}</span>
             </button>
-            <button className={settings.metronome ? 'toggle on' : 'toggle'} aria-pressed={settings.metronome} onClick={() => setSettings({ metronome: !settings.metronome })} title="박자를 알려주는 딱딱 소리">
-              <Icon name="metronome" size={15} /><span className="t-word">메트로놈</span>
+            <button className={settings.metronome ? 'toggle on' : 'toggle'} aria-pressed={settings.metronome} onClick={() => setSettings({ metronome: !settings.metronome })} title={L("박자를 알려주는 딱딱 소리")}>
+              <Icon name="metronome" size={15} /><span className="t-word">{L("메트로놈")}</span>
             </button>
-            <button className={settings.countIn ? 'toggle on' : 'toggle'} aria-pressed={settings.countIn} onClick={() => setSettings({ countIn: !settings.countIn })} title="재생 전에 한 마디 박자를 세어줘요">
-              <Icon name="countin" size={15} /><span className="t-word">먼저 세기</span>
+            <button className={settings.countIn ? 'toggle on' : 'toggle'} aria-pressed={settings.countIn} onClick={() => setSettings({ countIn: !settings.countIn })} title={L("재생 전에 한 마디 박자를 세어줘요")}>
+              <Icon name="countin" size={15} /><span className="t-word">{L("먼저 세기")}</span>
             </button>
           </div>
         </div>
@@ -1065,14 +1074,14 @@ export default function App() {
             <div className="editor-head">
             <div className="mode-tabs">
               <button className={mode === 'keys' ? 'tab on' : 'tab'} onClick={() => setMode('keys')}>
-                <Icon name={active.drum ? 'drum' : 'keys'} size={16} />{active.drum ? '드럼' : '건반'}
+                <Icon name={active.drum ? 'drum' : 'keys'} size={16} />{active.drum ? L("드럼") : L("건반")}
               </button>
               <button className={mode === 'score' ? 'tab on' : 'tab'} onClick={() => setMode('score')}>
-                <Icon name="score" size={16} />악보
+                <Icon name="score" size={16} />{L("악보")}
               </button>
             </div>
             <div className="part-strip">
-              <span className="lbl">파트</span>
+              <span className="lbl">{L("파트")}</span>
               <button
                 className={!loopSec ? 'chip on' : 'chip'}
                 onClick={() => {
@@ -1080,9 +1089,9 @@ export default function App() {
                   setSelectedSec(null)
                   window.dispatchEvent(new CustomEvent('focus-tick', { detail: 0 }))
                 }}
-                title="곡 전체 보기"
+                title={L("곡 전체 보기")}
               >
-                전체
+                {L("전체")}
               </button>
               {song.sections.map((s) => (
                 <button
@@ -1090,38 +1099,38 @@ export default function App() {
                   className={loopSec?.id === s.id ? 'chip on' : 'chip'}
                   style={{ ['--c' as string]: KINDS[s.kind].color }}
                   onClick={() => focusSection(s.id)}
-                  title={`${s.name} (${s.bars}마디) — 이 파트만 반복하며 작곡`}
+                  title={L("{0} ({1}마디) — 이 파트만 반복하며 작곡", s.name, s.bars)}
                 >
                   {s.name}
                 </button>
               ))}
-              <button className="chip ghost" onClick={() => setWs('arrange')}>파트 편집</button>
+              <button className="chip ghost" onClick={() => setWs('arrange')}>{L("파트 편집")}</button>
             </div>
-            <span className="cur-track" title="지금 쓰고 있는 트랙과, 그 악기가 낼 수 있는 음역">
+            <span className="cur-track" title={L("지금 쓰고 있는 트랙과, 그 악기가 낼 수 있는 음역")}>
               <i style={{ background: active.color }} /> {active.name}
-              {!active.drum && <small className="range-badge" title="이 악기에 잘 어울리는 음 높이예요. 밖에도 음을 쓸 수 있어요.">어울리는 음역 {rangeLabel(soundRangeOf(active.program))}</small>}
+              {!active.drum && <small className="range-badge" title={L("이 악기에 잘 어울리는 음 높이예요. 밖에도 음을 쓸 수 있어요.")}>{L("어울리는 음역")} {rangeLabel(soundRangeOf(active.program))}</small>}
             </span>
             </div>
-            <div className="view-bar" role="group" aria-label="보기 설정">
-              <label className="inline" title="음표를 놓을 수 있는 가장 작은 칸. 16분음표로 하면 한 박을 4등분해서 찍을 수 있어요">
-                <span className="lbl-word">최소 칸</span>
+            <div className="view-bar" role="group" aria-label={L("보기 설정")}>
+              <label className="inline" title={L("음표를 놓을 수 있는 가장 작은 칸. 16분음표로 하면 한 박을 4등분해서 찍을 수 있어요")}>
+                <span className="lbl-word">{L("최소 칸")}</span>
                 <select value={settings.snap} onChange={(e) => setSettings({ snap: +e.target.value })}>
                   {SNAPS.map((s) => (
                     <option key={s.v} value={s.v}>{s.label}</option>
                   ))}
                 </select>
               </label>
-              <label className="inline" title="가로 확대">
-                <span className="lbl-word">확대</span>
+              <label className="inline" title={L("가로 확대")}>
+                <span className="lbl-word">{L("확대")}</span>
                 <input type="range" min={0.4} max={2.5} step={0.1} value={zoom} onChange={(e) => setZoom(+e.target.value)} />
               </label>
-              <label className="check" title="재생 중 화면이 따라가요">
+              <label className="check" title={L("재생 중 화면이 따라가요")}>
                 <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} />
-                <span>따라가기</span>
+                <span>{L("따라가기")}</span>
               </label>
-              <button onClick={() => resizeEnd(4)} title="곡 끝에 4마디 더하기"><Icon name="plus" size={14} />4마디</button>
-              <button onClick={() => resizeEnd(-4)} title="음표가 있는 곳까지만 줄여요 (맨 뒤 파트가 줄어요)">
-                <Icon name="minus" size={14} />4마디
+              <button onClick={() => resizeEnd(4)} title={L("곡 끝에 4마디 더하기")}><Icon name="plus" size={14} />{L("4마디")}</button>
+              <button onClick={() => resizeEnd(-4)} title={L("음표가 있는 곳까지만 줄여요 (맨 뒤 파트가 줄어요)")}>
+                <Icon name="minus" size={14} />{L("4마디")}
               </button>
               {mode === 'keys' && !active.drum && <KeyDisplayControls settings={settings} onSettings={setSettings} />}
             </div>

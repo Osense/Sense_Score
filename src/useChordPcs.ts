@@ -1,3 +1,4 @@
+import { L } from './i18n'
 import { useEffect, useRef, useState } from 'react'
 import type { Song } from './types'
 
@@ -12,7 +13,7 @@ export function useChordPcs(song: Song, getTick: () => number, enabled: boolean)
     const update = () => {
       const { song: s, getTick: tick } = latest.current
       const t = tick()
-      const track = s.tracks.find(x => x.role === 'chords') ?? s.tracks.find(x => !x.drum && (x.name.includes('코드') || x.name.includes('반주')))
+      const track = s.tracks.find(x => x.role === 'chords') ?? s.tracks.find(x => !x.drum && (x.name.includes(L("코드")) || x.name.includes(L("반주"))))
       const next = new Set<number>()
       for (const n of track?.notes ?? []) if (n.start <= t && t < n.start + n.dur) next.add(n.pitch % 12)
       const key = [...next].sort().join(',')

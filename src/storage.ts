@@ -1,3 +1,4 @@
+import { L } from './i18n'
 import { PPQ, uid, type Settings, type Song } from './types'
 import { namesFor, normalizeSong } from './sections'
 import { TRACK_COLORS } from './music'
@@ -8,7 +9,7 @@ const SNAP16_FLAG = 'composing-sense:snap16'
 export function newTrack(index: number, drum = false) {
   return {
     id: uid(),
-    name: drum ? '드럼' : `트랙 ${index + 1}`,
+    name: drum ? L("드럼") : L("트랙 {0}", index + 1),
     program: drum ? 0 : 0,
     drum,
     volume: 0.8,
@@ -20,7 +21,7 @@ export function newTrack(index: number, drum = false) {
 }
 
 export const defaultSong = (): Song => ({
-  title: '내 첫 곡',
+  title: L("내 첫 곡"),
   bpm: 100,
   beatsPerBar: 4,
   bars: 8,

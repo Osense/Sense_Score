@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { useRef } from 'react'
 import { PPQ } from '../types'
 import { STEP } from '../scaffold'
@@ -58,9 +59,9 @@ export interface EditLane { key: string; label: string; color: string }
 export type PatValue = Record<string, PatNoteLike[]>
 
 export const GRIDS: { div: number; term: string; kid: string }[] = [
-  { div: 2, term: '8분음표', kid: '반 박씩' },
-  { div: 4, term: '16분음표', kid: '반의반 박씩' },
-  { div: 3, term: '셋잇단음표', kid: '한 박을 셋으로' },
+  { div: 2, term: L("8분음표"), kid: L("반 박씩") },
+  { div: 4, term: L("16분음표"), kid: L("반의반 박씩") },
+  { div: 3, term: L("셋잇단음표"), kid: L("한 박을 셋으로") },
 ]
 
 /** 음들이 어떤 칸 크기에 맞는지 (처음 열 때 칸 크기 고르기) */
@@ -170,8 +171,8 @@ export function PatternEditor({ beats, grid, onGrid, lanes, value, onChange, sus
   })
   return (
     <div className="pe" style={{ ['--cells' as string]: cells, ['--grid' as string]: grid }}>
-      <div className="pe-grids" role="radiogroup" aria-label="칸 크기">
-        <span>칸 크기</span>
+      <div className="pe-grids" role="radiogroup" aria-label={L("칸 크기")}>
+        <span>{L("칸 크기")}</span>
         {GRIDS.map((g) => (
           <button key={g.div} type="button" role="radio" aria-checked={grid === g.div} className={grid === g.div ? 'on' : ''} onClick={() => onGrid(g.div)}>
             <b>{g.term}</b><small>{g.kid}</small>
@@ -188,7 +189,7 @@ export function PatternEditor({ beats, grid, onGrid, lanes, value, onChange, sus
         <div key={l.key} className="pe-row">
           <span className="pe-label">{l.label}</span>
           <div className="pe-track" style={{ ['--c' as string]: l.color }} onPointerDown={down(l.key)} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
-            role="group" aria-label={`${l.label} 줄`}>
+            role="group" aria-label={L("{0} 줄", l.label)}>
             {Array.from({ length: cells }, (_, i) => <i key={i} className={`pe-cell ${i % grid === 0 ? 'beat' : ''}`} style={{ left: `${(i / cells) * 100}%` }} />)}
             {(value[l.key] ?? []).map((n, i) => (
               <b key={`${n.t}-${i}`} className={`pe-note ${sustain ? 'long' : ''}`}

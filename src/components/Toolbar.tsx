@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import type { Tool } from '../types'
 
 interface Props {
@@ -39,16 +40,16 @@ export const ICONS: Record<Tool, React.ReactNode> = {
 }
 
 const TOOLS: { id: Tool; label: string; tip: string; key: string }[] = [
-  { id: 'pen', label: '쓰기', tip: '연필: 눌러서 음표 쓰기, 음표를 끌어 길이 조절', key: '1' },
-  { id: 'eraser', label: '지우개', tip: '지우개: 닿는 음표 지우기 (끌면 문질러서 여러 개)', key: '2' },
-  { id: 'hand', label: '손바닥', tip: '손바닥: 음표 옮기기, 끝 손잡이로 길이 조절, 빈 곳 끌면 화면 이동', key: '3' },
-  { id: 'select', label: '선택', tip: '선택: 네모로 감싸 여러 음표를 한꺼번에 고르기', key: '4' },
+  { id: 'pen', label: L("쓰기"), tip: L("연필: 눌러서 음표 쓰기, 음표를 끌어 길이 조절"), key: '1' },
+  { id: 'eraser', label: L("지우개"), tip: L("지우개: 닿는 음표 지우기 (끌면 문질러서 여러 개)"), key: '2' },
+  { id: 'hand', label: L("손바닥"), tip: L("손바닥: 음표 옮기기, 끝 손잡이로 길이 조절, 빈 곳 끌면 화면 이동"), key: '3' },
+  { id: 'select', label: L("선택"), tip: L("선택: 네모로 감싸 여러 음표를 한꺼번에 고르기"), key: '4' },
 ]
 
 /** 마우스 우클릭/Shift 없이도 쓸 수 있는 터치용 도구 모음 */
 export function Toolbar({ tool, onTool, onUndo, onRedo, canUndo, canRedo, onZoom }: Props) {
   return (
-    <nav className="toolbar" aria-label="도구">
+    <nav className="toolbar" aria-label={L("도구")}>
       {TOOLS.map((t) => (
         <button
           key={t.id}
@@ -62,22 +63,22 @@ export function Toolbar({ tool, onTool, onUndo, onRedo, canUndo, canRedo, onZoom
         </button>
       ))}
       <div className="tool-sep" />
-      <button className="tool" onClick={onUndo} disabled={!canUndo} title="되돌리기 (Ctrl+Z)">
+      <button className="tool" onClick={onUndo} disabled={!canUndo} title={L("되돌리기 (Ctrl+Z)")}>
         <b>↶</b>
-        <span>되돌리기</span>
+        <span>{L("되돌리기")}</span>
       </button>
-      <button className="tool" onClick={onRedo} disabled={!canRedo} title="다시하기 (Ctrl+Y)">
+      <button className="tool" onClick={onRedo} disabled={!canRedo} title={L("다시하기 (Ctrl+Y)")}>
         <b>↷</b>
-        <span>다시</span>
+        <span>{L("다시")}</span>
       </button>
       <div className="tool-sep" />
-      <button className="tool" onClick={() => onZoom(0.2)} title="크게 보기">
+      <button className="tool" onClick={() => onZoom(0.2)} title={L("크게 보기")}>
         <b>＋</b>
-        <span>확대</span>
+        <span>{L("확대")}</span>
       </button>
-      <button className="tool" onClick={() => onZoom(-0.2)} title="작게 보기">
+      <button className="tool" onClick={() => onZoom(-0.2)} title={L("작게 보기")}>
         <b>－</b>
-        <span>축소</span>
+        <span>{L("축소")}</span>
       </button>
     </nav>
   )

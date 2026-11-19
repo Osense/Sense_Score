@@ -1,3 +1,4 @@
+import { L } from './i18n'
 import { nearestInScale } from './editActions'
 import { PPQ, type Note, type ScaleType } from './types'
 
@@ -31,10 +32,10 @@ export interface CorrectEnv {
 }
 
 export const PRESETS: { id: string; name: string; desc: string; c: Correction }[] = [
-  { id: 'raw', name: '원본 그대로', desc: '친 그대로 기록해요', c: { grid: 0, strength: 0, lenGrid: false, toScale: false, smooth: 0, clean: false, offsetMs: 0 } },
-  { id: 'light', name: '살짝 보정', desc: '타이밍을 60%만 맞추고 실수 음만 지워요', c: { grid: PPQ / 4, strength: 0.6, lenGrid: false, toScale: false, smooth: 0.3, clean: true, offsetMs: 0 } },
-  { id: 'clean', name: '깔끔하게 (추천)', desc: '16분음표 칸에 맞추고 음계 밖 음도 바로잡아요', c: { grid: PPQ / 4, strength: 1, lenGrid: true, toScale: true, smooth: 0.5, clean: true, offsetMs: 0 } },
-  { id: 'strict', name: '완벽 정렬', desc: '8분음표 칸에 딱 맞춰서 기계처럼 정확하게', c: { grid: PPQ / 2, strength: 1, lenGrid: true, toScale: true, smooth: 0.7, clean: true, offsetMs: 0 } },
+  { id: 'raw', name: L("원본 그대로"), desc: L("친 그대로 기록해요"), c: { grid: 0, strength: 0, lenGrid: false, toScale: false, smooth: 0, clean: false, offsetMs: 0 } },
+  { id: 'light', name: L("살짝 보정"), desc: L("타이밍을 60%만 맞추고 실수 음만 지워요"), c: { grid: PPQ / 4, strength: 0.6, lenGrid: false, toScale: false, smooth: 0.3, clean: true, offsetMs: 0 } },
+  { id: 'clean', name: L("깔끔하게 (추천)"), desc: L("16분음표 칸에 맞추고 음계 밖 음도 바로잡아요"), c: { grid: PPQ / 4, strength: 1, lenGrid: true, toScale: true, smooth: 0.5, clean: true, offsetMs: 0 } },
+  { id: 'strict', name: L("완벽 정렬"), desc: L("8분음표 칸에 딱 맞춰서 기계처럼 정확하게"), c: { grid: PPQ / 2, strength: 1, lenGrid: true, toScale: true, smooth: 0.7, clean: true, offsetMs: 0 } },
 ]
 
 export const DEFAULT_CORRECTION = PRESETS[2].c

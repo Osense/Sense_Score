@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { diatonicChords, NOTE_NAMES_KO, SCALES } from '../music'
 import type { ScaleType, Settings } from '../types'
 
@@ -15,12 +16,12 @@ export function LearnPanel({ settings, drumTrack, onSettings, onChord, onProgres
   const minor = settings.scaleType === 'minor' || settings.scaleType === 'minorPent'
   return (
     <section className="panel">
-      <h3>음계 도우미</h3>
+      <h3>{L("음계 도우미")}</h3>
       <p className="note-text">
-        음계를 고르면 어울리는 음이 <b className="hl">밝게</b> 표시되고, 나머지는 어둡게 보여요.
+        {L("음계를 고르면 어울리는 음이")} <b className="hl">{L("밝게\u200b")}</b> {L("표시되고, 나머지는 어둡게 보여요.")}
       </p>
       <div className="field">
-        <label>으뜸음</label>
+        <label>{L("으뜸음")}</label>
         <select value={settings.scaleRoot} onChange={(e) => onSettings({ scaleRoot: +e.target.value })}>
           {NOTE_NAMES_KO.map((n, i) => (
             <option key={n} value={i}>{n}</option>
@@ -28,9 +29,9 @@ export function LearnPanel({ settings, drumTrack, onSettings, onChord, onProgres
         </select>
       </div>
       <div className="field">
-        <label>음계</label>
+        <label>{L("음계")}</label>
         <select value={settings.scaleType} onChange={(e) => onSettings({ scaleType: e.target.value as ScaleType | 'none' })}>
-          <option value="none">사용 안 함</option>
+          <option value="none">{L("사용 안 함")}</option>
           {(Object.keys(SCALES) as ScaleType[]).map((k) => (
             <option key={k} value={k}>{SCALES[k].label}</option>
           ))}
@@ -38,11 +39,11 @@ export function LearnPanel({ settings, drumTrack, onSettings, onChord, onProgres
       </div>
       {on && (
         <>
-          <h4>코드(화음) 추천</h4>
-          <p className="note-text">누르면 현재 재생 위치에 한 마디짜리 화음이 들어가요.</p>
+          <h4>{L("코드(화음) 추천")}</h4>
+          <p className="note-text">{L("누르면 현재 재생 위치에 한 마디짜리 화음이 들어가요.")}</p>
           <div className="chords">
             {chords.map((c, i) => (
-              <button key={i} disabled={drumTrack} title={`${c.ko} 화음`} onClick={() => onChord(c.offsets, c.root)}>
+              <button key={i} disabled={drumTrack} title={L("{0} 화음", c.ko)} onClick={() => onChord(c.offsets, c.root)}>
                 <small>{c.roman}</small>
                 {c.name}
               </button>
@@ -53,7 +54,7 @@ export function LearnPanel({ settings, drumTrack, onSettings, onChord, onProgres
             disabled={drumTrack}
             onClick={() => onProgression(minor ? [0, 5, 2, 6] : [0, 4, 5, 3])}
           >
-            인기 코드 진행 넣기 ({minor ? 'Ⅰ-Ⅵ-Ⅲ-Ⅶ' : 'Ⅰ-Ⅴ-Ⅵ-Ⅳ'})
+            {L("인기 코드 진행 넣기 (")}{minor ? 'Ⅰ-Ⅵ-Ⅲ-Ⅶ' : 'Ⅰ-Ⅴ-Ⅵ-Ⅳ'})
           </button>
         </>
       )}

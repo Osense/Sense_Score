@@ -1,3 +1,4 @@
+import { L } from './i18n'
 import { namesFor } from './sections'
 import { defaultSettings, newTrack } from './storage'
 import type { ScaleType, Settings, Song, Track } from './types'
@@ -30,10 +31,10 @@ export const defaultAnswers = (): Answers => ({
 /** 대답에 맞춰 빈 곡(트랙과 8마디 한 덩어리 파트)을 만든다 */
 export function buildTemplate(a: Answers): { song: Song; settings: Settings } {
   const want: { key: 'melody' | 'chords' | 'bass' | 'drums'; name: string; program: number; vol: number }[] = [
-    { key: 'melody', name: '멜로디', program: 0, vol: 0.85 },
-    { key: 'chords', name: '코드 반주', program: 48, vol: 0.5 },
-    { key: 'bass', name: '베이스', program: 33, vol: 0.65 },
-    { key: 'drums', name: '드럼', program: 0, vol: 0.7 },
+    { key: 'melody', name: L("멜로디"), program: 0, vol: 0.85 },
+    { key: 'chords', name: L("코드 반주"), program: 48, vol: 0.5 },
+    { key: 'bass', name: L("베이스"), program: 33, vol: 0.65 },
+    { key: 'drums', name: L("드럼"), program: 0, vol: 0.7 },
   ]
   const picked = want.filter((w) => a[w.key])
   if (!picked.length) picked.push(want[0])
@@ -45,8 +46,8 @@ export function buildTemplate(a: Answers): { song: Song; settings: Settings } {
     volume: w.vol,
     role: w.key,
   }))
-  const sections = namesFor([['free', 8, '전체']])
-  const song: Song = { title: a.title.trim() || '새 곡', bpm: a.bpm, beatsPerBar: a.beats, bars: 8, sections, tracks }
+  const sections = namesFor([['free', 8, L("전체")]])
+  const song: Song = { title: a.title.trim() || L("새 곡"), bpm: a.bpm, beatsPerBar: a.beats, bars: 8, sections, tracks }
   const settings: Settings = { ...defaultSettings(song), scaleRoot: a.root, scaleType: a.scaleType }
   return { song, settings }
 }

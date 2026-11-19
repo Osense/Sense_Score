@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { useEffect, useRef } from 'react'
 import { KINDS, rangesOf } from '../sections'
 import { PPQ, type Song } from '../types'
@@ -36,7 +37,7 @@ export function SongStrip({ song, getTick, onSeek, onPart, activePart, label }: 
         if (head.current) head.current.style.left = `${(t / total) * 100}%`
         if (time.current) {
           const barTicks = song.beatsPerBar * PPQ
-          time.current.textContent = `${Math.floor(t / barTicks) + 1}마디`
+          time.current.textContent = L("{0}마디", Math.floor(t / barTicks) + 1)
         }
       }
       raf = requestAnimationFrame(loop)
@@ -56,7 +57,7 @@ export function SongStrip({ song, getTick, onSeek, onPart, activePart, label }: 
     const t = tickAt(clientX)
     drag.current = t
     if (head.current) head.current.style.left = `${(t / total) * 100}%`
-    if (time.current) time.current.textContent = `${Math.floor(t / (song.beatsPerBar * PPQ)) + 1}마디`
+    if (time.current) time.current.textContent = L("{0}마디", Math.floor(t / (song.beatsPerBar * PPQ)) + 1)
   }
   const startX = useRef(0)
   const moved = useRef(false)
@@ -97,7 +98,7 @@ export function SongStrip({ song, getTick, onSeek, onPart, activePart, label }: 
 
   const rg = rangesOf(song)
   return (
-    <div className="ss" role="group" aria-label={label ?? '곡 위치'}>
+    <div className="ss" role="group" aria-label={label ?? L("곡 위치")}>
       {label && <span className="ss-label">{label}</span>}
       <div
         className="ss-track"
@@ -118,7 +119,7 @@ export function SongStrip({ song, getTick, onSeek, onPart, activePart, label }: 
               {s.name}
             </span>
           )
-        }) : <span className="ss-empty">파트가 없어요</span>}
+        }) : <span className="ss-empty">{L("파트가 없어요")}</span>}
         <div className="ss-head" ref={head} aria-hidden>
           <i />
           <span ref={time} />

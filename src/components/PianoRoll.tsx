@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PPQ, uid, type Note, type Settings, type Song, type Tool, type Track } from '../types'
 import { DRUM_PARTS, drumPartFor, inScale, isBlack, NOTE_NAMES_KO, pitchLabel } from '../music'
@@ -487,7 +488,7 @@ export function PianoRoll(p: Props) {
           className={`pad ${flash === pitch ? 'hit' : ''}`}
           style={{ height: rowH, ['--pad' as string]: part.color }}
           onPointerDown={() => { p.onPreview(pitch); setFlash(pitch); setTimeout(() => setFlash(null), 140) }}
-          title={`${part.label} (키보드 ${part.key})`}
+          title={L("{0} (키보드 {1})", part.label, part.key)}
         >
           <b>{part.label}</b>
           <kbd>{part.key}</kbd>
@@ -578,16 +579,16 @@ export function PianoRoll(p: Props) {
           <span className="hint">
             {HINT[tool]}
             {HINT_MENU}
-            {drum && ' · 키보드 Q W E R T A S D F로 파트 소리 듣기'}
+            {drum && L(" · 키보드 Q W E R T A S D F로 파트 소리 듣기")}
           </span>
         ) : (
           <>
-            <b>{selNotes.length}개 선택</b>
+            <b>{selNotes.length}{L("개 선택")}</b>
             {selNotes.length === 1 && (
               <span>{drum ? drumPartFor(selNotes[0].pitch).label : `${pitchLabel(selNotes[0].pitch)} (${NOTE_NAMES_KO[selNotes[0].pitch % 12]})`}</span>
             )}
             <label>
-              세기
+              {L("세기")}
               <input
                 type="range" min={1} max={127} value={selNotes[0].vel}
                 onPointerDown={() => p.onCheckpoint()}
@@ -597,18 +598,18 @@ export function PianoRoll(p: Props) {
                 }}
               />
             </label>
-            <button onClick={duplicate}>⧉ 복제</button>
-            <button onClick={() => del(selected)}>지우기</button>
+            <button onClick={duplicate}>{L("⧉ 복제")}</button>
+            <button onClick={() => del(selected)}>{L("지우기")}</button>
           </>
         )}
-        <button onClick={(e) => setMenu({ x: e.clientX, y: e.clientY, tick: snapTick(p.getTick()) })} title="복사·붙여넣기·길이·음높이 등 편집 메뉴 (음표를 우클릭하거나 꾹 눌러도 열려요)">⋯ 편집 메뉴</button>
+        <button onClick={(e) => setMenu({ x: e.clientX, y: e.clientY, tick: snapTick(p.getTick()) })} title={L("복사·붙여넣기·길이·음높이 등 편집 메뉴 (음표를 우클릭하거나 꾹 눌러도 열려요)")}>{L("⋯ 편집 메뉴")}</button>
         {!drum && (
           <span className="transpose">
-            <span className="lbl">전조 <small>({selNotes.length ? '선택한 음' : '이 트랙 전체'})</small></span>
-            <button onClick={() => transpose(-12)} title="한 옥타브 내리기">8도 ↓</button>
-            <button onClick={() => transpose(-1)} title="반음 내리기">♭ 반음↓</button>
-            <button onClick={() => transpose(1)} title="반음 올리기">♯ 반음↑</button>
-            <button onClick={() => transpose(12)} title="한 옥타브 올리기">8도 ↑</button>
+            <span className="lbl">{L("전조")} <small>({selNotes.length ? L("선택한 음") : L("이 트랙 전체")})</small></span>
+            <button onClick={() => transpose(-12)} title={L("한 옥타브 내리기")}>{L("8도 ↓")}</button>
+            <button onClick={() => transpose(-1)} title={L("반음 내리기")}>{L("♭ 반음↓")}</button>
+            <button onClick={() => transpose(1)} title={L("반음 올리기")}>{L("♯ 반음↑")}</button>
+            <button onClick={() => transpose(12)} title={L("한 옥타브 올리기")}>{L("8도 ↑")}</button>
           </span>
         )}
       </div>
@@ -625,10 +626,10 @@ export function PianoRoll(p: Props) {
   )
 }
 
-const HINT_MENU = ' · 우클릭/꾹 누르기: 편집 메뉴'
+const HINT_MENU = L(" · 우클릭/꾹 누르기: 편집 메뉴")
 const HINT: Record<Tool, string> = {
-  pen: '빈 곳을 누르면 음표가 생겨요 (끌면 길이 조절) · 음표를 끌면 길이가 늘었다 줄었다 해요',
-  eraser: '지우고 싶은 음표를 누르거나, 문지르듯 끌면 닿는 음표가 지워져요',
-  hand: '음표를 끌면 이동 · 음표 오른쪽 끝을 끌면 길이 조절 · 빈 곳을 끌면 화면 이동',
-  select: '⬚ 빈 곳에서 끌어 네모로 감싸면 여러 음표가 선택돼요 · 음표를 누르면 선택/해제',
+  pen: L("빈 곳을 누르면 음표가 생겨요 (끌면 길이 조절) · 음표를 끌면 길이가 늘었다 줄었다 해요"),
+  eraser: L("지우고 싶은 음표를 누르거나, 문지르듯 끌면 닿는 음표가 지워져요"),
+  hand: L("음표를 끌면 이동 · 음표 오른쪽 끝을 끌면 길이 조절 · 빈 곳을 끌면 화면 이동"),
+  select: L("⬚ 빈 곳에서 끌어 네모로 감싸면 여러 음표가 선택돼요 · 음표를 누르면 선택/해제"),
 }

@@ -1,3 +1,4 @@
+import { isEn, L } from '../i18n'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PPQ, uid, type Note, type ScaleType, type Settings, type Song, type Tool, type Track } from '../types'
 import { DRUM_PARTS, drumPartFor, KEY_CHOICES, keyOf, KEYSIG_STEPS, pitchLabel, pitchOfStep, spell } from '../music'
@@ -45,11 +46,11 @@ const D_H = 10 * D_STEP + D_PAD * 2
 const DRUM_BY_SLOT = [...DRUM_PARTS].sort((a, b) => b.slot - a.slot)
 
 const DURS = [
-  { label: '온음표', ticks: PPQ * 4, icon: '𝅝' },
-  { label: '2분음표', ticks: PPQ * 2, icon: '𝅗𝅥' },
-  { label: '4분음표', ticks: PPQ, icon: '♩' },
-  { label: '8분음표', ticks: PPQ / 2, icon: '♪' },
-  { label: '16분음표', ticks: PPQ / 4, icon: '𝅘𝅥𝅯' },
+  { label: L("온음표"), ticks: PPQ * 4, icon: '𝅝' },
+  { label: L("2분음표"), ticks: PPQ * 2, icon: '𝅗𝅥' },
+  { label: L("4분음표"), ticks: PPQ, icon: '♩' },
+  { label: L("8분음표"), ticks: PPQ / 2, icon: '♪' },
+  { label: L("16분음표"), ticks: PPQ / 4, icon: '𝅘𝅥𝅯' },
 ]
 
 interface Props {
@@ -888,7 +889,7 @@ export function StaffEditor(p: Props) {
   const loopOn = settings.loop && settings.loopEnd > settings.loopStart
   const sel1 = glyphs.find((g) => selected.has(g.n.id))
   const nSel = new Set(glyphs.filter((g) => selected.has(g.n.id)).map((g) => g.n.id)).size
-  const keyName = settings.scaleType === 'none' ? '다장조' : ks.name
+  const keyName = settings.scaleType === 'none' ? L("다장조") : ks.name
 
   const systemEls = systems.map((s, si) => {
     const w = s.bars * barTicks * s.ppt
@@ -936,47 +937,47 @@ export function StaffEditor(p: Props) {
   return (
     <div className={`roll-wrap tool-${tool}`}>
       <div className="staff-tools">
-        <span className="lbl">보기</span>
-        <button className={`toggle ${!page ? 'on' : ''}`} onClick={() => p.onSettings({ scoreView: 'scroll' })} title="가로로 길게 이어진 악보">스크롤</button>
-        <button className={`toggle ${page ? 'on' : ''}`} onClick={() => p.onSettings({ scoreView: 'page' })} title="종이 악보처럼 여러 줄로 나눠 보기">페이지</button>
-        <button className={`toggle ${multi ? 'on' : ''}`} onClick={() => p.onSettings({ scoreMulti: !multi })} title="모든 트랙을 한꺼번에 위아래로 겹쳐 보기">다중 악보</button>
+        <span className="lbl">{L("보기")}</span>
+        <button className={`toggle ${!page ? 'on' : ''}`} onClick={() => p.onSettings({ scoreView: 'scroll' })} title={L("가로로 길게 이어진 악보")}>{L("스크롤")}</button>
+        <button className={`toggle ${page ? 'on' : ''}`} onClick={() => p.onSettings({ scoreView: 'page' })} title={L("종이 악보처럼 여러 줄로 나눠 보기")}>{L("페이지")}</button>
+        <button className={`toggle ${multi ? 'on' : ''}`} onClick={() => p.onSettings({ scoreMulti: !multi })} title={L("모든 트랙을 한꺼번에 위아래로 겹쳐 보기")}>{L("다중 악보")}</button>
         {page && (
-          <label className="inline" title="한 줄에 들어가는 마디 수. 자동은 4마디이고, 음이 촘촘하면 2마디로 줄어요">
-            한 줄
+          <label className="inline" title={L("한 줄에 들어가는 마디 수. 자동은 4마디이고, 음이 촘촘하면 2마디로 줄어요")}>
+            {L("한 줄")}
             <select value={settings.scoreBars} onChange={(e) => p.onSettings({ scoreBars: +e.target.value as Settings['scoreBars'] })}>
-              <option value={0}>자동 (기본 4마디)</option>
-              <option value={2}>2마디</option>
-              <option value={4}>4마디</option>
-              <option value={8}>8마디</option>
+              <option value={0}>{L("자동 (기본 4마디)")}</option>
+              <option value={2}>{L("2마디")}</option>
+              <option value={4}>{L("4마디")}</option>
+              <option value={8}>{L("8마디")}</option>
             </select>
-            {settings.scoreBars === 0 && <small className="muted">지금 {layout.perLine}마디</small>}
+            {settings.scoreBars === 0 && <small className="muted">{L("지금")} {layout.perLine}{L("마디")}</small>}
           </label>
         )}
         <span className="sep" />
-        <span className="lbl">음표 길이</span>
+        <span className="lbl">{L("음표 길이")}</span>
         {DURS.map((d) => (
           <button key={d.ticks} className={`toggle ${dur === d.ticks ? 'on' : ''}`} title={d.label} onClick={() => pickDur(d.ticks)}>
-            <span className="glyph">{d.icon}</span> {d.label.replace('음표', '')}
+            <span className="glyph">{d.icon}</span> {isEn ? d.label.replace(/ note$/i, '') : d.label.replace('음표', '')}
           </button>
         ))}
-        <button className={`toggle ${dotted ? 'on' : ''}`} title="점음표 (1.5배 길게)" onClick={toggleDot}>점</button>
+        <button className={`toggle ${dotted ? 'on' : ''}`} title={L("점음표 (1.5배 길게)")} onClick={toggleDot}>{L("점")}</button>
         <span className="sep" />
-        <span className="lbl">임시표</span>
-        {([['key', '조표대로'], ['sharp', '♯'], ['flat', '♭'], ['natural', '♮']] as const).map(([v, t]) => (
+        <span className="lbl">{L("임시표")}</span>
+        {([['key', L("조표대로")], ['sharp', '♯'], ['flat', '♭'], ['natural', '♮']] as const).map(([v, t]) => (
           <button
             key={v}
             className={`toggle ${acc === v ? 'on' : ''}`}
             onClick={() => setAcc(v)}
-            title={v === 'key' ? '조표에 맞는 음이 찍혀요' : '새로 찍는 음을 이 기호로 직접 올리거나 내려요'}
+            title={v === 'key' ? L("조표에 맞는 음이 찍혀요") : L("새로 찍는 음을 이 기호로 직접 올리거나 내려요")}
           >
             {t}
           </button>
         ))}
         <span className="sep" />
-        <span className="info-chip" title="박자는 위쪽 '박자'에서 바꿔요">{song.beatsPerBar}/4 박자</span>
-        <span className="info-chip" title="템포는 위쪽 '템포'에서 바꿔요">♩ = {song.bpm}</span>
-        <label className="inline" title="조성을 고르면 조표가 붙고, 음 이름과 임시표가 그에 맞게 바뀌어요">
-          조성
+        <span className="info-chip" title={L("박자는 위쪽 '박자'에서 바꿔요")}>{song.beatsPerBar}{L("/4 박자")}</span>
+        <span className="info-chip" title={L("템포는 위쪽 '템포'에서 바꿔요")}>♩ = {song.bpm}</span>
+        <label className="inline" title={L("조성을 고르면 조표가 붙고, 음 이름과 임시표가 그에 맞게 바뀌어요")}>
+          {L("조성")}
           <select
             value={settings.scaleType === 'none' ? 'none' : `${settings.scaleRoot}:${ks.minor ? 'minor' : 'major'}`}
             onChange={(e) => {
@@ -1027,7 +1028,7 @@ export function StaffEditor(p: Props) {
                       <rect x={0} y={top} width={PAGE_W} height={PAGE_H} className="paper" />
                       {i === 0 ? (
                         <text x={PAGE_W / 2} y={top + 92} textAnchor="middle" className="page-sub">
-                          ♩ = {song.bpm} · {song.beatsPerBar}/4 박자 · {keyName}
+                          ♩ = {song.bpm} · {song.beatsPerBar}{L("/4 박자 ·")} {keyName}
                         </text>
                       ) : (
                         <text x={MARGIN} y={top + 36} className="page-run">{song.title}</text>
@@ -1055,11 +1056,11 @@ export function StaffEditor(p: Props) {
               <input
                 className="page-title"
                 value={song.title}
-                placeholder="악보 제목"
+                placeholder={L("악보 제목")}
                 onChange={(e) => p.onTitle(e.target.value)}
                 onFocus={p.onCheckpoint}
                 style={{ left: 80 * scale, width: (PAGE_W - 160) * scale, top: 34 * scale, height: 44 * scale, fontSize: 30 * scale }}
-                aria-label="악보 제목"
+                aria-label={L("악보 제목")}
               />
             )}
             <div className="playhead" ref={headRef} />
@@ -1069,22 +1070,22 @@ export function StaffEditor(p: Props) {
 
       <div className="roll-status">
         {nSel === 0 ? (
-          <span className="hint">{TOOL_HINT[tool]} · 우클릭/꾹 누르기: 편집 메뉴</span>
+          <span className="hint">{TOOL_HINT[tool]} {L("· 우클릭/꾹 누르기: 편집 메뉴")}</span>
         ) : (
           <>
-            <b>{nSel}개 선택</b>
+            <b>{nSel}{L("개 선택")}</b>
             {nSel === 1 && sel1 && <span>{sel1.track.drum ? drumPartFor(sel1.n.pitch).label : pitchLabel(sel1.n.pitch)}</span>}
-            <button onClick={duplicate}>⧉ 복제</button>
-            <button onClick={() => del(selected)}>지우기</button>
+            <button onClick={duplicate}>{L("⧉ 복제")}</button>
+            <button onClick={() => del(selected)}>{L("지우기")}</button>
           </>
         )}
-        <button onClick={(e) => setMenu({ x: e.clientX, y: e.clientY, tick: Math.floor(p.getTick() / settings.snap) * settings.snap })} title="복사·붙여넣기·길이·음높이 등 편집 메뉴 (음표를 우클릭하거나 꾹 눌러도 열려요)">⋯ 편집 메뉴</button>
+        <button onClick={(e) => setMenu({ x: e.clientX, y: e.clientY, tick: Math.floor(p.getTick() / settings.snap) * settings.snap })} title={L("복사·붙여넣기·길이·음높이 등 편집 메뉴 (음표를 우클릭하거나 꾹 눌러도 열려요)")}>{L("⋯ 편집 메뉴")}</button>
         <span className="transpose">
-          <span className="lbl">전조 <small>({nSel ? '선택한 음' : '이 트랙 전체'})</small></span>
-          <button onClick={() => transpose(-12)} title="한 옥타브 내리기">8도 ↓</button>
-          <button onClick={() => transpose(-1)} title="반음 내리기">♭ 반음↓</button>
-          <button onClick={() => transpose(1)} title="반음 올리기">♯ 반음↑</button>
-          <button onClick={() => transpose(12)} title="한 옥타브 올리기">8도 ↑</button>
+          <span className="lbl">{L("전조")} <small>({nSel ? L("선택한 음") : L("이 트랙 전체")})</small></span>
+          <button onClick={() => transpose(-12)} title={L("한 옥타브 내리기")}>{L("8도 ↓")}</button>
+          <button onClick={() => transpose(-1)} title={L("반음 내리기")}>{L("♭ 반음↓")}</button>
+          <button onClick={() => transpose(1)} title={L("반음 올리기")}>{L("♯ 반음↑")}</button>
+          <button onClick={() => transpose(12)} title={L("한 옥타브 올리기")}>{L("8도 ↑")}</button>
         </span>
       </div>
       {menu && (
@@ -1107,8 +1108,8 @@ export function StaffEditor(p: Props) {
 }
 
 const TOOL_HINT: Record<Tool, string> = {
-  pen: '오선 위를 누르면 위에서 고른 길이의 음표가 찍혀요 · 음표를 끌면 길이가 늘었다 줄었다 해요',
-  eraser: '지우고 싶은 음표를 누르거나, 문지르듯 끌면 닿는 음표가 지워져요',
-  hand: '음표를 끌면 이동 · 음표 끝의 손잡이를 끌면 길이 조절 · 빈 곳을 끌면 화면 이동',
-  select: '⬚ 빈 곳에서 끌어 네모로 감싸면 여러 음표가 선택돼요 · 음표를 누르면 선택/해제',
+  pen: L("오선 위를 누르면 위에서 고른 길이의 음표가 찍혀요 · 음표를 끌면 길이가 늘었다 줄었다 해요"),
+  eraser: L("지우고 싶은 음표를 누르거나, 문지르듯 끌면 닿는 음표가 지워져요"),
+  hand: L("음표를 끌면 이동 · 음표 끝의 손잡이를 끌면 길이 조절 · 빈 곳을 끌면 화면 이동"),
+  select: L("⬚ 빈 곳에서 끌어 네모로 감싸면 여러 음표가 선택돼요 · 음표를 누르면 선택/해제"),
 }

@@ -2021,3 +2021,17 @@ b.mix-name { display: flex; align-items: center; }
 .ip-card-top { width: 100%; }
 .ip-card > * { text-align: left; }
 .ip-card em { font: 500 11.5px var(--font-ui); color: var(--dim); }
+
+/* ---------- 언어 바꾸기 (머리줄) ---------- */
+.lang-switch { display: inline-flex; flex: none; padding: 2px; gap: 2px; border-radius: 10px; border: 1px solid var(--border); background: var(--raised); }
+.lang-switch button { min-width: 0 !important; min-height: 0 !important; height: 28px; padding: 0 9px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 12.5px; font-weight: 700; }
+.lang-switch button.on { background: var(--brand-grad); color: var(--on-brand); }
+@media (pointer: coarse) and (min-width: 700px) { .lang-switch button { height: 36px; padding: 0 12px; } }
+@media (max-width: 640px) {
+  .lang-switch button { height: 26px; padding: 0 7px; font-size: 11.5px; }
+}
+.lang-short { display: none; }
+@media (max-width: 640px) {
+  .lang-full { display: none; }
+  .lang-short { display: inline; font-family: var(--font-mono); letter-spacing: .02em; }
+}

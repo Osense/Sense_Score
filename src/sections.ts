@@ -1,16 +1,17 @@
+import { L } from './i18n'
 import { bendAt, PPQ, uid, type Bend, type Note, type Section, type SectionKind, type Song } from './types'
 
 export const KINDS: Record<SectionKind, { label: string; color: string; hint: string }> = {
-  a: { label: 'A', color: '#6f8fb3', hint: '곡의 얼굴이 되는 첫 번째 가락(주제)' },
-  b: { label: 'B', color: '#e0605c', hint: 'A와 다른 분위기로 이야기를 이어 가는 가락(대비)' },
-  intro: { label: '인트로', color: '#7d6a6c', hint: '곡의 시작! 분위기를 살짝 보여줘요' },
-  verse: { label: '벌스', color: '#6f8fb3', hint: '이야기를 풀어가는 부분 (노래의 1절, 2절)' },
-  prechorus: { label: '프리코러스', color: '#5f9e98', hint: '후렴으로 올라가기 전에 긴장감을 만드는 부분' },
-  chorus: { label: '코러스', color: '#e0605c', hint: '가장 신나고 기억에 남는 후렴' },
-  bridge: { label: '브릿지', color: '#9c7bb5', hint: '분위기를 확 바꾸는 부분' },
-  interlude: { label: '간주', color: '#7fa77f', hint: '노래 사이에 연주만 나오는 부분' },
-  outro: { label: '아웃트로', color: '#c99a45', hint: '곡을 마무리하는 부분' },
-  free: { label: '자유', color: '#8a7a7c', hint: '정해진 역할 없이 마음대로' },
+  a: { label: 'A', color: '#6f8fb3', hint: L("곡의 얼굴이 되는 첫 번째 가락(주제)") },
+  b: { label: 'B', color: '#e0605c', hint: L("A와 다른 분위기로 이야기를 이어 가는 가락(대비)") },
+  intro: { label: L("인트로"), color: '#7d6a6c', hint: L("곡의 시작! 분위기를 살짝 보여줘요") },
+  verse: { label: L("벌스"), color: '#6f8fb3', hint: L("이야기를 풀어가는 부분 (노래의 1절, 2절)") },
+  prechorus: { label: L("프리코러스"), color: '#5f9e98', hint: L("후렴으로 올라가기 전에 긴장감을 만드는 부분") },
+  chorus: { label: L("코러스"), color: '#e0605c', hint: L("가장 신나고 기억에 남는 후렴") },
+  bridge: { label: L("브릿지"), color: '#9c7bb5', hint: L("분위기를 확 바꾸는 부분") },
+  interlude: { label: L("간주"), color: '#7fa77f', hint: L("노래 사이에 연주만 나오는 부분") },
+  outro: { label: L("아웃트로"), color: '#c99a45', hint: L("곡을 마무리하는 부분") },
+  free: { label: L("자유"), color: '#8a7a7c', hint: L("정해진 역할 없이 마음대로") },
 }
 
 export const KIND_ORDER: SectionKind[] = ['a', 'b', 'intro', 'verse', 'prechorus', 'chorus', 'bridge', 'interlude', 'outro', 'free']
@@ -32,73 +33,73 @@ export interface Structure {
 export const STRUCTURES: Structure[] = [
   {
     id: 'ab',
-    label: 'AB 형식',
-    term: '두 도막 형식',
+    label: L("AB 형식"),
+    term: L("두 도막 형식"),
     desc: 'A → B',
     learn: [
-      'A는 곡의 얼굴이 되는 첫 가락(주제)이에요.',
-      'B는 A와 분위기가 다른 가락이에요. 이렇게 다른 것을 놓는 걸 ‘대비’라고 해요.',
-      '짧은 동요나 연습곡에 많이 쓰이는, 가장 단순한 틀이에요.',
+      L("A는 곡의 얼굴이 되는 첫 가락(주제)이에요."),
+      L("B는 A와 분위기가 다른 가락이에요. 이렇게 다른 것을 놓는 걸 ‘대비’라고 해요."),
+      L("짧은 동요나 연습곡에 많이 쓰이는, 가장 단순한 틀이에요."),
     ],
     parts: [['a', 8, 'A'], ['b', 8, 'B']],
   },
   {
     id: 'aba',
-    label: 'ABA 형식',
-    term: '세 도막 형식',
+    label: L("ABA 형식"),
+    term: L("세 도막 형식"),
     desc: 'A → B → A',
     learn: [
-      '처음 가락 A로 돌아와서 편안하게 끝나요. 돌아오는 것을 ‘재현’이라고 해요.',
-      '가운데 B가 달라서, A가 다시 나올 때 더 반갑게 들려요.',
-      '동요와 클래식 소품에서 정말 자주 만나는 틀이에요.',
+      L("처음 가락 A로 돌아와서 편안하게 끝나요. 돌아오는 것을 ‘재현’이라고 해요."),
+      L("가운데 B가 달라서, A가 다시 나올 때 더 반갑게 들려요."),
+      L("동요와 클래식 소품에서 정말 자주 만나는 틀이에요."),
     ],
-    parts: [['a', 8, 'A'], ['b', 8, 'B'], ['a', 8, 'A (다시)']],
+    parts: [['a', 8, 'A'], ['b', 8, 'B'], ['a', 8, L("A (다시)")]],
   },
   {
     id: 'aaba',
-    label: 'AABA 형식',
-    term: '반복이 있는 세 도막',
+    label: L("AABA 형식"),
+    term: L("반복이 있는 세 도막"),
     desc: 'A → A → B → A',
     learn: [
-      'A를 두 번 들려줘서 귀에 먼저 익숙해지게 해요. 반복은 기억에 남게 하는 힘이에요.',
-      '그다음 B에서 분위기를 바꾸고, 마지막에 A로 돌아와요.',
-      '재즈 스탠더드와 옛날 대중가요에 많이 쓰인 형식이에요.',
+      L("A를 두 번 들려줘서 귀에 먼저 익숙해지게 해요. 반복은 기억에 남게 하는 힘이에요."),
+      L("그다음 B에서 분위기를 바꾸고, 마지막에 A로 돌아와요."),
+      L("재즈 스탠더드와 옛날 대중가요에 많이 쓰인 형식이에요."),
     ],
-    parts: [['a', 8, 'A'], ['a', 8, 'A (반복)'], ['b', 8, 'B'], ['a', 8, 'A (다시)']],
+    parts: [['a', 8, 'A'], ['a', 8, L("A (반복)")], ['b', 8, 'B'], ['a', 8, L("A (다시)")]],
   },
   {
     id: 'pop',
-    label: '기성곡 형식 (가요·팝)',
-    term: '벌스-코러스 형식',
-    desc: '인트로 → 벌스 → 코러스 → 벌스 → 코러스 → 아웃트로',
+    label: L("기성곡 형식 (가요·팝)"),
+    term: L("벌스-코러스 형식"),
+    desc: L("인트로 → 벌스 → 코러스 → 벌스 → 코러스 → 아웃트로"),
     learn: [
-      '벌스는 이야기를 풀어 가고, 코러스는 가장 신나는 후렴이에요. 둘을 번갈아 들려줘요.',
-      '인트로로 분위기를 열고 아웃트로로 마무리해요.',
-      '우리가 라디오에서 듣는 대부분의 노래가 이런 모양이에요.',
+      L("벌스는 이야기를 풀어 가고, 코러스는 가장 신나는 후렴이에요. 둘을 번갈아 들려줘요."),
+      L("인트로로 분위기를 열고 아웃트로로 마무리해요."),
+      L("우리가 라디오에서 듣는 대부분의 노래가 이런 모양이에요."),
     ],
-    parts: [['intro', 4], ['verse', 8], ['chorus', 8], ['verse', 8, '벌스 2'], ['chorus', 8, '코러스 2'], ['outro', 4]],
+    parts: [['intro', 4], ['verse', 8], ['chorus', 8], ['verse', 8, L("벌스 2")], ['chorus', 8, L("코러스 2")], ['outro', 4]],
   },
   {
     id: 'full',
-    label: '풀 세션 구성',
-    term: '확장된 벌스-코러스 형식',
-    desc: '인트로 → 벌스 → 코러스 → 벌스2 → 프리코러스 → 코러스 → 브릿지 → 코러스 → 아웃트로',
+    label: L("풀 세션 구성"),
+    term: L("확장된 벌스-코러스 형식"),
+    desc: L("인트로 → 벌스 → 코러스 → 벌스2 → 프리코러스 → 코러스 → 브릿지 → 코러스 → 아웃트로"),
     learn: [
-      '프리코러스는 후렴으로 올라가기 전에 긴장감을 쌓는 징검다리예요.',
-      '브릿지는 분위기를 확 바꿔서, 마지막 코러스를 더 크게 느끼게 해요.',
-      '코러스를 여러 번 반복해서 노래가 머릿속에 남게 해요. 조금 길지만 도전해 볼 만해요!',
+      L("프리코러스는 후렴으로 올라가기 전에 긴장감을 쌓는 징검다리예요."),
+      L("브릿지는 분위기를 확 바꿔서, 마지막 코러스를 더 크게 느끼게 해요."),
+      L("코러스를 여러 번 반복해서 노래가 머릿속에 남게 해요. 조금 길지만 도전해 볼 만해요!"),
     ],
     parts: [
-      ['intro', 4], ['verse', 8], ['chorus', 8], ['verse', 8, '벌스 2'], ['prechorus', 4],
-      ['chorus', 8, '코러스 2'], ['bridge', 8], ['chorus', 8, '코러스 3'], ['outro', 4],
+      ['intro', 4], ['verse', 8], ['chorus', 8], ['verse', 8, L("벌스 2")], ['prechorus', 4],
+      ['chorus', 8, L("코러스 2")], ['bridge', 8], ['chorus', 8, L("코러스 3")], ['outro', 4],
     ],
   },
   {
     id: 'free',
-    label: '처음엔 자유롭게',
-    term: '자유 형식',
-    desc: '빈 곳에서 파트를 하나씩 직접 쌓아요',
-    learn: ['정해진 틀 없이 빈 곳에서 시작해요. ＋를 눌러 인트로, 벌스, 코러스 같은 파트를 원하는 순서로 하나씩 쌓아 보세요.'],
+    label: L("처음엔 자유롭게"),
+    term: L("자유 형식"),
+    desc: L("빈 곳에서 파트를 하나씩 직접 쌓아요"),
+    learn: [L("정해진 틀 없이 빈 곳에서 시작해요. ＋를 눌러 인트로, 벌스, 코러스 같은 파트를 원하는 순서로 하나씩 쌓아 보세요.")],
     parts: [],
   },
 ]
@@ -155,7 +156,7 @@ export function normalizeSong(song: Song): Song {
       const bars = Math.max(4, song.bars || 8)
       return sections === song.sections && bars === song.bars ? song : { ...song, sections: [], bars }
     }
-    sections = [{ id: uid(), kind: 'free', name: '자유', bars: Math.max(1, song.bars) }]
+    sections = [{ id: uid(), kind: 'free', name: L("자유"), bars: Math.max(1, song.bars) }]
   }
   const sum = barsOf(sections)
   if (sum < song.bars) {

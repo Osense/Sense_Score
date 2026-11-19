@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { useEffect, useRef, useState } from 'react'
 import type { AudioFormat } from '../engine/export'
 import { Icon } from './Icon'
@@ -32,30 +33,30 @@ export function ExportMenu({ exporting, onAudio, onMidi, onShare }: Props) {
   }
   return (
     <div className="export" ref={ref}>
-      <button className="primary export-btn" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu" aria-label="내보내기" title="내보내기 (MP3 · WAV · MIDI · 링크)">
+      <button className="primary export-btn" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu" aria-label={L("내보내기")} title={L("내보내기 (MP3 · WAV · MIDI · 링크)")}>
         <Icon name="download" size={16} />
-        <span className="export-word">{exporting ? `${exporting.format.toUpperCase()} ${Math.round(exporting.progress * 100)}%` : '내보내기'}</span>
+        <span className="export-word">{exporting ? `${exporting.format.toUpperCase()} ${Math.round(exporting.progress * 100)}%` : L("내보내기")}</span>
       </button>
       {open && (
         <div className="export-pop" role="menu">
-          <p className="eyebrow">소리 파일</p>
+          <p className="eyebrow">{L("소리 파일")}</p>
           <button role="menuitem" onClick={() => pick(() => onAudio('mp3'))} disabled={!!exporting}>
             <b>MP3</b>
-            <span>작은 파일 · 메신저로 보내기 좋아요</span>
+            <span>{L("작은 파일 · 메신저로 보내기 좋아요")}</span>
           </button>
           <button role="menuitem" onClick={() => pick(() => onAudio('wav'))} disabled={!!exporting}>
             <b>WAV</b>
-            <span>음질 그대로 · 파일이 커요</span>
+            <span>{L("음질 그대로 · 파일이 커요")}</span>
           </button>
-          <p className="eyebrow">악보 데이터</p>
+          <p className="eyebrow">{L("악보 데이터")}</p>
           <button role="menuitem" onClick={() => pick(onMidi)}>
             <b>MIDI</b>
-            <span>.mid · 다른 음악 프로그램에서도 열려요. 여기서 다시 열면 파트 · 반주 설정까지 그대로 이어서 만들어요</span>
+            <span>{L(".mid · 다른 음악 프로그램에서도 열려요. 여기서 다시 열면 파트 · 반주 설정까지 그대로 이어서 만들어요")}</span>
           </button>
-          <p className="eyebrow">공유</p>
+          <p className="eyebrow">{L("공유")}</p>
           <button role="menuitem" onClick={() => pick(onShare)}>
-            <b>링크</b>
-            <span>완성 화면에서 공유 링크 만들기</span>
+            <b>{L("링크")}</b>
+            <span>{L("완성 화면에서 공유 링크 만들기")}</span>
           </button>
         </div>
       )}

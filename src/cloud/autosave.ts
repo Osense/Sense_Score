@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { encodeProject, type Project } from './projectFile'
 import { ConflictError, LocalProjectStore, RemoteProjectStore, type ProjectMeta, type ProjectStore } from './store'
 import { getSession } from './session'
@@ -35,7 +36,7 @@ export function createAutosaver(opts: { delayMs?: number; onState?: (s: SaveStat
     busy = true
     emit('saving')
     try {
-      if (!p.song.id) throw new Error('프로젝트 번호가 없어요')
+      if (!p.song.id) throw new Error(L("프로젝트 번호가 없어요"))
       const data = await encodeProject(p)
       const store = storeFor()
       const meta = await store.save({ id: p.song.id, title: p.song.title }, data, rev)

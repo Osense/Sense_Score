@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { useRef } from 'react'
 import { PPQ, type Settings, type Song } from '../types'
 import { KINDS, rangesOf } from '../sections'
@@ -28,7 +29,7 @@ export function Ruler({ song, settings, pxPerTick, keyW, height, onSeek, onLoop 
       <div
         className="ruler"
         style={{ width: gridW }}
-        title="클릭: 그 위치로 이동 / 드래그: 반복 구간 정하기"
+        title={L("클릭: 그 위치로 이동 / 드래그: 반복 구간 정하기")}
         onPointerDown={(e) => {
           drag.current = { x0: e.clientX, t0: tickAt(e), moved: false }
           e.currentTarget.setPointerCapture(e.pointerId)
@@ -62,7 +63,7 @@ export function Ruler({ song, settings, pxPerTick, keyW, height, onSeek, onLoop 
                 key={s.id}
                 className="sec-band"
                 style={{ left: r.start * pxPerTick, width: (r.end - r.start) * pxPerTick - 1, background: KINDS[s.kind].color }}
-                title={`${s.name} (${s.bars}마디)`}
+                title={L("{0} ({1}마디)", s.name, s.bars)}
               >
                 {s.name}
               </div>

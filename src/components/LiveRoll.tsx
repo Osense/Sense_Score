@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { useEffect, useRef } from 'react'
 import { inScale } from '../music'
 import { KINDS, rangesOf } from '../sections'
@@ -99,7 +100,7 @@ export function LiveRoll(p: Props) {
           g.stroke()
           if (isBar && t >= 0) {
             g.fillStyle = css('--muted', '#6b7280')
-            g.fillText(`${t / barTicks + 1}마디`, 6, y - 3)
+            g.fillText(L("{0}마디", t / barTicks + 1), 6, y - 3)
           }
         }
 

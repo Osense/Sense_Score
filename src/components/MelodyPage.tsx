@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { DEFAULT_CORRECTION, PRESETS, type Correction } from '../correct'
 import { nearestInScale } from '../editActions'
@@ -50,11 +51,11 @@ const KEYS: [string, number, string][] = [
 ]
 
 const GRIDS = [
-  { v: 0, label: '안 맞춤' },
-  { v: PPQ, label: '4분음표' },
-  { v: PPQ / 2, label: '8분음표' },
-  { v: PPQ / 4, label: '16분음표' },
-  { v: PPQ / 8, label: '32분음표' },
+  { v: 0, label: L("안 맞춤") },
+  { v: PPQ, label: L("4분음표") },
+  { v: PPQ / 2, label: L("8분음표") },
+  { v: PPQ / 4, label: L("16분음표") },
+  { v: PPQ / 8, label: L("32분음표") },
 ]
 
 type Assist = 'free' | 'snap' | 'lock'
@@ -191,12 +192,12 @@ export function MelodyPage(p: Props) {
 
   const connectMidi = async () => {
     const nav = navigator as Navigator & { requestMIDIAccess?: () => Promise<MIDIAccess> }
-    if (!nav.requestMIDIAccess) return p.onMessage('이 브라우저는 MIDI 키보드 연결을 지원하지 않아요. (크롬·엣지에서 써 보세요)')
+    if (!nav.requestMIDIAccess) return p.onMessage(L("이 브라우저는 MIDI 키보드 연결을 지원하지 않아요. (크롬·엣지에서 써 보세요)"))
     try {
       const access = await nav.requestMIDIAccess()
       const names: string[] = []
       access.inputs.forEach((input) => {
-        names.push(input.name ?? 'MIDI 키보드')
+        names.push(input.name ?? L("MIDI 키보드"))
         input.onmidimessage = (m) => {
           const d = m.data
           if (!d || d.length < 3) return
@@ -211,9 +212,9 @@ export function MelodyPage(p: Props) {
         }
       })
       setMidiName(names.length ? names.join(', ') : null)
-      p.onMessage(names.length ? `${names.join(', ')} 연결됐어요!` : '연결된 MIDI 키보드가 없어요. 키보드를 꽂고 다시 눌러 주세요.')
+      p.onMessage(names.length ? L("{0} 연결됐어요!", names.join(', ')) : L("연결된 MIDI 키보드가 없어요. 키보드를 꽂고 다시 눌러 주세요."))
     } catch {
-      p.onMessage('MIDI 접근이 허용되지 않았어요.')
+      p.onMessage(L("MIDI 접근이 허용되지 않았어요."))
     }
   }
 
@@ -249,44 +250,44 @@ export function MelodyPage(p: Props) {
     <div className={`melody ${drum ? 'drum-mode' : ''}`}>
       <div className="mel-top">
         <button className={`rec-btn ${p.taking ? 'on' : ''}`} onClick={rec} disabled={!track}
-          title={p.taking ? '녹음 끝내기' : '녹음 시작: 반주가 나오면서 연주가 기록돼요'}>
+          title={p.taking ? L("녹음 끝내기") : L("녹음 시작: 반주가 나오면서 연주가 기록돼요")}>
           <i />
-          {p.taking ? '녹음 끝내기' : '녹음'}
+          {p.taking ? L("녹음 끝내기") : L("녹음")}
         </button>
         <button className="mel-btn" onClick={p.onPlay} disabled={p.taking}>
-          <Icon name={p.playing && !p.taking ? 'stop' : 'play'} size={15} />{p.playing && !p.taking ? '멈추기' : '반주 듣기'}
+          <Icon name={p.playing && !p.taking ? 'stop' : 'play'} size={15} />{p.playing && !p.taking ? L("멈추기") : L("반주 듣기")}
         </button>
-        <label className="mel-track" title="녹음할 악기(트랙)">
-          <select value={track?.id} onChange={(e) => p.onTrack(e.target.value)} aria-label="연주할 트랙">
+        <label className="mel-track" title={L("녹음할 악기(트랙)")}>
+          <select value={track?.id} onChange={(e) => p.onTrack(e.target.value)} aria-label={L("연주할 트랙")}>
             {tracks.map((t) => (
-              <option key={t.id} value={t.id}>{t.drum ? '드럼 · ' : ''}{t.name}</option>
+              <option key={t.id} value={t.id}>{t.drum ? L("드럼 · ") : ''}{t.name}</option>
             ))}
           </select>
         </label>
-        <button className={countIn ? 'toggle on' : 'toggle'} aria-pressed={countIn} onClick={() => setCountIn(!countIn)} title="녹음 전에 한 마디 동안 박을 세어 줘요 (예비박)">
-          <Icon name="countin" size={15} />예비박
+        <button className={countIn ? 'toggle on' : 'toggle'} aria-pressed={countIn} onClick={() => setCountIn(!countIn)} title={L("녹음 전에 한 마디 동안 박을 세어 줘요 (예비박)")}>
+          <Icon name="countin" size={15} />{L("예비박")}
         </button>
         <details className="mel-more">
-          <summary><Icon name="more" size={16} />설정</summary>
+          <summary><Icon name="more" size={16} />{L("설정")}</summary>
           <div className="mel-pop">
             <div className="mel-pop-row">
-              <button className={settings.metronome ? 'toggle on' : 'toggle'} onClick={() => p.onSettings({ metronome: !settings.metronome })}><Icon name="metronome" size={15} />메트로놈</button>
-              <button className={replace ? 'toggle on' : 'toggle'} onClick={() => setReplace(!replace)} title="녹음하기 전에 이 구간의 기존 음표를 지우고 새로 녹음해요">덮어쓰기</button>
-              <button onClick={connectMidi} title="MIDI 키보드·드럼 패드를 꽂았다면 연결해요">{midiName ? midiName : 'MIDI 기기 연결'}</button>
+              <button className={settings.metronome ? 'toggle on' : 'toggle'} onClick={() => p.onSettings({ metronome: !settings.metronome })}><Icon name="metronome" size={15} />{L("메트로놈")}</button>
+              <button className={replace ? 'toggle on' : 'toggle'} onClick={() => setReplace(!replace)} title={L("녹음하기 전에 이 구간의 기존 음표를 지우고 새로 녹음해요")}>{L("덮어쓰기")}</button>
+              <button onClick={connectMidi} title={L("MIDI 키보드·드럼 패드를 꽂았다면 연결해요")}>{midiName ? midiName : L("MIDI 기기 연결")}</button>
             </div>
             {!drum && (
               <div className="mel-pop-row">
-                <span className="mel-pop-t">틀린 음 도와주기</span>
+                <span className="mel-pop-t">{L("틀린 음 도와주기")}</span>
                 <span className="seg assist">
-                  {([['free', '자유롭게'], ['snap', '음계로 보정'], ['lock', '음계 안만']] as const).map(([v, t]) => (
+                  {([['free', L("자유롭게")], ['snap', L("음계로 보정")], ['lock', L("음계 안만")]] as const).map(([v, t]) => (
                     <button key={v} className={assist === v ? 'on' : ''} onClick={() => setAssist(v)} disabled={v !== 'free' && !scaleOn}>{t}</button>
                   ))}
                 </span>
-                {track && <span className="range-badge" title="이 악기에 잘 어울리는 음 높이예요. 밖에도 칠 수 있어요.">어울리는 음역 {rangeLabel(sound)}</span>}
+                {track && <span className="range-badge" title={L("이 악기에 잘 어울리는 음 높이예요. 밖에도 칠 수 있어요.")}>{L("어울리는 음역")} {rangeLabel(sound)}</span>}
               </div>
             )}
             <div className="mel-pop-row">
-              <span className="mel-pop-t">연주 보정</span>
+              <span className="mel-pop-t">{L("연주 보정")}</span>
               <div className="fix-presets">
                 {PRESETS.map((pr) => (
                   <button key={pr.id} className={presetId === pr.id ? 'on' : ''} onClick={() => setCorrection(pr.c, pr.id)} title={pr.desc}>{pr.name}</button>
@@ -295,39 +296,39 @@ export function MelodyPage(p: Props) {
             </div>
             <div className="fix-grid">
               <label>
-                박자 칸
+                {L("박자 칸")}
                 <select value={corr.grid} onChange={(e) => setCorrection({ ...corr, grid: +e.target.value })}>
                   {GRIDS.map((g) => <option key={g.v} value={g.v}>{g.label}</option>)}
                 </select>
               </label>
               <label>
-                칸에 맞추는 힘 <b>{Math.round(corr.strength * 100)}%</b>
+                {L("칸에 맞추는 힘")} <b>{Math.round(corr.strength * 100)}%</b>
                 <input type="range" min={0} max={1} step={0.05} value={corr.strength} onChange={(e) => setCorrection({ ...corr, strength: +e.target.value })} disabled={!corr.grid} />
               </label>
               <label>
-                세기 고르게 <b>{Math.round(corr.smooth * 100)}%</b>
+                {L("세기 고르게")} <b>{Math.round(corr.smooth * 100)}%</b>
                 <input type="range" min={0} max={1} step={0.05} value={corr.smooth} onChange={(e) => setCorrection({ ...corr, smooth: +e.target.value })} />
               </label>
-              <label title="소리가 늦게 들려서 박자가 밀린다면 조절해요 (+는 뒤로, −는 앞으로)">
-                소리 지연 보정 <b>{corr.offsetMs > 0 ? '+' : ''}{corr.offsetMs}ms</b>
+              <label title={L("소리가 늦게 들려서 박자가 밀린다면 조절해요 (+는 뒤로, −는 앞으로)")}>
+                {L("소리 지연 보정")} <b>{corr.offsetMs > 0 ? '+' : ''}{corr.offsetMs}ms</b>
                 <input type="range" min={-150} max={150} step={5} value={corr.offsetMs} onChange={(e) => setCorrection({ ...corr, offsetMs: +e.target.value })} />
               </label>
-              {!drum && <label className="chk"><input type="checkbox" checked={corr.toScale} disabled={!scaleOn} onChange={(e) => setCorrection({ ...corr, toScale: e.target.checked })} /> 음계 밖의 음을 음계 안으로</label>}
-              {!drum && <label className="chk"><input type="checkbox" checked={corr.lenGrid} onChange={(e) => setCorrection({ ...corr, lenGrid: e.target.checked })} /> 음 길이도 칸에 맞추기</label>}
-              {!drum && <label className="chk"><input type="checkbox" checked={corr.clean} onChange={(e) => setCorrection({ ...corr, clean: e.target.checked })} /> 실수로 스친 짧은 음 지우기</label>}
+              {!drum && <label className="chk"><input type="checkbox" checked={corr.toScale} disabled={!scaleOn} onChange={(e) => setCorrection({ ...corr, toScale: e.target.checked })} /> {L("음계 밖의 음을 음계 안으로")}</label>}
+              {!drum && <label className="chk"><input type="checkbox" checked={corr.lenGrid} onChange={(e) => setCorrection({ ...corr, lenGrid: e.target.checked })} /> {L("음 길이도 칸에 맞추기")}</label>}
+              {!drum && <label className="chk"><input type="checkbox" checked={corr.clean} onChange={(e) => setCorrection({ ...corr, clean: e.target.checked })} /> {L("실수로 스친 짧은 음 지우기")}</label>}
             </div>
           </div>
         </details>
         {p.lastTake && !p.taking && (
           <span className="take-info">
-            방금 {p.lastTake.count}개 녹음 <button onClick={p.onDiscard}>지우기</button>
+            {L("방금")} {p.lastTake.count}{L("개 녹음")} <button onClick={p.onDiscard}>{L("지우기")}</button>
           </span>
         )}
       </div>
 
       <div className="mel-where">
-        <button className={!loopOn ? 'chip on' : 'chip'} onClick={p.onAllParts} title="곡 전체 (지금 위치부터)">전체</button>
-        <SongStrip song={song} getTick={p.getTick} onSeek={p.onSeek} onPart={p.onFocusPart} activePart={curPart?.id ?? null} label="녹음할 곳" />
+        <button className={!loopOn ? 'chip on' : 'chip'} onClick={p.onAllParts} title={L("곡 전체 (지금 위치부터)")}>{L("전체")}</button>
+        <SongStrip song={song} getTick={p.getTick} onSeek={p.onSeek} onPart={p.onFocusPart} activePart={curPart?.id ?? null} label={L("녹음할 곳")} />
       </div>
 
       <div className="mel-stage">
@@ -341,15 +342,15 @@ export function MelodyPage(p: Props) {
         <div className="kit-wrap">
           <DrumKitView onHit={hitDrum} flash={flash} />
           <p className="kb-hint">
-            드럼을 눌러 치거나 키보드로 쳐요 · 왼손 <kbd>F</kbd> 스네어 <kbd>R</kbd> 크래시 · 오른손 <kbd>J</kbd> 하이햇(<kbd>K</kbd> 열린 하이햇) <kbd>O</kbd> 라이드 · 가운데 <kbd>G</kbd><kbd>H</kbd> 탐 · <kbd>L</kbd> 플로어 탐 · 엄지 <kbd>Space</kbd> 킥
+            {L("드럼을 눌러 치거나 키보드로 쳐요 · 왼손")} <kbd>F</kbd> {L("스네어")} <kbd>R</kbd> {L("크래시 · 오른손")} <kbd>J</kbd> {L("하이햇(")}<kbd>K</kbd> {L("열린 하이햇)")} <kbd>O</kbd> {L("라이드 · 가운데")} <kbd>G</kbd><kbd>H</kbd> {L("탐 ·")} <kbd>L</kbd> {L("플로어 탐 · 엄지")} <kbd>Space</kbd> {L("킥")}
           </p>
         </div>
       ) : (
         <>
           <div className="kb-bar">
-            <button onClick={() => shift(-1)} title="한 옥타브 아래 (Z)"><Icon name="left" size={15} />옥타브<kbd>Z</kbd></button>
+            <button onClick={() => shift(-1)} title={L("한 옥타브 아래 (Z)")}><Icon name="left" size={15} />{L("옥타브")}<kbd>Z</kbd></button>
             <KeyDisplayControls settings={settings} onSettings={p.onSettings} />
-            <button onClick={() => shift(1)} title="한 옥타브 위 (X)"><kbd>X</kbd>옥타브<Icon name="right" size={15} /></button>
+            <button onClick={() => shift(1)} title={L("한 옥타브 위 (X)")}><kbd>X</kbd>{L("옥타브")}<Icon name="right" size={15} /></button>
           </div>
           <div className="kb-wrap" ref={kbWrap}>
             <HKeyboard
@@ -396,13 +397,13 @@ function Cue({ song, getTick, playing, taking, takeFrom }: { song: Song; getTick
         const partAt = (tick: number) => song.sections.find((s) => tick >= rg.get(s.id)!.start && tick < rg.get(s.id)!.end)
         if (taking && takeFrom !== null && t < takeFrom) {
           const p = partAt(takeFrom)
-          next = { n: Math.max(1, Math.ceil((takeFrom - t) / PPQ - 0.001)), text: p ? `첫 파트는 ${p.name}! 준비하세요` : '준비하세요!', color: p ? KINDS[p.kind].color : '' }
+          next = { n: Math.max(1, Math.ceil((takeFrom - t) / PPQ - 0.001)), text: p ? L("첫 파트는 {0}! 준비하세요", p.name) : L("준비하세요!"), color: p ? KINDS[p.kind].color : '' }
         } else {
           const up = song.sections.map((s) => rg.get(s.id)!.start).find((st) => st > t && st - t <= bar)
           if (up !== undefined) {
             const p = partAt(up)
             const cur = partAt(t)
-            if (p && cur && p.id !== cur.id) next = { n: Math.max(1, Math.ceil((up - t) / PPQ - 0.001)), text: `다음 파트는 ${p.name}입니다! 준비하세요`, color: KINDS[p.kind].color }
+            if (p && cur && p.id !== cur.id) next = { n: Math.max(1, Math.ceil((up - t) / PPQ - 0.001)), text: L("다음 파트는 {0}입니다! 준비하세요", p.name), color: KINDS[p.kind].color }
           }
         }
       }

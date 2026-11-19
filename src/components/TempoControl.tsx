@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 import { useState } from 'react'
 
 const MIN = 30
@@ -24,19 +25,19 @@ export function TempoControl({ value, onChange, onCheckpoint }: {
   }
 
   return (
-    <div className="tempo-control" role="group" aria-label="템포 조절">
-      <label htmlFor="song-tempo" className="lbl-word">템포</label>
-      <button type="button" aria-label="템포 내리기" title="1 BPM 내리기" onPointerDown={(e) => e.preventDefault()} onClick={() => step(-1)}>−</button>
+    <div className="tempo-control" role="group" aria-label={L("템포 조절")}>
+      <label htmlFor="song-tempo" className="lbl-word">{L("템포")}</label>
+      <button type="button" aria-label={L("템포 내리기")} title={L("1 BPM 내리기")} onPointerDown={(e) => e.preventDefault()} onClick={() => step(-1)}>−</button>
       <input
         id="song-tempo"
         type="text"
         inputMode="numeric"
         role="spinbutton"
-        aria-label="템포 BPM"
+        aria-label={L("템포 BPM")}
         aria-valuemin={MIN}
         aria-valuemax={MAX}
         aria-valuenow={value}
-        title="30~300 BPM · 입력 후 Enter 또는 다른 곳을 누르면 적용"
+        title={L("30~300 BPM · 입력 후 Enter 또는 다른 곳을 누르면 적용")}
         value={draft ?? String(value)}
         onFocus={() => { onCheckpoint(); setDraft(String(value)) }}
         onChange={(e) => setDraft(e.target.value)}
@@ -50,7 +51,7 @@ export function TempoControl({ value, onChange, onCheckpoint }: {
           }
         }}
       />
-      <button type="button" aria-label="템포 올리기" title="1 BPM 올리기" onPointerDown={(e) => e.preventDefault()} onClick={() => step(1)}>+</button>
+      <button type="button" aria-label={L("템포 올리기")} title={L("1 BPM 올리기")} onPointerDown={(e) => e.preventDefault()} onClick={() => step(1)}>+</button>
       <span>BPM</span>
     </div>
   )

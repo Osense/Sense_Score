@@ -1,3 +1,4 @@
+import { L } from '../i18n'
 /* ======================================================================
    프로젝트 보관함. 내용은 언제나 .mid 바이트(projectFile.ts) 하나.
    - LocalProjectStore: 이 기기의 IndexedDB (오프라인 · 서버에 못 올린 것 잠시 보관)
@@ -16,7 +17,7 @@ export interface ProjectMeta {
 export class ConflictError extends Error {
   current: ProjectMeta
   constructor(current: ProjectMeta) {
-    super('다른 기기에서 먼저 저장된 판이 있어요')
+    super(L("다른 기기에서 먼저 저장된 판이 있어요"))
     this.current = current
   }
 }
@@ -57,7 +58,7 @@ export class LocalProjectStore implements ProjectStore {
   }
   async load(id: string) {
     const r = await tx<Row | undefined>('readonly', (s) => s.get(id) as IDBRequest<Row | undefined>)
-    if (!r) throw new Error('프로젝트를 찾을 수 없어요')
+    if (!r) throw new Error(L("프로젝트를 찾을 수 없어요"))
     return r
   }
   async save(m: { id: string; title: string }, data: Uint8Array, baseRev?: number) {
@@ -82,10 +83,10 @@ export class RemoteProjectStore implements ProjectStore {
   }
   private async req(path: string, init: RequestInit = {}) {
     const t = this.token()
-    if (!t) throw new Error('로그인이 필요해요')
+    if (!t) throw new Error(L("로그인이 필요해요"))
     const r = await fetch(`${this.base.replace(/\/$/, '')}${path}`, { ...init, headers: { ...(init.headers ?? {}), Authorization: `Bearer ${t}` } })
     if (r.status === 409) throw new ConflictError(await r.json())
-    if (!r.ok) throw new Error(`서버 오류 ${r.status}`)
+    if (!r.ok) throw new Error(L("서버 오류 {0}", r.status))
     return r
   }
   async list() {
