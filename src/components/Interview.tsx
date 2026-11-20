@@ -7,8 +7,8 @@ import { NOTE_NAMES_EN, NOTE_NAMES_KO, SCALES } from '../music'
 import type { Answers } from '../template'
 import { autoName, KINDS, planOf, stepBars, STRUCTURES, TYPICAL_BARS, type PlanItem } from '../sections'
 import {
-  autoPlans, bassPatOf, chordOf, chordSegments, compPatOf, DEFAULT_PLAN, drumPatOf, findRoleTrack, isMinorScale, neighborCtx, progressionsFor, rankProgressions, sampleBar,
-  type BassNote, type BassStyle, type ChordRhythm, type ChordSpeed, type DrumPat, type DrumStyle, type PartPlan, type PatNote,
+  autoPlans, type Harmony, bassPatOf, chordOf, chordSegments, compPatOf, DEFAULT_PLAN, drumPatOf, findRoleTrack, isMinorScale, neighborCtx, progressionsFor, rankProgressions, sampleBar,
+  type ArpTone, type BassNote, type BassStyle, type ChordRhythm, type ChordSpeed, type DrumPat, type DrumStyle, type PartPlan, type PatNote,
 } from '../scaffold'
 import { PPQ, type ScaleType, type SectionKind, type Settings, type Song } from '../types'
 
@@ -32,13 +32,29 @@ const CHAPTERS: { id: Chapter; no: string; label: string; sub: string }[] = [
 
 const SUB_LABEL: Record<Sub, string> = { chord: L("화음 진행"), speed: L("화음 박자"), comp: L("화음 리듬꼴"), drum: L("드럼"), bass: L("베이스") }
 
-const TEMPOS = [
-  { bpm: 72, label: L("느긋하게"), pic: L("거북이 걸음"), hint: L("자장가, 잔잔한 발라드"), term: L("Adagio 아다지오") },
-  { bpm: 100, label: L("보통으로"), pic: L("산책하는 걸음"), hint: L("가장 무난한 빠르기"), term: L("Andante 안단테") },
-  { bpm: 128, label: L("신나게"), pic: L("뛰어가는 걸음"), hint: L("댄스곡, 신나는 동요"), term: L("Allegro 알레그로") },
-  { bpm: 160, label: L("아주 빠르게"), pic: L("로켓처럼 슝"), hint: L("게임 음악, 록"), term: L("Vivace 비바체") },
+/** 빠르기말: 이탈리아 말, 뜻, 대략의 BPM 범위(책마다 조금씩 다르다) */
+const TEMPO_TERMS = [
+  { min: 0, bpm: 50, it: 'Largo', ko: L("라르고"), mean: L("아주 느리고 넓게") },
+  { min: 60, bpm: 66, it: 'Adagio', ko: L("아다지오"), mean: L("느리게") },
+  { min: 72, bpm: 80, it: 'Andante', ko: L("안단테"), mean: L("걷는 빠르기로") },
+  { min: 92, bpm: 100, it: 'Moderato', ko: L("모데라토"), mean: L("보통 빠르기로") },
+  { min: 108, bpm: 112, it: 'Allegretto', ko: L("알레그레토"), mean: L("조금 빠르게") },
+  { min: 120, bpm: 128, it: 'Allegro', ko: L("알레그로"), mean: L("빠르고 경쾌하게") },
+  { min: 140, bpm: 150, it: 'Vivace', ko: L("비바체"), mean: L("아주 빠르고 생기 있게") },
+  { min: 168, bpm: 176, it: 'Presto', ko: L("프레스토"), mean: L("매우 빠르게") },
 ]
-const tempoTerm = (bpm: number) => (bpm < 86 ? L("Adagio 아다지오") : bpm < 114 ? L("Andante 안단테") : bpm < 144 ? L("Allegro 알레그로") : L("Vivace 비바체"))
+const termOf = (bpm: number) => [...TEMPO_TERMS].reverse().find((t) => bpm >= t.min) ?? TEMPO_TERMS[0]
+const TEMPOS = [
+  { bpm: 50, label: L("아주 느리게"), pic: L("달팽이 걸음"), hint: L("웅장한 장면, 명상 음악") },
+  { bpm: 66, label: L("느긋하게"), pic: L("거북이 걸음"), hint: L("자장가, 잔잔한 발라드") },
+  { bpm: 80, label: L("걷듯이"), pic: L("천천히 걷는 걸음"), hint: L("발라드, 따뜻한 노래") },
+  { bpm: 100, label: L("보통으로"), pic: L("산책하는 걸음"), hint: L("가장 무난한 빠르기") },
+  { bpm: 112, label: L("조금 빠르게"), pic: L("통통 튀는 걸음"), hint: L("밝은 동요, 팝") },
+  { bpm: 128, label: L("신나게"), pic: L("뛰어가는 걸음"), hint: L("댄스곡, 신나는 동요") },
+  { bpm: 150, label: L("아주 빠르게"), pic: L("자전거 질주"), hint: L("게임 음악, 록") },
+  { bpm: 176, label: L("번개처럼"), pic: L("로켓처럼 슝"), hint: L("펑크 록, 추격 장면") },
+]
+const tempoTerm = (bpm: number) => { const t = termOf(bpm); return `${t.it} ${isEn ? '' : t.ko}`.trim() }
 
 const METERS = [
   { beats: 4, label: L("하나 둘 셋 넷"), hint: L("가장 흔한 박자예요"), term: L("4/4 박자"), accents: [1, 0, 0.5, 0] },
@@ -47,20 +63,35 @@ const METERS = [
   { beats: 5, label: L("하나 둘 셋 넷 다섯"), hint: L("독특한 박자에 도전!"), term: L("5/4 박자"), accents: [1, 0, 0, 0.5, 0] },
 ]
 
-const MOODS: { type: ScaleType; label: string; hint: string; en: string; term: string; say: string }[] = [
-  { type: 'major', label: L("밝고 신나게"), hint: L("맑은 날 같은 소리"), en: 'major', term: L("장음계"), say: L("major(메이저)는 ‘밝고 신나는 느낌’이라는 뜻이에요. 우리말로는 장조, 장음계라고 해요.") },
-  { type: 'minor', label: L("차분하고 슬프게"), hint: L("비 오는 날 같은 소리"), en: 'minor', term: L("단음계"), say: L("minor(마이너)는 ‘차분하고 슬픈 느낌’이라는 뜻이에요. 우리말로는 단조, 단음계라고 해요.") },
-  { type: 'pentatonic', label: L("아무렇게나 쳐도 예쁘게"), hint: L("틀리기 어려운 다섯 음"), en: 'major pentatonic', term: L("5음계"), say: L("pentatonic(펜타토닉)은 ‘다섯 음’이라는 뜻이에요. 부딪히는 음을 뺀 다섯 음만 써서 아무렇게나 쳐도 잘 어울려요.") },
-  { type: 'blues', label: L("멋지고 끈적하게"), hint: L("블루스 느낌"), en: 'blues', term: L("블루스 음계"), say: L("blues(블루스)는 미국 흑인 음악에서 온 음계예요. 살짝 꺾이는 ‘블루 노트’가 들어 있어서 멋을 부린 느낌이 나요.") },
+type Mood = { type: ScaleType; family: 'major' | 'minor'; label: string; hint: string; en: string; term: string; notes: number; mode?: boolean; say: string }
+const MOODS: Mood[] = [
+  { type: 'major', family: 'major', notes: 7, label: L("밝고 신나게"), hint: L("맑은 날 같은 소리"), en: 'major', term: L("장음계"), say: L("major(메이저)는 ‘밝고 신나는 느낌’이라는 뜻이에요. 우리말로는 장조, 장음계라고 해요.") },
+  { type: 'pentatonic', family: 'major', notes: 5, label: L("아무렇게나 쳐도 예쁘게"), hint: L("틀리기 어려운 다섯 음"), en: 'major pentatonic', term: L("장조 펜타토닉"), say: L("pentatonic(펜타토닉)은 ‘다섯 음’이라는 뜻이에요. 부딪히는 음을 뺀 다섯 음만 써서 아무렇게나 쳐도 잘 어울려요.") },
+  { type: 'lydian', family: 'major', notes: 7, mode: true, label: L("꿈꾸듯 둥실 떠 있게"), hint: L("영화·게임의 신비한 장면"), en: 'lydian', term: L("리디안 모드"), say: L("lydian(리디안)은 장음계에서 4번째 음을 반음 올린 모드예요. 올라간 4음 덕분에 붕 떠 있는 듯 신비하고 꿈같은 느낌이 나요. 영화 음악에서 많이 써요.") },
+  { type: 'mixolydian', family: 'major', notes: 7, mode: true, label: L("느긋하고 시원하게"), hint: L("록·컨트리의 밝은 느낌"), en: 'mixolydian', term: L("믹솔리디안 모드"), say: L("mixolydian(믹솔리디안)은 장음계에서 7번째 음을 반음 내린 모드예요. 밝지만 덜 들뜨고 느긋해서 록·컨트리·펑크에서 자주 써요.") },
+  { type: 'minor', family: 'minor', notes: 7, label: L("차분하고 슬프게"), hint: L("비 오는 날 같은 소리"), en: 'minor', term: L("단음계"), say: L("minor(마이너)는 ‘차분하고 슬픈 느낌’이라는 뜻이에요. 우리말로는 단조, 단음계라고 해요.") },
+  { type: 'minorPent', family: 'minor', notes: 5, label: L("멋있고 간지 나게"), hint: L("기타 솔로의 단골 음계"), en: 'minor pentatonic', term: L("단조 펜타토닉"), say: L("minor pentatonic(마이너 펜타토닉)은 단음계에서 부딪히는 두 음을 뺀 다섯 음이에요. 록 기타 솔로에서 가장 많이 쓰는 음계라 아무렇게나 쳐도 멋있게 들려요.") },
+  { type: 'blues', family: 'minor', notes: 6, label: L("멋지고 끈적하게"), hint: L("블루스 느낌"), en: 'blues', term: L("블루스 음계"), say: L("blues(블루스)는 미국 흑인 음악에서 온 음계예요. 살짝 꺾이는 ‘블루 노트’가 들어 있어서 멋을 부린 느낌이 나요.") },
+  { type: 'dorian', family: 'minor', notes: 7, mode: true, label: L("어둡지만 세련되게"), hint: L("펑크·재즈·게임 음악"), en: 'dorian', term: L("도리안 모드"), say: L("dorian(도리안)은 단음계에서 6번째 음을 반음 올린 모드예요. 어둡지만 너무 슬프지 않고 세련된 느낌이라 펑크·재즈·게임 음악에서 많이 써요.") },
+  { type: 'phrygian', family: 'minor', notes: 7, mode: true, label: L("긴장감 있게, 이국적으로"), hint: L("스페인 플라멩코·메탈"), en: 'phrygian', term: L("프리지안 모드"), say: L("phrygian(프리지안)은 단음계에서 2번째 음을 반음 내린 모드예요. 으뜸음 바로 위 반음이 긴장감을 만들어서 스페인 플라멩코나 메탈 음악 느낌이 나요.") },
+  { type: 'harmonicMinor', family: 'minor', notes: 7, label: L("신비롭고 웅장하게"), hint: L("클래식·중동 느낌"), en: 'harmonic minor', term: L("화성단음계"), say: L("harmonic minor(화성단음계)는 단음계에서 7번째 음을 반음 올린 음계예요. 으뜸음으로 강하게 끌리는 ‘이끈음’이 생겨서 클래식이나 중동 음악처럼 신비롭고 웅장해요.") },
+]
+const FAMILIES: { family: 'major' | 'minor'; term: string; label: string; hint: string; first: ScaleType }[] = [
+  { family: 'major', term: L("장조 · 메이저"), label: L("밝은 쪽"), hint: L("맑고 신나는 느낌"), first: 'major' },
+  { family: 'minor', term: L("단조 · 마이너"), label: L("어두운 쪽"), hint: L("차분하고 멋있는 느낌"), first: 'minor' },
 ]
 /** 자주 쓰는 조(살짝만 표시한다. 고르는 것은 자유) */
-const COMMON_ROOTS: Record<ScaleType, number[]> = { major: [0, 7, 2, 5], minor: [9, 4, 2], pentatonic: [0, 7, 2], minorPent: [9, 4], blues: [9, 4, 7] }
+const COMMON_ROOTS: Record<ScaleType, number[]> = {
+  major: [0, 7, 2, 5], minor: [9, 4, 2], pentatonic: [0, 7, 2], minorPent: [9, 4], blues: [9, 4, 7],
+  lydian: [5, 0, 7], mixolydian: [7, 2, 0], dorian: [2, 9, 4], phrygian: [4, 9], harmonicMinor: [9, 4, 2],
+}
 
-const PARTS_WANT: { key: 'melody' | 'chords' | 'bass' | 'drums'; icon: IconName; label: string; hint: string }[] = [
+const PARTS_WANT: { key: 'melody' | 'chords' | 'bass' | 'drums' | 'guitar'; icon: IconName; label: string; hint: string }[] = [
   { key: 'melody', icon: 'melody', label: L("멜로디"), hint: L("내가 만드는 주인공 가락") },
   { key: 'chords', icon: 'keys', label: L("화음 반주"), hint: L("피아노·기타처럼 받쳐 줘요") },
   { key: 'bass', icon: 'sound', label: L("베이스"), hint: L("낮은 음으로 바닥을 깔아요") },
   { key: 'drums', icon: 'drum', label: L("드럼"), hint: L("쿵짝쿵짝 리듬을 만들어요") },
+  { key: 'guitar', icon: 'guitar', label: L("일렉 기타"), hint: L("찌그러진 파워 코드로 록처럼") },
 ]
 
 const TITLE_IDEAS = [L("나의 첫 곡"), L("봄날의 산책"), L("별이 빛나는 밤"), L("우리 동네 행진곡"), L("비 오는 날"), L("여름 방학"), L("꿈속의 놀이터"), L("달리는 자전거"), L("고양이의 낮잠"), L("바닷가 모래성")]
@@ -76,13 +107,13 @@ const SHAPES: Record<string, { label: string; say: string }> = {
 
 /** 파트마다: 어떤 곳인지, 보통 어떻게 만드는지 */
 const PART_GUIDE: Record<SectionKind, { what: string; how: string }> = {
-  intro: { what: L("곡의 문을 여는 부분이에요."), how: L("보통 4마디예요. 조용히 시작하거나 후렴의 화음을 살짝 미리 들려줘요. 드럼과 베이스는 빼거나 가볍게 해서 ‘이제 시작한다’는 느낌을 줘요. 딸림화음(Ⅴ)으로 끝나면 다음 파트가 기다려져요.") },
+  intro: { what: L("곡의 문을 여는 부분이에요."), how: L("보통 8마디예요. 조용히 시작하거나 후렴의 화음을 살짝 미리 들려줘요. 드럼과 베이스는 빼거나 가볍게 해서 ‘이제 시작한다’는 느낌을 줘요. 딸림화음(Ⅴ)으로 끝나면 다음 파트가 기다려져요.") },
   verse: { what: L("이야기를 풀어 가는 부분이에요. 노래의 1절, 2절이에요."), how: L("보통 8마디예요. 으뜸화음으로 시작해서 곡의 ‘집’을 먼저 들려주고, 후렴보다 조금 차분하게 해야 후렴이 더 신나게 들려요.") },
   prechorus: { what: L("후렴으로 올라가기 전의 징검다리예요."), how: L("보통 4마디예요. 긴장을 조금씩 쌓다가 딸림화음(Ⅴ)으로 끝나면 ‘곧 후렴이 온다!’는 기대가 생겨요. 드럼을 조금 잘게 치면 좋아요.") },
   chorus: { what: L("가장 신나고 기억에 남는 후렴이에요."), how: L("보통 8마디예요. 벌스와 다른 화음으로 시작해서 분위기를 확 바꾸고, 화음·드럼·베이스를 가장 꽉 채워요. 크래시 심벌로 ‘쾅’ 하고 열기도 해요.") },
   bridge: { what: L("분위기를 확 바꾸는 부분이에요."), how: L("보통 8마디예요. 지금까지 안 쓴 화음과 리듬으로 새로운 느낌을 주면, 마지막 후렴이 더 반갑게 들려요.") },
   interlude: { what: L("노래 사이에 악기만 연주하는 간주예요."), how: L("보통 4마디예요. 멜로디가 쉬는 동안 악기들이 숨을 고르는 곳이에요.") },
-  outro: { what: L("곡을 마무리하는 부분이에요."), how: L("보통 4마디예요. 으뜸화음(Ⅰ)으로 돌아와 끝나야 ‘끝났다’는 느낌이 나요. 화음을 길게 울리고 드럼을 줄이면 차분하게 끝나요.") },
+  outro: { what: L("곡을 마무리하는 부분이에요."), how: L("보통 8마디예요. 으뜸화음(Ⅰ)으로 돌아와 끝나야 ‘끝났다’는 느낌이 나요. 화음을 길게 울리고 드럼을 줄이면 차분하게 끝나요.") },
   a: { what: L("곡의 얼굴이 되는 첫 가락(주제)이에요."), how: L("보통 8마디예요. 으뜸화음으로 시작해서 곡의 조를 먼저 들려줘요.") },
   b: { what: L("A와 다른 분위기로 이야기를 이어 가는 가락이에요."), how: L("보통 8마디예요. A와 다른 화음으로 시작하고 리듬도 바꿔 보면 차이(대비)가 또렷해져요.") },
   free: { what: L("정해진 역할이 없는 파트예요."), how: L("마음 가는 대로 정해요.") },
@@ -166,7 +197,9 @@ interface Props {
   onPlan: (plan: PlanItem[]) => void
   plans: Record<string, PartPlan>
   onPlans: (p: Record<string, PartPlan>) => void
-  onAudition: (plan: PartPlan, bars: number, kind: SectionKind) => void
+  onAudition: (plan: PartPlan, bars: number, kind: SectionKind, opts?: { loop?: boolean; update?: boolean }) => void
+  /** 직접 정하기에서 칸을 누를 때 바로 들려줄 소리 (role 트랙의 악기로) */
+  onTap: (role: 'chords' | 'bass' | 'drums', pitches: number[]) => void
   onBuild: () => void
   built: boolean
   onPlayPart: (id: string) => void
@@ -243,6 +276,7 @@ export function Interview(p: Props) {
   const set = (patch: Partial<Answers>) => p.onAnswers({ ...a, ...patch })
   const minor = isMinorScale(settings.scaleType)
   const root = settings.scaleType === 'none' ? 0 : settings.scaleRoot
+  const harm: Harmony = settings.scaleType === 'none' ? minor : settings.scaleType
   const beats = song.beatsPerBar
   const hasChords = !!findRoleTrack(song, 'chords')
   const hasBass = !!findRoleTrack(song, 'bass')
@@ -340,17 +374,67 @@ export function Interview(p: Props) {
     const base = sec && p.plans[sec.id]
     if (!sec || !base) return
     const bars = Math.min(sec.bars, maxBars)
+    setLooping(null)
     p.onAudition({ ...base, ...patch }, bars, k)
     setMark({ id: cardId, m: { key: Date.now(), barSec, count: bars } })
   }
+  /** 직접 정하기: 한 마디를 계속 돌려 듣고, 그동안 고친 것은 바로 반영 */
+  const [looping, setLooping] = useState<string | null>(null)
+  const loopListen = (key: string, k: SectionKind) => {
+    if (looping === key && p.playing) { setLooping(null); p.onStop(); return }
+    const sec = firstSec(k)
+    const base = sec && p.plans[sec.id]
+    if (!base) return
+    setLooping(key)
+    p.onAudition(base, 1, k, { loop: true })
+  }
+  const editKind = (k: SectionKind, key: string, patch: Partial<PartPlan>) => {
+    setKind(k, patch)
+    const sec = firstSec(k)
+    const base = sec && p.plans[sec.id]
+    if (base && looping === key && p.playing) p.onAudition({ ...base, ...patch }, 1, k, { update: true })
+  }
 
   const nextDisabled =
-    (step.id === 'parts' && !a.melody && !a.chords && !a.bass && !a.drums) ||
+    (step.id === 'parts' && !a.melody && !a.chords && !a.bass && !a.drums && !a.guitar) ||
     (step.id === 'shape' && !p.structureId) ||
     (step.id === 'order' && song.sections.length === 0)
 
   const mood = MOODS.find((m) => m.type === a.scaleType) ?? MOODS[0]
   const scaleNotes = SCALES[a.scaleType].steps.map((st) => (a.root + st) % 12)
+
+  /** 같은 리듬을 이미 쓴 다른 종류의 파트 이름들 */
+  const usedIn = (sub: Sub, k: SectionKind, id: string): string[] => {
+    if (sub === 'comp') return []
+    const seenKinds = new Set<SectionKind>()
+    const out: string[] = []
+    for (const s of song.sections) {
+      if (s.kind === k || seenKinds.has(s.kind)) continue
+      seenKinds.add(s.kind)
+      const pl = p.plans[s.id]
+      if (pl && pl.picked && (sub === 'drum' ? pl.drum : pl.bass) === id) out.push(s.name)
+    }
+    return out
+  }
+  const fillName = (pl: PartPlan) => ({ shuffle: L("셋잇단 필"), halftime: L("묵직한 두 번"), floor4: L("스네어 롤"), sixteen: L("두 박 16분 탐"), basic4: L("8분음표 두 번"), polka: L("8분음표 두 번") } as Partial<Record<DrumStyle, string>>)[pl.drum] ?? (pl.drum === 'custom' && pl.grid === 3 ? L("셋잇단 필") : L("16분 탐"))
+  /** 직접 정하기 칸을 누르면 바로 그 소리 */
+  const tapSound = (sub: Sub, pl: PartPlan, lane: string) => {
+    if (sub === 'drum') {
+      const DR: Record<string, number> = { crash: 49, open: 46, hat: 42, snare: 38, tom: 47, kick: 36 }
+      if (DR[lane]) p.onTap('drums', [DR[lane]])
+      return
+    }
+    const prog = progressionsFor(minor).find((x) => x.id === pl.prog) ?? progressionsFor(minor)[0]
+    const ch = chordOf(root, harm, prog.degrees[0], false)
+    if (sub === 'bass') {
+      const r = 36 + ((ch.rootPc - 36) % 12 + 12) % 12
+      p.onTap('bass', [[r, r + ch.fifthInt, r + 12][+lane] ?? r])
+      return
+    }
+    const r = 48 + ((ch.rootPc - 48) % 12 + 12) % 12
+    const tones = [r, r + ch.thirdInt, r + ch.fifthInt, r + 12, r + 12 + ch.thirdInt]
+    p.onTap('chords', lane === 'c' ? [r + 12, r + 12 + ch.thirdInt, r + 12 + ch.fifthInt] : [tones[+lane] ?? r])
+  }
 
   /* ---------- 반주 질문 ---------- */
   const bandBody = (k: SectionKind, sub: Sub): ReactNode => {
@@ -369,7 +453,7 @@ export function Interview(p: Props) {
     if (sub === 'chord') {
       const others = Object.fromEntries(Object.entries(p.plans).filter(([id]) => song.sections.find((s) => s.id === id)?.kind !== k))
       const i = song.sections.indexOf(sec)
-      const ranks = rankProgressions(neighborCtx(song, others, i, minor, root))
+      const ranks = rankProgressions(neighborCtx(song, others, i, minor, root, settings.scaleType === 'none' ? undefined : settings.scaleType))
       const list = ranks.slice(0, 3)
       if (!list.some((r) => r.prog.id === plan.prog)) {
         const cur = ranks.find((r) => r.prog.id === plan.prog)
@@ -399,7 +483,7 @@ export function Interview(p: Props) {
               return (
                 <Card key={r.prog.id} on={!noChords && plan.prog === r.prog.id} badge={n === 0 ? L("잘 어울려요") : undefined} onClick={() => pick(r.prog.id)}>
                   <span className="iv-play"><Icon name="play" size={14} />{L("들어보기")}</span>
-                  <span className="iv-chords big">{r.prog.degrees.slice(0, 4).map((d) => chordOf(root, minor, d, false).name).join(' → ')}</span>
+                  <span className="iv-chords big">{r.prog.degrees.slice(0, 4).map((d) => chordOf(root, harm, d, false).name).join(' → ')}</span>
                   <b>{r.prog.mood}</b>
                   {why && <small>{why}</small>}
                   {warn && <small className="iv-warn">{warn}</small>}
@@ -421,7 +505,7 @@ export function Interview(p: Props) {
             <div className="iv-chips">
               {all.filter((x) => !list.some((r) => r.prog.id === x.id)).map((x) => (
                 <button key={x.id} type="button" className={!noChords && plan.prog === x.id ? 'on' : ''} onClick={() => pick(x.id)}>
-                  <b>{x.degrees.slice(0, 4).map((d) => chordOf(root, minor, d, false).name).join(' → ')}</b> {x.mood}
+                  <b>{x.degrees.slice(0, 4).map((d) => chordOf(root, harm, d, false).name).join(' → ')}</b> {x.mood}
                 </button>
               ))}
             </div>
@@ -453,7 +537,7 @@ export function Interview(p: Props) {
                       <span key={bar} className="iv-bar">
                         {segs.slice(bar * per, bar * per + per).map((d, j) => {
                           const hold = sp.id === 'slow' && bar % 2 === 1
-                          return <i key={j} className={hold ? 'hold' : ''}>{hold ? '' : chordOf(root, minor, d, false).name}</i>
+                          return <i key={j} className={hold ? 'hold' : ''}>{hold ? '' : chordOf(root, harm, d, false).name}</i>
                         })}
                       </span>
                     ))}
@@ -510,6 +594,7 @@ export function Interview(p: Props) {
               <span className="iv-kid">{c.kid}</span>
               {c.id !== 'none' && <PatternView beats={beats} lanes={cfg.lanes(c.id)} compact play={mark?.id === `${sub}-${c.id}` ? mark.m : null} />}
               <small>{c.desc}</small>
+              {c.id !== 'none' && usedIn(sub, k, c.id).length > 0 && <span className="iv-used">{L("{0}에서 이미 쓰였어요!", usedIn(sub, k, c.id).join(', '))}</span>}
             </Card>
           ))}
           <Card className="iv-custom" on={isCustom} onClick={() => {
@@ -523,14 +608,26 @@ export function Interview(p: Props) {
             <small>{L("칸을 눌러서 소리 낼 자리를 내가 정해요.")}</small>
           </Card>
         </div>
+        {sub === 'drum' && plan.drum !== 'none' && (
+          <div className="iv-fill">
+            <button type="button" role="switch" aria-checked={plan.fill} className={`iv-switch ${plan.fill ? 'on' : ''}`} onClick={() => setKind(k, { fill: !plan.fill })}>
+              <i /> <b>{L("다음 파트로 넘어갈 때 필인 넣기")}</b>
+            </button>
+            <span>{L("파트 마지막 박을 탐·스네어로 채워서 ‘이제 바뀐다!’고 알려 줘요. 지금 리듬에 맞는 필인이 들어가요({0}). 베이스도 다음 화음으로 미끄러져 들어가요.", fillName(plan))}</span>
+            <button type="button" className="iv-secondary small" onClick={() => listen('fill', k, { fill: true }, 2)}><Icon name="play" size={14} />{L("필인 들어보기")}</button>
+          </div>
+        )}
         {(isCustom || editing === `${sub}:${k}`) && (
           <div className="iv-editor">
             <div className="iv-editor-head">
               <b>{L("직접 정하기 · 한 마디")}</b>
               <span>{sub === 'drum' ? L("칸을 누르면 소리가 생기고, 누른 채로 옆으로 밀면 여러 칸을 한 번에 쳐요. 막대를 누르면 지워져요.") : L("빈 칸을 누르고 오른쪽으로 끌면 길게 울려요. 막대를 끌면 길이가 바뀌고, 그냥 누르면 지워져요.")} {L("숫자는 박, &는 박과 박 사이(뒷박)예요.")}</span>
-              <button type="button" className="iv-secondary small" onClick={() => listen(`${sub}-custom`, k, {})}><Icon name="play" size={14} />{L("들어보기")}</button>
+              <button type="button" className={`iv-secondary small ${looping === `${sub}:${k}` && p.playing ? 'on' : ''}`} onClick={() => loopListen(`${sub}:${k}`, k)}>
+                <Icon name={looping === `${sub}:${k}` && p.playing ? 'stop' : 'loop'} size={14} />{looping === `${sub}:${k}` && p.playing ? L("멈추기") : L("계속 들으며 고치기")}
+              </button>
             </div>
-            <CustomEditor sub={sub} beats={beats} plan={plan} onChange={(patch) => setKind(k, patch)} />
+            <CustomEditor sub={sub} beats={beats} plan={plan} onChange={(patch) => editKind(k, `${sub}:${k}`, patch)}
+              onTap={(lane) => tapSound(sub, plan, lane)} />
           </div>
         )}
         {reuse}
@@ -560,13 +657,25 @@ export function Interview(p: Props) {
         return (
           <>
             <Q n={L("어떤 느낌의 곡이면 좋겠어요?")} say={L("카드를 누르면 그 느낌의 음들이 들려요. 귀로 듣고 골라 보세요.")} />
+            <div className="iv-family" role="radiogroup" aria-label={L("장조 · 단조")}>
+              {FAMILIES.map((f) => {
+                const on = (MOODS.find((m) => m.type === a.scaleType)?.family ?? 'major') === f.family
+                return (
+                  <button key={f.family} type="button" role="radio" aria-checked={on} className={on ? 'on' : ''}
+                    onClick={() => { if (!on) { set({ scaleType: f.first }); p.onScaleDemo(a.root, f.first) } }}>
+                    <b>{f.term}</b>
+                    <span>{f.label} · {f.hint}</span>
+                  </button>
+                )
+              })}
+            </div>
             <div className="iv-grid">
-              {MOODS.map((m) => (
+              {MOODS.filter((m) => m.family === (MOODS.find((x) => x.type === a.scaleType)?.family ?? 'major')).map((m) => (
                 <Card key={m.type} on={a.scaleType === m.type} onClick={() => { set({ scaleType: m.type }); p.onScaleDemo(a.root, m.type) }}>
                   <span className="iv-play"><Icon name="play" size={14} />{L("들어보기")}</span>
-                  <b>{m.label}</b>
-                  <small>{m.hint}</small>
-                  <span className="iv-term">{m.term} · {m.en}</span>
+                  <b>{m.term}</b>
+                  <small>{m.label} · {m.hint}</small>
+                  <span className="iv-term">{L("{0}음", m.notes)} · {m.en}{m.mode ? L(" · 모드") : ''}</span>
                 </Card>
               ))}
             </div>
@@ -581,7 +690,7 @@ export function Interview(p: Props) {
                 ))}
               </div>
             </div>
-            <Learn>{L("곡에 쓸 음을 모아 놓은 것을")} <b>{L("음계")}</b>{L("(스케일)라고 해요. 같은 도레미라도")} <b>{L("장음계")}</b>{L("는 밝게,")} <b>{L("단음계")}</b>{L("는 어둡게 들려요. 음계를 정하면 건반에서 어울리는 음이 색으로 표시돼서 멜로디를 쉽게 만들 수 있어요.")}</Learn>
+            <Learn>{L("곡에 쓸 음을 모아 놓은 것을")} <b>{L("음계")}</b>{L("(스케일)라고 해요. 같은 도레미라도")} <b>{L("장음계")}</b>{L("는 밝게,")} <b>{L("단음계")}</b>{L("는 어둡게 들려요. 음계를 정하면 건반에서 어울리는 음이 색으로 표시돼서 멜로디를 쉽게 만들 수 있어요.")} {L("장음계·단음계에서 음 하나를 살짝 바꾼 것을 모드(선법)라고 해요. 도리안·리디안처럼 이름마다 고유한 색깔이 있어요.")}</Learn>
           </>
         )
       case 'tempo':
@@ -594,7 +703,7 @@ export function Interview(p: Props) {
                   <span className="iv-big">{t.bpm}<small>BPM</small></span>
                   <b>{t.label}</b>
                   <small>{t.pic} · {t.hint}</small>
-                  <span className="iv-term">{t.term}</span>
+                  <span className="iv-term">{tempoTerm(t.bpm)}</span>
                 </Card>
               ))}
             </div>
@@ -607,8 +716,17 @@ export function Interview(p: Props) {
                 <button type="button" className="iv-step" onClick={() => set({ bpm: Math.min(200, a.bpm + 1) })} aria-label={L("1 빠르게")}><Icon name="plus" size={18} /></button>
                 <button type="button" className="iv-secondary small" onClick={() => p.onBeatDemo(a.bpm, a.beats)}><Icon name="play" size={14} />{L("들어보기")}</button>
               </div>
+              <div className="iv-ladder" aria-label={L("빠르기말")}>
+                {TEMPO_TERMS.map((t) => (
+                  <button key={t.it} type="button" className={termOf(a.bpm) === t ? 'on' : ''} onClick={() => { set({ bpm: t.bpm }); p.onBeatDemo(t.bpm, a.beats) }}>
+                    <b>{t.it}</b>
+                    <span>{isEn ? t.mean : `${t.ko} · ${t.mean}`}</span>
+                    <small>{t.bpm}</small>
+                  </button>
+                ))}
+              </div>
             </div>
-            <Learn>{L("빠르기를")} <b>{L("템포")}</b>{L("라고 해요. 1분에 박을 몇 번 치는지(BPM, Beats Per Minute)로 나타내요. 심장은 1분에 70~100번쯤 뛰는데, 그 정도가 ‘보통 빠르기’예요. 악보에는 Andante(안단테, 걷는 빠르기)처럼 이탈리아 말로 적기도 해요.")}</Learn>
+            <Learn>{L("빠르기를")} <b>{L("템포")}</b>{L("라고 해요. 1분에 박을 몇 번 치는지(BPM, Beats Per Minute)로 나타내요. 심장은 1분에 70~100번쯤 뛰는데, 그 정도가 ‘보통 빠르기’예요. 악보에는 Andante(안단테, 걷는 빠르기)처럼 이탈리아 말로 적기도 해요.")} {L("이런 말을 빠르기말이라고 해요. 느린 것부터 Largo → Adagio → Andante → Moderato → Allegretto → Allegro → Vivace → Presto 순서예요. 이름 끝에 -etto가 붙으면 ‘조금’이라는 뜻이라서 Allegretto는 ‘조금 빠르게’예요.")}</Learn>
           </>
         )
       case 'meter':
@@ -631,17 +749,17 @@ export function Interview(p: Props) {
       case 'parts':
         return (
           <>
-            <Q n={L("어떤 악기들과 함께 연주할까요?")} say={L("누를 때마다 넣었다 뺐다 해요. 처음이면 넷 다 넣는 걸 추천해요.")} />
+            <Q n={L("어떤 악기들과 함께 연주할까요?")} say={L("누를 때마다 넣었다 뺐다 해요. 처음이면 위의 넷을 넣고, 록 느낌을 원하면 일렉 기타도 넣어 보세요.")} />
             <div className="iv-grid four">
               {PARTS_WANT.map((w) => (
-                <Card key={w.key} on={a[w.key]} onClick={() => set({ [w.key]: !a[w.key] })}>
+                <Card key={w.key} on={!!a[w.key]} onClick={() => set({ [w.key]: !a[w.key] })}>
                   <span className="iv-icon"><Icon name={w.icon} size={28} /></span>
                   <b>{w.label}</b>
                   <small>{w.hint}</small>
                 </Card>
               ))}
             </div>
-            <Learn>{L("음악은 네 가지 역할이 겹쳐져요.")} <b>{L("멜로디")}</b>{L("가 노래를 하고,")} <b>{L("화음")}</b>{L("이 색을 입히고,")} <b>{L("베이스")}</b>{L("가 바닥을 받치고,")} <b>{L("드럼")}</b>{L("이 움직임을 만들어요. 밴드가 이 역할을 나눠 맡는 거예요.")}</Learn>
+            <Learn>{L("음악은 네 가지 역할이 겹쳐져요.")} <b>{L("멜로디")}</b>{L("가 노래를 하고,")} <b>{L("화음")}</b>{L("이 색을 입히고,")} <b>{L("베이스")}</b>{L("가 바닥을 받치고,")} <b>{L("드럼")}</b>{L("이 움직임을 만들어요. 밴드가 이 역할을 나눠 맡는 거예요.")} {L("일렉 기타는 오버드라이브(소리를 일부러 찌그러뜨림)를 걸고 근음과 5도만 치는")} <b>{L("파워 코드")}</b>{L("를 많이 써요. 벌스에서는 손날로 줄을 살짝 눌러 짧게 끊는")} <b>{L("팜 뮤트")}</b>{L(", 코러스에서는 시원하게 울리게 쳐요.")}</Learn>
           </>
         )
       case 'shape':
@@ -672,7 +790,7 @@ export function Interview(p: Props) {
       case 'order':
         return <Order song={song} onPlan={p.onPlan} onPlayPart={p.onPlayPart} onAdd={() => setAddPop(true)} />
       case 'built':
-        return <Built song={song} plans={p.plans} minor={minor} root={root} playing={p.playing} built={p.built} onPlayAll={p.onPlayAll} onPlayPart={p.onPlayPart} />
+        return <Built song={song} plans={p.plans} minor={minor} harm={harm} root={root} playing={p.playing} built={p.built} onPlayAll={p.onPlayAll} onPlayPart={p.onPlayPart} />
       case 'melody':
         return (
           <>
@@ -871,35 +989,82 @@ function fromPreset(sub: Sub, plan: PartPlan, beats: number): Partial<PartPlan> 
   return {}
 }
 
-function CustomEditor({ sub, beats, plan, onChange }: { sub: Sub; beats: number; plan: PartPlan; onChange: (patch: Partial<PartPlan>) => void }) {
+const ARP_LANES = [
+  { key: '4', label: L("위 3음"), color: '#9c7bf5' }, { key: '3', label: L("위 근음"), color: '#8a6cf2' },
+  { key: '2', label: L("5음"), color: '#7c5cf0' }, { key: '1', label: L("3음"), color: '#6d4fe0' }, { key: '0', label: L("근음"), color: '#5e43cc' },
+]
+/** 아르페지오를 처음 켤 때 넣어 주는 시작 모양: 올라갔다 내려오는 8분음표 */
+const arpSeed = (beats: number) => Array.from({ length: beats * 2 }, (_, i) => ({ t: i * (PPQ / 2), d: PPQ / 2, tone: [0, 1, 2, 3, 4, 3, 2, 1][i % 8] as ArpTone }))
+
+function CustomEditor({ sub, beats, plan, onChange, onTap }: { sub: Sub; beats: number; plan: PartPlan; onChange: (patch: Partial<PartPlan>) => void; onTap: (lane: string) => void }) {
   const bar = beats * PPQ
   const comp = compPatOf(plan, bar)
   const drum = drumPatOf(plan)
   const bass = bassPatOf(plan, bar)
-  const all = sub === 'comp' ? comp : sub === 'drum' ? Object.values(drum).flat() : bass
+  const arp = plan.arpPat ?? []
+  const arpOn = sub === 'comp' && plan.compMode === 'arp'
+  const all = sub === 'comp' ? (arpOn ? arp : comp) : sub === 'drum' ? Object.values(drum).flat() : bass
   const grid = plan.grid ?? guessGrid(all)
   const onGrid = (div: number) => onChange({ grid: div })
-  if (sub === 'comp')
+  const clear = (
+    <button type="button" className="iv-secondary small pe-clear" onClick={() => onChange(sub === 'comp' ? (arpOn ? { arpPat: [] } : { compPat: [] }) : sub === 'drum' ? { drumPat: { crash: [], open: [], hat: [], snare: [], tom: [], kick: [] } } : { bassPat: [] })}>
+      <Icon name="close" size={14} />{L("모두 지우기")}
+    </button>
+  )
+  if (sub === 'comp') {
+    const mode = (
+      <div className="pe-grids pe-mode" role="radiogroup" aria-label={L("치는 방법")}>
+        <span>{L("치는 방법")}</span>
+        <button type="button" role="radio" aria-checked={!arpOn} className={!arpOn ? 'on' : ''} onClick={() => onChange({ compMode: 'block', comp: 'custom' })}>
+          <b>{L("한꺼번에")}</b><small>{L("화음 (블록 코드)")}</small>
+        </button>
+        <button type="button" role="radio" aria-checked={arpOn} className={arpOn ? 'on' : ''}
+          onClick={() => onChange({ compMode: 'arp', comp: 'custom', ...(plan.arpPat?.length ? {} : { arpPat: arpSeed(beats), grid: plan.grid ?? 2 }) })}>
+          <b>{L("하나씩")}</b><small>{L("아르페지오 (분산화음)")}</small>
+        </button>
+        {clear}
+      </div>
+    )
+    if (arpOn) {
+      const value: PatValue = { '0': [], '1': [], '2': [], '3': [], '4': [] }
+      for (const n of arp) value[String(n.tone)].push(n)
+      return (
+        <>
+          {mode}
+          <PatternEditor beats={beats} grid={grid} onGrid={onGrid} sustain lanes={ARP_LANES} value={value} onTap={onTap}
+            onChange={(v) => onChange({ comp: 'custom', compMode: 'arp', grid, arpPat: (['0', '1', '2', '3', '4'] as const).flatMap((k) => (v[k] ?? []).map((n) => ({ t: n.t, d: n.d, tone: +k as ArpTone }))).sort((x, y) => x.t - y.t) })} />
+          <p className="pe-note-hint">{L("화음이 바뀌면 같은 자리의 음도 새 화음의 근음·3음·5음으로 따라 바뀌어요. 위아래로 오가며 나만의 분산화음을 만들어 보세요.")}</p>
+        </>
+      )
+    }
     return (
       <>
-        <PatternEditor beats={beats} grid={grid} onGrid={onGrid} sustain lanes={[{ key: 'c', label: L("화음"), color: '#7c5cf0' }]}
-          value={{ c: comp }} onChange={(v) => onChange({ comp: 'custom', compPat: v.c, grid })} />
+        {mode}
+        <PatternEditor beats={beats} grid={grid} onGrid={onGrid} sustain lanes={[{ key: 'c', label: L("화음"), color: '#7c5cf0' }]} onTap={onTap}
+          value={{ c: comp }} onChange={(v) => onChange({ comp: 'custom', compMode: 'block', compPat: v.c, grid })} />
         <PatternView beats={beats} lanes={compLanes(beats, 'custom', comp)} />
       </>
     )
+  }
   if (sub === 'drum') {
     const lanes = [
       { key: 'crash', label: L("심벌"), color: '#e0a83a' }, { key: 'open', label: L("열린 햇"), color: '#2b9bb8' }, { key: 'hat', label: L("하이햇"), color: '#38bcd8' },
       { key: 'snare', label: L("스네어"), color: '#e05c8a' }, { key: 'tom', label: L("탐"), color: '#9c7bb5' }, { key: 'kick', label: L("킥"), color: '#7c5cf0' },
     ]
-    return <PatternEditor beats={beats} grid={grid} onGrid={onGrid} sustain={false} lanes={lanes} value={drum as unknown as PatValue}
-      onChange={(v) => onChange({ drum: 'custom', drumPat: { crash: v.crash ?? [], open: v.open ?? [], hat: v.hat ?? [], snare: v.snare ?? [], tom: v.tom ?? [], kick: v.kick ?? [] }, grid })} />
+    return (
+      <>
+        <div className="pe-tools">{clear}</div>
+        <PatternEditor beats={beats} grid={grid} onGrid={onGrid} sustain={false} lanes={lanes} value={drum as unknown as PatValue} onTap={onTap}
+          onChange={(v) => onChange({ drum: 'custom', drumPat: { crash: v.crash ?? [], open: v.open ?? [], hat: v.hat ?? [], snare: v.snare ?? [], tom: v.tom ?? [], kick: v.kick ?? [] }, grid })} />
+      </>
+    )
   }
   const value: PatValue = { '2': [], '1': [], '0': [] }
   for (const n of bass) value[String(n.tone)].push(n)
   return (
     <>
-      <PatternEditor beats={beats} grid={grid} onGrid={onGrid} sustain exclusive
+      <div className="pe-tools">{clear}</div>
+      <PatternEditor beats={beats} grid={grid} onGrid={onGrid} sustain exclusive onTap={onTap}
         lanes={[{ key: '2', label: L("옥타브"), color: '#2fa3c4' }, { key: '1', label: L("5도"), color: '#2fa3c4' }, { key: '0', label: L("근음"), color: '#2fa3c4' }]}
         value={value}
         onChange={(v) => onChange({ bass: 'custom', grid, bassPat: (['0', '1', '2'] as const).flatMap((k) => (v[k] ?? []).map((n) => ({ t: n.t, d: n.d, tone: +k as 0 | 1 | 2 }))).sort((a, b) => a.t - b.t) })} />
@@ -967,7 +1132,7 @@ function Order({ song, onPlan, onPlayPart, onAdd }: { song: Song; onPlan: (plan:
           </button>
         </li>
       </ol>
-      <Learn>{L("곡을 이루는 덩어리를")} <b>{L("파트")}</b>{L("라고 해요. 벌스·코러스 같은 노래의 중심 파트는 보통")} <b>{L("8마디")}</b>{L(", 인트로·아웃트로는")} <b>{L("4마디")}</b>{L("예요. 같은 파트가 다시 나오면 귀에 익어서 기억에 남고, 다른 파트가 나오면 새로운 느낌이 들어요.")}</Learn>
+      <Learn>{L("곡을 이루는 덩어리를")} <b>{L("파트")}</b>{L("라고 해요. 벌스·코러스 같은 노래의 중심 파트는 보통")} <b>{L("8마디")}</b>{L(", 인트로·아웃트로도")} <b>{L("8마디")}</b>{L(", 프리코러스·간주는")} <b>{L("4마디")}</b>{L("예요. 같은 파트가 다시 나오면 귀에 익어서 기억에 남고, 다른 파트가 나오면 새로운 느낌이 들어요.")}</Learn>
     </>
   )
 }
@@ -1036,8 +1201,8 @@ function AddPart({ song, onClose, onAdd }: { song: Song; onClose: () => void; on
   )
 }
 
-function Built({ song, plans, minor, root, playing, built, onPlayAll, onPlayPart }: {
-  song: Song; plans: Record<string, PartPlan>; minor: boolean; root: number; playing: boolean; built: boolean; onPlayAll: () => void; onPlayPart: (id: string) => void
+function Built({ song, plans, minor, harm, root, playing, built, onPlayAll, onPlayPart }: {
+  song: Song; plans: Record<string, PartPlan>; minor: boolean; harm: Harmony; root: number; playing: boolean; built: boolean; onPlayAll: () => void; onPlayPart: (id: string) => void
 }) {
   const seen = new Map<SectionKind, string>()
   const term = <T extends string>(list: Style<T>[], id: T) => (id === 'custom' ? L("직접 만든 리듬") : list.find((x) => x.id === id)?.term ?? '')
@@ -1066,7 +1231,7 @@ function Built({ song, plans, minor, root, playing, built, onPlayAll, onPlayPart
               <b>{s.name}</b>
               {same ? <span className="iv-same">{same}{L("와 같아요 (다시 쓰기)")}</span> : (
                 <span>
-                  {pl.comp === 'none' ? L("화음 쉬기") : prog.degrees.slice(0, 4).map((d) => chordOf(root, minor, d, false).name).join(' → ')}
+                  {pl.comp === 'none' ? L("화음 쉬기") : prog.degrees.slice(0, 4).map((d) => chordOf(root, harm, d, false).name).join(' → ')}
                   {pl.comp !== 'none' && <> · {term(COMP_PICK, pl.comp)}</>} · {term(DRUM_PICK, pl.drum)} · {term(BASS_PICK, pl.bass)}
                 </span>
               )}

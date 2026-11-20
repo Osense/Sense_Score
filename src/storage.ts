@@ -1,7 +1,7 @@
 import { L } from './i18n'
 import { PPQ, uid, type Settings, type Song } from './types'
 import { namesFor, normalizeSong } from './sections'
-import { TRACK_COLORS } from './music'
+import { SCALES, TRACK_COLORS } from './music'
 
 const KEY = 'composing-sense:v1'
 const SNAP16_FLAG = 'composing-sense:snap16'
@@ -97,7 +97,7 @@ export function parseProject(raw: string): { song: Song; settings: Settings } {
   }
   const st = { ...defaultSettings(s), ...data.settings }
   if (!num(st.speed, 0.25, 2) || !num(st.snap, 1, PPQ * 4) || !integer(st.scaleRoot, 0, 11) ||
-    !['none', 'major', 'minor', 'pentatonic', 'minorPent', 'blues'].includes(st.scaleType) ||
+    !(st.scaleType === 'none' || st.scaleType in SCALES) ||
     !['scroll', 'page'].includes(st.scoreView) || ![0, 2, 4, 8].includes(st.scoreBars) ||
     !num(st.loopStart, 0, 256 * 16 * PPQ) || !num(st.loopEnd, 0, 256 * 16 * PPQ) ||
     !['loop', 'metronome', 'countIn', 'scoreMulti', 'showKeyRoot', 'showKeyScale', 'showKeyChord'].every((k) => typeof st[k] === 'boolean') ||

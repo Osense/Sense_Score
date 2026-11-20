@@ -25,7 +25,7 @@ export interface Track {
   solo: boolean
   color: string
   /** 뼈대 세우기(코드·베이스·드럼)가 어느 트랙에 음표를 넣을지 */
-  role?: 'melody' | 'chords' | 'bass' | 'drums'
+  role?: TrackRole
   notes: Note[]
   /** 불러온 MIDI의 피치 벤드 (기타 초킹 등). 없으면 벤드 없음 */
   bends?: Bend[]
@@ -87,7 +87,12 @@ export type KeyHighlights = Pick<Settings, 'showKeyRoot' | 'showKeyScale' | 'sho
 
 export type Tool = 'pen' | 'eraser' | 'hand' | 'select'
 
-export type ScaleType = 'major' | 'minor' | 'pentatonic' | 'minorPent' | 'blues'
+/** 트랙이 맡은 역할 (자동 반주가 이 역할로 트랙을 찾는다) */
+export type TrackRole = 'melody' | 'chords' | 'bass' | 'drums' | 'guitar'
+
+export type ScaleType =
+  | 'major' | 'pentatonic' | 'lydian' | 'mixolydian' // 장조 계열
+  | 'minor' | 'minorPent' | 'blues' | 'dorian' | 'phrygian' | 'harmonicMinor' // 단조 계열
 
 let seq = 0
 export const uid = () => `${Date.now().toString(36)}${(seq++).toString(36)}${Math.random().toString(36).slice(2, 5)}`

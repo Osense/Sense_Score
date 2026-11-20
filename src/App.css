@@ -2035,3 +2035,52 @@ b.mix-name { display: flex; align-items: center; }
   .lang-full { display: none; }
   .lang-short { display: inline; font-family: var(--font-mono); letter-spacing: .02em; }
 }
+
+/* ---------- 인터뷰: 장조/단조 고르기 · 빠르기말 사다리 ---------- */
+.iv-family { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 14px; }
+.iv-family button {
+  display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left;
+  padding: 14px 18px; border-radius: 16px; border: 2px solid var(--border); background: var(--panel); color: inherit; cursor: pointer;
+}
+.iv-family button b { font-size: 1.15rem; }
+.iv-family button span { opacity: .75; font-size: .92rem; }
+.iv-family button.on { border-color: transparent; background: var(--brand-grad); color: var(--on-brand); }
+.iv-family button.on span { opacity: .95; }
+.iv-ladder { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-top: 12px; }
+.iv-ladder button {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; min-height: 44px;
+  border-radius: 12px; border: 1px solid var(--border); background: var(--panel); color: inherit; cursor: pointer; text-align: center;
+}
+.iv-ladder b { font-size: .88rem; }
+.iv-ladder span { font-size: .72rem; opacity: .75; line-height: 1.25; }
+.iv-ladder small { font-family: 'JetBrains Mono', monospace; font-size: .7rem; opacity: .6; }
+.iv-ladder button.on { border-color: transparent; background: var(--brand-grad); color: var(--on-brand); }
+.iv-ladder button.on span, .iv-ladder button.on small { opacity: .95; }
+@media (max-width: 900px) { .iv-ladder { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 640px) { .iv-family { grid-template-columns: 1fr; } }
+
+/* ---------- 직접 정하기: 치는 방법·모두 지우기·이미 쓰였어요·필인 ---------- */
+.pe-mode { margin-bottom: 8px; }
+.pe-mode .pe-clear, .pe-tools .pe-clear { margin-left: auto; }
+.pe-tools { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.pe-note-hint { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.iv-used { display: inline-block; margin-top: 6px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--accent-bg); color: var(--accent); }
+.iv-fill { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 14px 0 4px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--panel); }
+.iv-fill > span { flex: 1 1 260px; font-size: 13px; color: var(--muted); }
+.iv-switch { display: inline-flex; align-items: center; gap: 10px; background: none; border: 0; padding: 4px 0; color: var(--text); cursor: pointer; min-height: 40px; }
+.iv-switch i { position: relative; width: 42px; height: 24px; border-radius: 12px; background: var(--border-strong); transition: background .15s; flex: none; }
+.iv-switch i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px rgb(0 0 0 / 25%); }
+.iv-switch.on i { background: var(--brand-grad); }
+.iv-switch.on i::after { transform: translateX(18px); }
+.iv-secondary.on { border-color: var(--accent); color: var(--accent); }
+.view-bar .danger-soft { margin-left: auto; color: oklch(0.55 0.18 25); }
+.view-bar .danger-soft:disabled { color: var(--muted); }
+
+/* ---------- 멜로디: 파트 녹음 안내 ---------- */
+.mel-part { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 6px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--accent-bg); }
+.mel-part p { margin: 0; flex: 1 1 320px; font-size: 13px; line-height: 1.5; }
+.mel-part .iv-switch span { font-size: 13px; font-weight: 700; }
+.mel-next { margin-top: 6px; }
+
+/* 머리줄: 내보내기 버튼이 파일 메뉴와 겹치지 않게, 자리가 모자라면 파일 메뉴가 다음 줄로 */
+@media (min-width: 641px) { .top-main { min-width: min-content; } }

@@ -7,6 +7,8 @@ import { uid, type Note } from './types'
 export class Recorder {
   active = false
   startTick = 0
+  /** 이 시각부터 시작하는 음은 받지 않는다 (파트 녹음에서 다음 파트로 한 박 넘게 들어간 음) */
+  endTick = Infinity
   private clock: () => number
   private open = new Map<number, { start: number; vel: number }>()
   private done: Note[] = []
@@ -15,9 +17,10 @@ export class Recorder {
     this.clock = clock
   }
 
-  begin(startTick: number) {
+  begin(startTick: number, endTick = Infinity) {
     this.active = true
     this.startTick = startTick
+    this.endTick = endTick
     this.open.clear()
     this.done = []
   }
@@ -26,6 +29,7 @@ export class Recorder {
     if (!this.active) return
     const t = this.clock()
     if (t < this.startTick - 1) return // 먼저 세기(카운트 인) 동안은 기록하지 않는다
+    if (t >= this.endTick) return
     this.open.set(pitch, { start: Math.max(this.startTick, t), vel })
   }
 

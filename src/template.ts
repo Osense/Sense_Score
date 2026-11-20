@@ -14,6 +14,8 @@ export interface Answers {
   chords: boolean
   bass: boolean
   drums: boolean
+  /** 오버드라이브 일렉 기타(파워 코드·팜 뮤트) */
+  guitar?: boolean
 }
 
 export const defaultAnswers = (): Answers => ({
@@ -26,14 +28,16 @@ export const defaultAnswers = (): Answers => ({
   chords: true,
   bass: true,
   drums: true,
+  guitar: false,
 })
 
 /** 대답에 맞춰 빈 곡(트랙과 8마디 한 덩어리 파트)을 만든다 */
 export function buildTemplate(a: Answers): { song: Song; settings: Settings } {
-  const want: { key: 'melody' | 'chords' | 'bass' | 'drums'; name: string; program: number; vol: number }[] = [
+  const want: { key: 'melody' | 'chords' | 'bass' | 'drums' | 'guitar'; name: string; program: number; vol: number }[] = [
     { key: 'melody', name: L("멜로디"), program: 0, vol: 0.85 },
     { key: 'chords', name: L("코드 반주"), program: 48, vol: 0.5 },
     { key: 'bass', name: L("베이스"), program: 33, vol: 0.65 },
+    { key: 'guitar', name: L("일렉 기타"), program: 29, vol: 0.5 },
     { key: 'drums', name: L("드럼"), program: 0, vol: 0.7 },
   ]
   const picked = want.filter((w) => a[w.key])

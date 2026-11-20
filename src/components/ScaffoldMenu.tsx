@@ -3,7 +3,7 @@ import { useEffect, useMemo } from 'react'
 import { NOTE_NAMES_KO } from '../music'
 import { KINDS, noteCounts } from '../sections'
 import {
-  autoPlans, BASS_STYLES, chordOf, COMP_STYLES, DRUM_STYLES, isMinorScale, neighborCtx, progressionsFor, rankProgressions,
+  autoPlans, type Harmony, BASS_STYLES, chordOf, COMP_STYLES, DRUM_STYLES, isMinorScale, neighborCtx, progressionsFor, rankProgressions,
   sampleBar, siblingsOf, type BassStyle, type ChordRhythm, type ChordSpeed, type DrumStyle, type PartPlan,
 } from '../scaffold'
 import type { SectionKind, Settings, Song } from '../types'
@@ -67,6 +67,7 @@ function Course({ no, title, sub, onPlay, children }: { no: number; title: strin
 export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSelect, onApply, onAudition, onDone }: Props) {
   const minor = isMinorScale(settings.scaleType)
   const root = settings.scaleType === 'none' ? 0 : settings.scaleRoot
+  const harm: Harmony = settings.scaleType === 'none' ? minor : settings.scaleType
   const beats = song.beatsPerBar
   const len = beats * 480
   const full = useMemo(() => autoPlans(song, settings, plans), [song, settings, plans])
@@ -84,13 +85,13 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
   const sample = sampleBar(beats)
 
   // 앞·뒤 파트와 이웃 파트의 진행을 보고 센스 있게 추천 (프리코러스·브릿지는 코러스로 이어지는지도 따진다)
-  const ctx = neighborCtx(song, full, idx, minor, root)
+  const ctx = neighborCtx(song, full, idx, minor, root, settings.scaleType === 'none' ? undefined : settings.scaleType)
   const ranks = rankProgressions(ctx)
   const recOf = (id: string) => {
     const i = ranks.findIndex((r) => r.prog.id === id)
     return i >= 0 && i < 2 && ranks[i].score >= 20 ? ranks[i] : null
   }
-  const nm = (d: number) => chordOf(root, minor, d, plan.seventh).name
+  const nm = (d: number) => chordOf(root, harm, d, plan.seventh).name
 
   // 같은 종류의 파트(코러스 2, 코러스 3 …)는 한 번 고르면 함께 바뀐다
   const sibs = siblingsOf(song, sec.id)
@@ -114,7 +115,7 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
     if (on) for (const i of sibs) { const sid = song.sections[i].id; if (full[sid]?.linked !== false) next[sid] = { ...plan, linked: true } }
     onPlans(next)
   }
-  const chordNames = (degs: number[]) => degs.map((d) => chordOf(root, minor, d, plan.seventh).name).join(' – ')
+  const chordNames = (degs: number[]) => degs.map((d) => chordOf(root, harm, d, plan.seventh).name).join(' – ')
 
   const kicks = sample.drum(plan.drum).filter((h) => h.pitch === 36)
 

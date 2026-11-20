@@ -85,7 +85,7 @@ function carve(notes: PatNoteLike[], keep: PatNoteLike): PatNoteLike[] {
 
 interface Drag { lane: string; note: PatNoteLike; startCell: number; moved: boolean; created: boolean; painted: Set<number> }
 
-export function PatternEditor({ beats, grid, onGrid, lanes, value, onChange, sustain, exclusive }: {
+export function PatternEditor({ beats, grid, onGrid, lanes, value, onChange, sustain, exclusive, onTap }: {
   beats: number
   grid: number
   onGrid: (div: number) => void
@@ -96,6 +96,8 @@ export function PatternEditor({ beats, grid, onGrid, lanes, value, onChange, sus
   sustain: boolean
   /** 여러 줄 가운데 한 번에 한 줄만 소리 (베이스: 근음·5도·옥타브 중 하나) */
   exclusive?: boolean
+  /** 새 음을 찍을 때 바로 들려줄 소리 */
+  onTap?: (lane: string) => void
 }) {
   const bar = beats * PPQ
   const cell = PPQ / grid
@@ -133,6 +135,7 @@ export function PatternEditor({ beats, grid, onGrid, lanes, value, onChange, sus
       return
     }
     const note = { t: c * cell, d: cell }
+    onTap?.(lane)
     onChange(put(live.current, lane, note))
     drag.current = { lane, note, startCell: c, moved: false, created: true, painted: new Set([c]) }
   }
@@ -146,6 +149,7 @@ export function PatternEditor({ beats, grid, onGrid, lanes, value, onChange, sus
       // 드럼: 지나간 칸마다 친다
       if (g.painted.has(c) || hitAt(g.lane, c * cell)) return
       g.painted.add(c)
+      onTap?.(g.lane)
       onChange(put(live.current, g.lane, { t: c * cell, d: cell }))
       return
     }

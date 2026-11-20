@@ -1,4 +1,4 @@
-import { L } from './i18n'
+import { isEn, L } from './i18n'
 import type { ScaleType } from './types'
 
 export const NOTE_NAMES_KO = [L("도"), L("도#"), L("레"), L("레#"), L("미"), L("파"), L("파#"), L("솔"), L("솔#"), L("라"), L("라#"), L("시")]
@@ -7,13 +7,25 @@ export const NOTE_NAMES_EN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', '
 export const isBlack = (p: number) => [1, 3, 6, 8, 10].includes(p % 12)
 export const pitchLabel = (p: number) => `${NOTE_NAMES_KO[p % 12]}${Math.floor(p / 12) - 1}`
 
-export const SCALES: Record<ScaleType, { label: string; steps: number[]; hint: string }> = {
-  major: { label: L("장음계 (밝은 느낌)"), steps: [0, 2, 4, 5, 7, 9, 11], hint: L("도레미파솔라시") },
-  minor: { label: L("단음계 (슬픈 느낌)"), steps: [0, 2, 3, 5, 7, 8, 10], hint: L("어두운 분위기") },
-  pentatonic: { label: L("5음계 (어떻게 쳐도 어울림)"), steps: [0, 2, 4, 7, 9], hint: L("틀리기 어려운 음") },
-  minorPent: { label: L("단조 5음계"), steps: [0, 3, 5, 7, 10], hint: L("록·블루스 느낌") },
-  blues: { label: L("블루스"), steps: [0, 3, 5, 6, 7, 10], hint: L("블루스 느낌") },
+export type ScaleFamily = 'major' | 'minor'
+/**
+ * 음계: 계열(장조·단조), 쓰는 음(steps), 화음을 쌓을 7음 바탕(hept), 조표를 정할 때 쓰는 ‘같은 음을 쓰는 장조’까지의 거리(toMajor).
+ * 5음계·블루스는 화음을 7음 장·단음계로 쌓는다. 모드는 그 모드의 7음 그대로 쌓아서(도리안의 Ⅳ는 장3화음 등) 고유한 색이 난다.
+ */
+export const SCALES: Record<ScaleType, { label: string; steps: number[]; hint: string; family: ScaleFamily; hept: number[]; toMajor: number; mode?: boolean }> = {
+  major: { label: L("장음계 (밝은 느낌)"), steps: [0, 2, 4, 5, 7, 9, 11], hint: L("도레미파솔라시"), family: 'major', hept: [0, 2, 4, 5, 7, 9, 11], toMajor: 0 },
+  pentatonic: { label: L("5음계 (어떻게 쳐도 어울림)"), steps: [0, 2, 4, 7, 9], hint: L("틀리기 어려운 음"), family: 'major', hept: [0, 2, 4, 5, 7, 9, 11], toMajor: 0 },
+  lydian: { label: L("리디안 (꿈꾸듯 떠 있는)"), steps: [0, 2, 4, 6, 7, 9, 11], hint: L("올라간 4음(#4)"), family: 'major', hept: [0, 2, 4, 6, 7, 9, 11], toMajor: 7, mode: true },
+  mixolydian: { label: L("믹솔리디안 (느긋한 록)"), steps: [0, 2, 4, 5, 7, 9, 10], hint: L("내려간 7음(♭7)"), family: 'major', hept: [0, 2, 4, 5, 7, 9, 10], toMajor: 5, mode: true },
+  minor: { label: L("단음계 (슬픈 느낌)"), steps: [0, 2, 3, 5, 7, 8, 10], hint: L("어두운 분위기"), family: 'minor', hept: [0, 2, 3, 5, 7, 8, 10], toMajor: 3 },
+  minorPent: { label: L("단조 5음계"), steps: [0, 3, 5, 7, 10], hint: L("록·블루스 느낌"), family: 'minor', hept: [0, 2, 3, 5, 7, 8, 10], toMajor: 3 },
+  blues: { label: L("블루스"), steps: [0, 3, 5, 6, 7, 10], hint: L("블루스 느낌"), family: 'minor', hept: [0, 2, 3, 5, 7, 8, 10], toMajor: 3 },
+  dorian: { label: L("도리안 (세련된 어두움)"), steps: [0, 2, 3, 5, 7, 9, 10], hint: L("올라간 6음(♮6)"), family: 'minor', hept: [0, 2, 3, 5, 7, 9, 10], toMajor: 10, mode: true },
+  phrygian: { label: L("프리지안 (스페인·메탈)"), steps: [0, 1, 3, 5, 7, 8, 10], hint: L("내려간 2음(♭2)"), family: 'minor', hept: [0, 1, 3, 5, 7, 8, 10], toMajor: 8, mode: true },
+  harmonicMinor: { label: L("화성단음계 (이국적·클래식)"), steps: [0, 2, 3, 5, 7, 8, 11], hint: L("올라간 7음(이끈음)"), family: 'minor', hept: [0, 2, 3, 5, 7, 8, 11], toMajor: 3 },
 }
+/** 단조 계열인지 (화음 진행 목록·평가·조표 이름에 쓴다) */
+export const isMinorType = (t: ScaleType | 'none'): boolean => t !== 'none' && SCALES[t].family === 'minor'
 
 export function inScale(pitch: number, root: number, type: ScaleType | 'none'): boolean {
   if (type === 'none') return true
@@ -22,8 +34,8 @@ export function inScale(pitch: number, root: number, type: ScaleType | 'none'): 
 
 /** 장/단음계의 각 음 위에 쌓은 3화음(코드) 추천 */
 export function diatonicChords(root: number, type: ScaleType | 'none') {
-  const base = type === 'minor' || type === 'minorPent' ? 'minor' : 'major'
-  const steps = SCALES[base].steps
+  const base = isMinorType(type) ? 'minor' : 'major'
+  const steps = type === 'none' ? SCALES.major.hept : SCALES[type].hept
   const quality = base === 'major'
     ? ['', 'm', 'm', '', '', 'm', '°']
     : ['m', '°', '', 'm', 'm', '', '']
@@ -106,8 +118,9 @@ export interface KeySig {
 const MAJOR_FIFTHS = [0, -5, 2, -3, 4, -1, 6, 1, -4, 3, -2, 5]
 const SHARP_DEGS = [3, 0, 4, 1, 5, 2, 6] // 파 도 솔 레 라 미 시
 const FLAT_DEGS = [6, 2, 5, 1, 4, 0, 3] // 시 미 라 레 솔 도 파
-const MAJOR_KO = [L("다"), L("내림라"), L("라"), L("내림마"), L("마"), L("바"), L("올림바"), L("사"), L("내림가"), L("가"), L("내림나"), L("나")]
-const MINOR_KO = [L("다"), L("올림다"), L("라"), L("올림라"), L("마"), L("바"), L("올림바"), L("사"), L("올림사"), L("가"), L("내림나"), L("나")]
+// 조 이름의 으뜸음 (한국어는 다라마바사가나, 영어는 C D E…; ‘라’가 계이름 라(A)로 번역되면 안 되므로 L()을 쓰지 않는다)
+const MAJOR_KO = isEn ? ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'] : ['다', '내림라', '라', '내림마', '마', '바', '올림바', '사', '내림가', '가', '내림나', '나']
+const MINOR_KO = isEn ? ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'B♭', 'B'] : ['다', '올림다', '라', '올림라', '마', '바', '올림바', '사', '올림사', '가', '내림나', '나']
 
 export const KEY_CHOICES: { value: string; label: string }[] = [
   { value: 'none', label: L("조표 없음 (다장조)") },
@@ -116,13 +129,17 @@ export const KEY_CHOICES: { value: string; label: string }[] = [
 ]
 
 export function keyOf(root: number, type: ScaleType | 'none'): KeySig {
-  const minor = type === 'minor' || type === 'minorPent' || type === 'blues'
+  const minor = isMinorType(type)
   const tonic = type === 'none' ? 0 : root
-  const fifths = MAJOR_FIFTHS[(tonic + (minor ? 3 : 0)) % 12]
+  // 조표는 ‘같은 음을 쓰는 장조’를 따른다 (예: 레 도리안 = 다장조 조표, 라 단조 = 다장조 조표)
+  const fifths = MAJOR_FIFTHS[(tonic + (type === 'none' ? 0 : SCALES[type].toMajor)) % 12]
   const acc = Array(7).fill(0)
   if (fifths > 0) SHARP_DEGS.slice(0, fifths).forEach((d) => (acc[d] = 1))
   if (fifths < 0) FLAT_DEGS.slice(0, -fifths).forEach((d) => (acc[d] = -1))
-  const name = type === 'none' ? L("다장조") : `${(minor ? MINOR_KO : MAJOR_KO)[tonic]}${minor ? L("단조") : L("장조")}`
+  const modeName: Partial<Record<ScaleType, string>> = { lydian: L("리디안"), mixolydian: L("믹솔리디안"), dorian: L("도리안"), phrygian: L("프리지안") }
+  const name = type === 'none' ? L("다장조")
+    : modeName[type] ? `${(minor ? MINOR_KO : MAJOR_KO)[tonic]} ${modeName[type]}`
+    : `${(minor ? MINOR_KO : MAJOR_KO)[tonic]}${isEn ? ' ' : ''}${minor ? L("단조") : L("장조")}`
   return { fifths, acc, name, minor }
 }
 

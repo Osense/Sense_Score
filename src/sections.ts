@@ -77,7 +77,7 @@ export const STRUCTURES: Structure[] = [
       L("인트로로 분위기를 열고 아웃트로로 마무리해요."),
       L("우리가 라디오에서 듣는 대부분의 노래가 이런 모양이에요."),
     ],
-    parts: [['intro', 4], ['verse', 8], ['chorus', 8], ['verse', 8, L("벌스 2")], ['chorus', 8, L("코러스 2")], ['outro', 4]],
+    parts: [['intro', 8], ['verse', 8], ['chorus', 8], ['verse', 8, L("벌스 2")], ['chorus', 8, L("코러스 2")], ['outro', 8]],
   },
   {
     id: 'full',
@@ -90,8 +90,8 @@ export const STRUCTURES: Structure[] = [
       L("코러스를 여러 번 반복해서 노래가 머릿속에 남게 해요. 조금 길지만 도전해 볼 만해요!"),
     ],
     parts: [
-      ['intro', 4], ['verse', 8], ['chorus', 8], ['verse', 8, L("벌스 2")], ['prechorus', 4],
-      ['chorus', 8, L("코러스 2")], ['bridge', 8], ['chorus', 8, L("코러스 3")], ['outro', 4],
+      ['intro', 8], ['verse', 8], ['chorus', 8], ['verse', 8, L("벌스 2")], ['prechorus', 4],
+      ['chorus', 8, L("코러스 2")], ['bridge', 8], ['chorus', 8, L("코러스 3")], ['outro', 8],
     ],
   },
   {
@@ -118,7 +118,7 @@ export const barsOf = (sections: Section[]) => sections.reduce((s, x) => s + x.b
 
 /** 파트 종류별로 보통 쓰는 길이(마디). 노래의 중심(벌스·코러스·A·B)은 8마디, 여닫는 파트는 짧게 */
 export const TYPICAL_BARS: Record<SectionKind, number> = {
-  a: 8, b: 8, intro: 4, verse: 8, prechorus: 4, chorus: 8, bridge: 8, interlude: 4, outro: 4, free: 8,
+  a: 8, b: 8, intro: 8, verse: 8, prechorus: 4, chorus: 8, bridge: 8, interlude: 4, outro: 8, free: 8,
 }
 
 /** 같은 종류가 여러 개면 "벌스 2"처럼 번호를 붙인 이름 */

@@ -1,5 +1,5 @@
 import { L } from './i18n'
-import { inScale, NOTE_NAMES_KO } from './music'
+import { inScale, isMinorType, NOTE_NAMES_KO } from './music'
 import { rangesOf } from './sections'
 import { PPQ, type Note, type Settings, type Song, type Track } from './types'
 
@@ -167,7 +167,7 @@ export function evaluate(song: Song, settings: Settings): Evaluation {
   if (scaleKnown) {
     const last = notes[notes.length - 1].pitch % 12
     const root = settings.scaleRoot
-    const minor = settings.scaleType === 'minor' || settings.scaleType === 'minorPent' || settings.scaleType === 'blues'
+    const minor = isMinorType(settings.scaleType)
     const third = (root + (minor ? 3 : 4)) % 12
     const fifth = (root + 7) % 12
     const ok = last === root ? 100 : last === third || last === fifth ? 60 : 20

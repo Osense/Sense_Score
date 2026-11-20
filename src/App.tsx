@@ -55,7 +55,7 @@ const DEFAULT_SF_NAME = 'GeneralUser GS'
 type Theme = 'light' | 'dark'
 const initialTheme = (): Theme => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light')
 /** 악기 구성이 같으면 곡을 새로 만들지 않고 이름·빠르기·박자·음계만 고친다 */
-const partsKey = (a: Answers) => [a.melody, a.chords, a.bass, a.drums].map(Number).join('')
+const partsKey = (a: Answers) => [a.melody, a.chords, a.bass, a.drums, !!a.guitar].map(Number).join('')
 
 function TimeDisplay({ getTick, song, speed }: { getTick: () => number; song: Song; speed: number }) {
   const ref = useRef<HTMLSpanElement>(null)
@@ -126,8 +126,12 @@ export default function App() {
   // 멜로디 쓰기(라이브 녹음)
   const [melTrackId, setMelTrackId] = useState('')
   const [take, setTake] = useState(false)
-  const [lastTake, setLastTake] = useState<{ count: number; trackId: string; raw: Note[] } | null>(null)
-  const takeInfo = useRef<{ trackId: string; correction: Correction } | null>(null)
+  /** 파트 하나만 녹음할 때: 녹음 구간과 같은 종류 파트(벌스 2…)에 복사할 자리 */
+  interface PartTake { id: string; name: string; start: number; end: number; copies: { offset: number; start: number; end: number; name: string }[] }
+  const [lastTake, setLastTake] = useState<{ count: number; trackId: string; raw: Note[]; placed: string[]; part: PartTake | null } | null>(null)
+  const takeInfo = useRef<{ trackId: string; correction: Correction; part: PartTake | null; restoreLoop: Partial<Settings> | null } | null>(null)
+  const takeTimer = useRef(0)
+  const [takeEnd, setTakeEnd] = useState<{ end: number; name: string } | null>(null)
   const finishTakeRef = useRef<() => void>(() => {})
   const recorderRef = useRef<Recorder | null>(null)
   const [msg, setMsg] = useState('')
@@ -287,16 +291,21 @@ export default function App() {
   }
 
   /** 메뉴판에서 고른 설정을 몇 마디만 임시 곡으로 만들어 바로 들려준다 (실제 곡은 그대로) */
-  const audition = (plan: PartPlan, bars: number, kind: SectionKind) => {
+  const audition = (plan: PartPlan, bars: number, kind: SectionKind, opts: { loop?: boolean; update?: boolean } = {}) => {
     const real = hist.ref.current
+    // 필인은 다음 파트로 넘어갈 때만 들어가므로, 들어볼 때는 뒤에 한 마디를 붙여 착지까지 들려준다
+    const tail = plan.fill && plan.drum !== 'none' && !opts.loop && !opts.update
     const base: Song = {
       ...real,
-      bars,
-      sections: [{ id: '__aud', kind, name: L("미리듣기"), bars }],
+      bars: bars + (tail ? 1 : 0),
+      sections: [{ id: '__aud', kind, name: L("미리듣기"), bars }, ...(tail ? [{ id: '__aud2', kind, name: L("미리듣기"), bars: 1 }] : [])],
       tracks: real.tracks.map((t) => ({ ...t, mute: false, solo: false, notes: [] })),
     }
-    const tmp = generate(base, settingsRef.current, { __aud: plan })
-    const st: Settings = { ...settingsRef.current, loop: false, countIn: false, metronome: false, trainer: { ...settingsRef.current.trainer, on: false } }
+    const tmp = generate(base, settingsRef.current, { __aud: plan, ...(tail ? { __aud2: { ...plan, fill: false } } : {}) })
+    const loopEnd = bars * real.beatsPerBar * PPQ
+    const st: Settings = { ...settingsRef.current, loop: !!opts.loop || !!opts.update, loopStart: 0, loopEnd, countIn: false, metronome: false, trainer: { ...settingsRef.current.trainer, on: false } }
+    // 계속 듣는 중에 고치면 소리를 끊지 않고 다음 박부터 새 리듬으로
+    if (opts.update) { audio().player.updateTemp(tmp, st); return }
     hush()
     setPlaying(true)
     void audio().player.playTemp(tmp, st)
@@ -403,40 +412,99 @@ export default function App() {
 
   const [takeFrom, setTakeFrom] = useState<number | null>(null)
   const countInBefore = useRef<boolean | null>(null)
-  const startTake = (o: { replace: boolean; correction: Correction; countIn: boolean }) => {
+  const startTake = (o: { replace: boolean; correction: Correction; countIn: boolean; copy: boolean }) => {
     if (!melTrack) return
     const { player } = audio()
     const st = settingsRef.current
+    const cur = hist.ref.current
     const loopOn = st.loop && st.loopEnd > st.loopStart
+    const rg = rangesOf(cur)
+    const barT = cur.beatsPerBar * PPQ
+    // 반복 구간이 파트 하나와 딱 맞으면 ‘파트 녹음’: 앞 파트 끝에서부터 들어가고, 끝나면 여음까지 받고 저절로 멈춘다
+    const sec = loopOn ? cur.sections.find((x) => rg.get(x.id)!.start === st.loopStart && rg.get(x.id)!.end === st.loopEnd) : undefined
+    if (sec) {
+      const { start, end } = rg.get(sec.id)!
+      const si = cur.sections.indexOf(sec)
+      const prev = si > 0 ? rg.get(cur.sections[si - 1].id)! : null
+      const pre = prev ? Math.max(prev.start, start - 2 * barT) : start
+      const copies = o.copy
+        ? cur.sections.filter((x) => x.kind === sec.kind && x.id !== sec.id).map((x) => {
+            const r = rg.get(x.id)!
+            return { offset: r.start - start, start: r.start, end: r.end, name: x.name }
+          })
+        : []
+      const part: PartTake = { id: sec.id, name: sec.name, start, end, copies }
+      if (o.replace) updateNotes(melTrack.id, (ns) => ns.filter((n) => !(n.start >= start && n.start < end)), true)
+      takeInfo.current = { trackId: melTrack.id, correction: o.correction, part, restoreLoop: { loop: st.loop, loopStart: st.loopStart, loopEnd: st.loopEnd } }
+      // 못갖춘마디(앞 마디에서 미리 들어가는 음)는 한 마디 앞부터, 다음 파트로 살짝 넘어가는 음은 한 박 뒤까지 받는다
+      recorder().begin(Math.max(0, start - barT), end + PPQ)
+      setTake(true)
+      setTakeFrom(start)
+      setTakeEnd({ end, name: sec.name })
+      setLastTake(null)
+      countInBefore.current = settingsRef.current.countIn
+      playWith({ countIn: pre === start ? o.countIn : false, loop: false }, pre)
+      // 끝나고 한 마디 동안 여음을 받은 뒤 마감
+      const stopAt = Math.min(end + barT, player.songEnd())
+      window.clearInterval(takeTimer.current)
+      takeTimer.current = window.setInterval(() => {
+        const a = audioRef.current
+        if (!a || !a.player.playing) return window.clearInterval(takeTimer.current)
+        if (a.player.currentTick() >= stopAt - 10) {
+          window.clearInterval(takeTimer.current)
+          a.player.stop()
+        }
+      }, 40)
+      return
+    }
     let from = loopOn ? st.loopStart : Math.max(0, player.currentTick())
     if (from >= player.songEnd()) from = 0
     const end = loopOn ? st.loopEnd : Infinity
     if (o.replace) updateNotes(melTrack.id, (ns) => ns.filter((n) => !(n.start >= from && n.start < end)), true)
-    takeInfo.current = { trackId: melTrack.id, correction: o.correction }
+    takeInfo.current = { trackId: melTrack.id, correction: o.correction, part: null, restoreLoop: null }
     recorder().begin(from)
     setTake(true)
     setTakeFrom(from)
+    setTakeEnd(null)
     setLastTake(null)
     // 녹음에서만 먼저 세기(예비박)를 쓰고, 끝나면 원래 설정으로 돌려놓는다
     countInBefore.current = settingsRef.current.countIn
     playWith({ countIn: o.countIn }, from)
   }
+  /** 보정한 연주를 트랙에 놓는다. 파트 녹음이면 같은 종류 파트에도 복사 */
+  const placeTake = (notes: Note[], part: PartTake | null): Note[] => {
+    if (!part) return notes
+    const out = [...notes]
+    for (const c of part.copies)
+      for (const n of notes) {
+        const st = n.start + c.offset
+        if (st >= c.end + PPQ) continue
+        out.push({ ...n, id: uid(), start: st })
+      }
+    return out
+  }
+  const clearCopies = (ns: Note[], part: PartTake | null) =>
+    part ? ns.filter((n) => !part.copies.some((c) => n.start >= c.start && n.start < c.end)) : ns
   const finishTake = () => {
     const info = takeInfo.current
     if (!info) return
     takeInfo.current = null
+    window.clearInterval(takeTimer.current)
     setTake(false)
     setTakeFrom(null)
+    setTakeEnd(null)
     if (countInBefore.current !== null) {
-      setSettings({ countIn: countInBefore.current })
+      setSettings({ countIn: countInBefore.current, ...(info.restoreLoop ?? {}) })
       countInBefore.current = null
     }
     const raw = recorder().finish()
     if (!raw.length) return flash(L("녹음된 음표가 없어요. 건반을 눌러 연주해 보세요!"))
     const notes = correctTake(raw, info.correction, correctEnv(info.trackId))
-    updateNotes(info.trackId, (ns) => [...ns, ...notes], true)
-    setLastTake({ count: notes.length, trackId: info.trackId, raw })
-    flash(L("음표 {0}개를 녹음하고 보정했어요!", notes.length))
+    const placed = placeTake(notes, info.part)
+    updateNotes(info.trackId, (ns) => [...clearCopies(ns, info.part), ...placed], true)
+    setLastTake({ count: notes.length, trackId: info.trackId, raw, placed: placed.map((n) => n.id), part: info.part })
+    if (info.part?.copies.length) flash(L("{0} 녹음 끝! 음표 {1}개를 {2}에도 똑같이 넣었어요", info.part.name, notes.length, info.part.copies.map((c) => c.name).join(', ')))
+    else flash(L("음표 {0}개를 녹음하고 보정했어요!", notes.length))
   }
 
   /** 보정에 필요한 환경 (템포, 음계, 악기 음역) */
@@ -452,15 +520,16 @@ export default function App() {
   /** 방금 녹음한 연주에 다른 보정을 다시 적용 (원본 연주는 보관해 둔다) */
   const recorrectTake = (c: Correction) => {
     if (!lastTake) return
-    const rawIds = new Set(lastTake.raw.map((n) => n.id))
+    const old = new Set(lastTake.placed)
     const notes = correctTake(lastTake.raw, c, correctEnv(lastTake.trackId))
-    updateNotes(lastTake.trackId, (ns) => [...ns.filter((n) => !rawIds.has(n.id)), ...notes], false)
-    setLastTake({ ...lastTake, count: notes.length })
+    const placed = placeTake(notes, lastTake.part)
+    updateNotes(lastTake.trackId, (ns) => [...ns.filter((n) => !old.has(n.id)), ...placed], false)
+    setLastTake({ ...lastTake, count: notes.length, placed: placed.map((n) => n.id) })
   }
   const discardTake = () => {
     if (!lastTake) return
-    const rawIds = new Set(lastTake.raw.map((n) => n.id))
-    updateNotes(lastTake.trackId, (ns) => ns.filter((n) => !rawIds.has(n.id)), true)
+    const old = new Set(lastTake.placed)
+    updateNotes(lastTake.trackId, (ns) => ns.filter((n) => !old.has(n.id)), true)
     setLastTake(null)
     flash(L("방금 녹음을 지웠어요."))
   }
@@ -990,6 +1059,12 @@ export default function App() {
           plans={plans}
           onPlans={setPlans}
           onAudition={audition}
+          onTap={(role, pitches) => {
+            const t = findRoleTrack(hist.ref.current, role)
+            const e = audio().engine
+            // 미리 듣기 전용 채널(드럼은 10번)
+            for (const pt of pitches) e.preview(role === 'drums' ? 9 : 15, t?.program ?? (role === 'bass' ? 33 : role === 'chords' ? 48 : 0), role === 'drums', 0.9, pt, 100, role === 'drums' ? 0.25 : 0.4)
+          }}
           onBuild={buildFromInterview}
           built={ivBuilt}
           onPlayPart={playPart}
@@ -1044,6 +1119,7 @@ export default function App() {
           liveOff={liveOff}
           onStart={startTake}
           takeFrom={takeFrom}
+          takeEnd={takeEnd}
           onSeek={seek}
           onStop={() => audio().player.stop()}
           onPlay={() => void togglePlay()}
@@ -1134,6 +1210,15 @@ export default function App() {
                 <Icon name="minus" size={14} />{L("4마디")}
               </button>
               {mode === 'keys' && !active.drum && <KeyDisplayControls settings={settings} onSettings={setSettings} />}
+              <button className="danger-soft" disabled={!song.tracks.some((t) => t.notes.length)} title={L("모든 트랙의 음표를 한 번에 지워요. 되돌리기(Ctrl+Z)로 다시 살릴 수 있어요")}
+                onClick={() => {
+                  if (!confirm(L("모든 트랙의 음표를 지울까요? 트랙·악기·파트는 그대로 남고, 되돌리기로 다시 살릴 수 있어요."))) return
+                  stop()
+                  hist.set((x) => ({ ...x, tracks: x.tracks.map((t) => ({ ...t, notes: [], bends: [] })) }))
+                  flash(L("모든 음표를 지웠어요. 되돌리기로 다시 살릴 수 있어요"))
+                }}>
+                <Icon name="close" size={14} />{L("전부 비우기")}
+              </button>
             </div>
             {mode === 'keys' ? (
               <PianoRoll

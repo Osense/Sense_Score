@@ -76,6 +76,13 @@ export class Player {
     await this.play(0)
   }
 
+  /** 임시 곡을 재생하는 중이면 소리를 끊지 않고 곡만 바꾼다(이미 예약된 아주 짧은 앞부분 뒤부터 반영) */
+  updateTemp(song: Song, settings: Settings) {
+    if (!this.playing || !this.override) return
+    this.override = song
+    this.ovSettings = settings
+  }
+
   songEnd(song = this.song()) {
     return song.bars * song.beatsPerBar * PPQ
   }

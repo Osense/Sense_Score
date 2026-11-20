@@ -198,6 +198,7 @@ export class AudioEngine {
     const now = this.ctx.currentTime
     for (const id of this.demoTimers) clearTimeout(id)
     this.demoTimers = []
+    this.demoGen++
 
     // 내장 소리: 통로(bus)와 채널 노드를 빠르게 줄이고 새것으로 교체 → 이미 끝 시각이 예약된 긴 음(온음표 등),
     // 드럼, 메트로놈, 아직 시작 전인 음까지 전부 바로 사라진다
@@ -237,23 +238,30 @@ export class AudioEngine {
 
   /** 음계 들려주기 (질문 화면의 ‘들어보기’) */
   playScale(root: number, steps: number[]) {
-    void this.resume()
+    const gen = ++this.demoGen
     this.configure(0, 0, false)
     this.setVolume(0, 0.9)
     const base = 60 + (root > 6 ? root - 12 : root)
-    // 음을 미리 몇 초 앞까지 예약하지 않고 한 음씩 보낸다: 사운드폰트 엔진은 예약된 음을 정지로 지우지 못해서,
-    // 다른 음계를 누르면 앞 음계의 남은 음이 겹쳐 나왔다. 타이머는 allOff()에서 모두 취소된다.
-    ;[...steps, 12].forEach((st, i) => {
-      this.later(i * 0.32, () => {
-        const t = this.startAt(0.01)
-        this.noteOn(0, base + st, 90, t)
-        this.noteOff(0, base + st, t + 0.28)
+    // 모든 음을 하나의 시간표(t0 + i×간격)에 맞춘다. 예전에는 첫 음만 정지 직후의 무음 구간·소리 엔진 깨우기 때문에
+    // 늦게 시작해서 둘째 음과 겹쳐 들렸다. 음은 미리 몇 초씩 예약하지 않고(사운드폰트는 예약된 음을 정지로 못 지움)
+    // 제 시각 0.1초 전에 하나씩 보낸다. 타이머는 allOff()에서 모두 취소된다.
+    void this.resume().then(() => {
+      if (gen !== this.demoGen) return
+      const t0 = this.startAt(0.08)
+      const STEP = 0.34
+      ;[...steps, 12].forEach((st, i) => {
+        const at = t0 + i * STEP
+        this.later(Math.max(0, at - this.ctx.currentTime - 0.1), () => {
+          this.noteOn(0, base + st, 90, at)
+          this.noteOff(0, base + st, at + (i === steps.length ? 0.6 : STEP - 0.03))
+        })
       })
     })
   }
 
   /** 시연 소리용 타이머 (allOff에서 모두 취소) */
   private demoTimers: ReturnType<typeof setTimeout>[] = []
+  private demoGen = 0
   later(sec: number, fn: () => void) {
     const id = setTimeout(() => {
       this.demoTimers = this.demoTimers.filter((x) => x !== id)

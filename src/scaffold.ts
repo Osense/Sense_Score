@@ -1,9 +1,9 @@
 import { L } from './i18n'
 import { fitGroup, soundRangeOf as rangeOf } from './instruments'
-import { NOTE_NAMES_EN, SCALES } from './music'
+import { isMinorType, NOTE_NAMES_EN, SCALES } from './music'
 import { rangesOf } from './sections'
 import { newTrack } from './storage'
-import { PPQ, uid, type Note, type SectionKind, type Settings, type Song, type Track } from './types'
+import { PPQ, uid, type Note, type ScaleType, type TrackRole, type SectionKind, type Settings, type Song, type Track } from './types'
 
 /* ======================================================================
    뼈대 세우기: 화음 진행 · 반주 리듬 · 드럼 · 베이스를 ‘메뉴판’에서 고르면 음표로 만들어 준다.
@@ -21,6 +21,9 @@ export interface CustomDrum { kick: number[]; snare: number[]; hat: number[]; cr
 /** 직접 정한 리듬의 음 하나: 마디 안 위치와 길이(tick) */
 export interface PatNote { t: number; d: number }
 export interface BassNote extends PatNote { tone: 0 | 1 | 2 }
+/** 펼친화음 음: 0 근음 · 1 3음 · 2 5음 · 3 위 근음 · 4 위 3음 */
+export type ArpTone = 0 | 1 | 2 | 3 | 4
+export interface ArpNote extends PatNote { tone: ArpTone }
 export interface DrumPat { crash?: PatNote[]; open?: PatNote[]; hat: PatNote[]; snare: PatNote[]; tom?: PatNote[]; kick: PatNote[] }
 export type DrumLaneKey = keyof DrumPat
 /** 베이스 칸마다 어떤 음을 칠지: 0 = 근음(루트), 1 = 5도, 2 = 한 옥타브 위 근음, null = 쉼 */
@@ -51,6 +54,10 @@ export interface PartPlan {
   bassPat?: BassNote[]
   /** 직접 정하기 칸 크기: 한 박을 몇 칸으로 (2=8분음표, 4=16분음표, 3=셋잇단음표) */
   grid?: number
+  /** 직접 정한 화음 리듬을 한꺼번에(block) 칠지, 하나씩 펼쳐서(arp) 칠지 */
+  compMode?: 'block' | 'arp'
+  /** 펼친화음 직접 정하기 */
+  arpPat?: ArpNote[]
 }
 
 /* ---------- 직접 정한 리듬 읽기 (옛 형식도 새 형식으로) ---------- */
@@ -130,10 +137,12 @@ export const PROG_MINOR: Progression[] = [
 export const progressionsFor = (minor: boolean) => (minor ? PROG_MINOR : PROG_MAJOR)
 
 /** 이 음계에서 장조 계열인지 단조 계열인지 */
-export const isMinorScale = (t: Settings['scaleType']) => t === 'minor' || t === 'minorPent' || t === 'blues'
+export const isMinorScale = (t: Settings['scaleType']) => isMinorType(t)
 
 /* ---------- 화음 만들기 ---------- */
-const stepsOf = (minor: boolean) => (minor ? SCALES.minor.steps : SCALES.major.steps)
+/** 화음을 쌓을 7음: true/false(예전 방식: 단음계/장음계) 또는 음계 종류(모드는 그 모드의 7음) */
+export type Harmony = boolean | ScaleType
+const stepsOf = (h: Harmony) => (typeof h === 'boolean' ? (h ? SCALES.minor.hept : SCALES.major.hept) : SCALES[h].hept)
 
 export interface ChordInfo {
   degree: number
@@ -144,8 +153,14 @@ export interface ChordInfo {
   fifthInt: number
 }
 
-export function chordOf(root: number, minor: boolean, degree: number, seventh: boolean): ChordInfo {
-  const st = stepsOf(minor)
+export function chordOf(root: number, minor: Harmony, degree: number, seventh: boolean): ChordInfo {
+  let st = stepsOf(minor)
+  if (typeof minor !== 'boolean' && st !== SCALES.major.hept && st !== SCALES.minor.hept) {
+    // 모드·화성단음계: 그 음계 7음으로 쌓되, 감·증화음이 되는 자리는 기본 장·단음계 화음으로 (아이 곡에서 너무 거칠지 않게)
+    const t = (st[(degree + 2) % 7] - st[degree] + 12) % 12, f = (st[(degree + 4) % 7] - st[degree] + 12) % 12
+    if (f !== 7) st = isMinorType(minor) ? SCALES.minor.hept : SCALES.major.hept
+    void t
+  }
   const at = (k: number) => (st[(degree + k) % 7] - st[degree] + 12) % 12
   const rootPc = (root + st[degree]) % 12
   const third = at(2)
@@ -231,15 +246,15 @@ export const BASS_STYLES: Choice<BassStyle>[] = [
 
 export const DEFAULT_PLAN: Record<SectionKind, Omit<PartPlan, 'prog'>> = {
   intro: { speed: 'normal', seventh: false, comp: 'arpeggio', drum: 'none', fill: false, crash: false, bass: 'none' },
-  verse: { speed: 'normal', seventh: false, comp: 'beats', drum: 'basic8', fill: false, crash: false, bass: 'roots' },
+  verse: { speed: 'normal', seventh: false, comp: 'beats', drum: 'basic8', fill: true, crash: false, bass: 'roots' },
   prechorus: { speed: 'normal', seventh: false, comp: 'eighths', drum: 'basic8', fill: true, crash: false, bass: 'roots' },
-  chorus: { speed: 'normal', seventh: false, comp: 'eighths', drum: 'basic8', fill: false, crash: true, bass: 'roots-pass' },
+  chorus: { speed: 'normal', seventh: false, comp: 'eighths', drum: 'basic8', fill: true, crash: true, bass: 'roots-pass' },
   bridge: { speed: 'normal', seventh: true, comp: 'whole', drum: 'halftime', fill: true, crash: false, bass: 'whole' },
-  interlude: { speed: 'normal', seventh: false, comp: 'arpeggio', drum: 'basic4', fill: false, crash: false, bass: 'roots' },
+  interlude: { speed: 'normal', seventh: false, comp: 'arpeggio', drum: 'basic4', fill: true, crash: false, bass: 'roots' },
   outro: { speed: 'normal', seventh: false, comp: 'whole', drum: 'none', fill: false, crash: false, bass: 'whole' },
-  a: { speed: 'normal', seventh: false, comp: 'beats', drum: 'basic8', fill: false, crash: false, bass: 'roots' },
-  b: { speed: 'normal', seventh: false, comp: 'arpeggio', drum: 'basic4', fill: false, crash: false, bass: 'roots-pass' },
-  free: { speed: 'normal', seventh: false, comp: 'beats', drum: 'basic8', fill: false, crash: false, bass: 'roots' },
+  a: { speed: 'normal', seventh: false, comp: 'beats', drum: 'basic8', fill: true, crash: false, bass: 'roots' },
+  b: { speed: 'normal', seventh: false, comp: 'arpeggio', drum: 'basic4', fill: true, crash: false, bass: 'roots-pass' },
+  free: { speed: 'normal', seventh: false, comp: 'beats', drum: 'basic8', fill: true, crash: false, bass: 'roots' },
 }
 
 /** 종류에 어울리는 기본 진행 */
@@ -318,12 +333,53 @@ export function drumBar(style: DrumStyle, beats: number, custom?: DrumPat): Hit[
   return out
 }
 
-/** 필인: 마지막 박을 톰 16분음표로 바꾼다 */
-export function withFill(hits: Hit[], beats: number): Hit[] {
-  const from = (beats - 1) * PPQ
-  const kept = hits.filter((h) => h.t < from)
-  const toms = [50, 50, 47, 41]
-  return [...kept, ...toms.map((p, i) => ({ t: from + i * 120, d: 110, vel: 92 + i * 4, pitch: p })), { t: from, d: 110, vel: 100, pitch: K }]
+/**
+ * 필인: 파트가 넘어가기 직전 마지막 박(들)을 리듬에 맞는 채우기로 바꾼다.
+ * 셔플·셋잇단 → 셋잇단 필, 하프타임 → 듬성듬성 묵직하게, 포온더플로어 → 킥은 그대로 두고 스네어 16분 롤(점점 세게),
+ * 16비트 → 두 박 동안 16분 탐 내려오기, 4비트·폴카 → 8분음표 두 번, 나머지(8비트 등) → 마지막 박 16분 탐.
+ */
+export function withFill(hits: Hit[], beats: number, style: DrumStyle = 'basic8', grid?: number): Hit[] {
+  const T1 = 50, T2 = 47, T3 = 45, FT = 41
+  const add = (out: Hit[], t: number, pitch: number, vel: number, d = 110) => out.push({ t, d, vel, pitch })
+  const triplet = style === 'shuffle' || (style === 'custom' && grid === 3)
+  const kind = triplet ? 'triplet' : style === 'halftime' ? 'sparse' : style === 'floor4' ? 'roll' : style === 'sixteen' ? 'long16' : style === 'basic4' || style === 'polka' ? 'eighth' : 'tom16'
+  const span = kind === 'long16' || kind === 'triplet' ? Math.min(2, beats) : 1
+  const from = (beats - span) * PPQ
+  // 포온더플로어는 박마다 치는 킥을 남긴다 (춤추는 발이 멈추지 않게)
+  const out = hits.filter((h) => h.t < from || (kind === 'roll' && h.pitch === K))
+  switch (kind) {
+    case 'triplet': {
+      const seq = [S, S, T1, T2, T3, FT]
+      for (let i = 0; i < span * 3; i++) add(out, from + i * (PPQ / 3), seq[i + (span === 1 ? 3 : 0)], 88 + i * 3)
+      add(out, from, K, 96)
+      break
+    }
+    case 'sparse':
+      add(out, from, S, 104, 200)
+      add(out, from + PPQ / 2, FT, 100, 200)
+      add(out, from + PPQ / 2, K, 92)
+      break
+    case 'roll':
+      for (let i = 0; i < 4; i++) add(out, from + i * 120, S, 70 + i * 12, 100)
+      break
+    case 'long16': {
+      const seq = [S, S, T1, T1, T2, T2, FT, FT]
+      for (let i = 0; i < span * 4; i++) add(out, from + i * 120, seq[i + (span === 1 ? 4 : 0)], 84 + i * 3, 100)
+      add(out, from, K, 98)
+      break
+    }
+    case 'eighth':
+      add(out, from, S, 96)
+      add(out, from + PPQ / 2, T2, 100)
+      add(out, from, K, 96)
+      break
+    default: {
+      const toms = [T1, T1, T2, FT]
+      toms.forEach((p, i) => add(out, from + i * 120, p, 92 + i * 4))
+      add(out, from, K, 100)
+    }
+  }
+  return out
 }
 
 /** 반주(화음) 한 구간. v는 아래→위로 정렬된 화음 구성음 */
@@ -442,8 +498,9 @@ export function sampleBar(beats: number) {
    ====================================================================== */
 const ROLE_NAMES: Record<'chords' | 'bass' | 'drums', string> = { chords: L("코드 반주"), bass: L("베이스"), drums: L("드럼") }
 
-export function findRoleTrack(song: Song, role: 'melody' | 'chords' | 'bass' | 'drums'): Track | undefined {
+export function findRoleTrack(song: Song, role: TrackRole): Track | undefined {
   const byRole = song.tracks.find((t) => t.role === role)
+  if (role === 'guitar') return byRole
   if (byRole) return byRole
   if (role === 'drums') return song.tracks.find((t) => t.drum)
   const key = role === 'chords' ? [L("코드"), L("반주")] : role === 'bass' ? [L("베이스")] : [L("멜로디")]
@@ -454,6 +511,7 @@ export function findRoleTrack(song: Song, role: 'melody' | 'chords' | 'bass' | '
 export function generate(song: Song, settings: Settings, plans: Record<string, PartPlan>, only?: string[]): Song {
   const minor = isMinorScale(settings.scaleType)
   const root = settings.scaleType === 'none' ? 0 : settings.scaleRoot
+  const harm: Harmony = settings.scaleType === 'none' ? minor : settings.scaleType
   const beats = song.beatsPerBar
   const barTicks = beats * PPQ
   const ranges = rangesOf(song)
@@ -473,10 +531,12 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
   const chordsT = need('chords')
   const bassT = need('bass')
   const drumsT = need('drums')
+  // 기타는 학생이 넣었을 때만 (자동으로 만들지 않는다)
+  const guitarT = findRoleTrack({ ...song, tracks }, 'guitar')
 
   const targets = new Set(only ?? song.sections.map((s) => s.id))
   // 다시 만드는 파트 구간의 기존 코드·베이스·드럼 음표는 지운다
-  for (const t of [chordsT, bassT, drumsT]) {
+  for (const t of [chordsT, bassT, drumsT, ...(guitarT ? [guitarT] : [])]) {
     t.notes = t.notes.filter((n) => !song.sections.some((s) => targets.has(s.id) && n.start >= ranges.get(s.id)!.start && n.start < ranges.get(s.id)!.end))
   }
 
@@ -512,9 +572,9 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
     const sec = song.sections[sg.part]
     if (!targets.has(sec.id)) return
     const plan = plans[sec.id]
-    const chord = chordOf(root, minor, sg.degree, plan.seventh)
+    const chord = chordOf(root, harm, sg.degree, plan.seventh)
     const next = segs[i + 1]
-    const nextChord = next ? chordOf(root, minor, next.degree, plans[song.sections[next.part].id].seventh) : chord
+    const nextChord = next ? chordOf(root, harm, next.degree, plans[song.sections[next.part].id].seventh) : chord
 
     // 화음: 앞 화음과 가까운 음으로 이어서 소리가 매끄럽게
     const v = fitGroup(
@@ -530,7 +590,14 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
     // 코러스·B는 맨 아래 음을 한 옥타브 위에 겹쳐서 소리를 넓고 밝게(같은 화음이어도 ‘커졌다’는 느낌)
     const voice = (sec.kind === 'chorus' || sec.kind === 'b') && v[0] + 12 <= cr.high && !v.includes(v[0] + 12) ? [...v, v[0] + 12] : v
     const off = (sg.t0 - ranges.get(sec.id)!.start) % barTicks
-    if (plan.comp === 'custom') {
+    if (plan.comp === 'custom' && plan.compMode === 'arp') {
+      // 펼친화음: 근음·3음·5음·위 근음·위 3음 가운데 고른 음을 차례로
+      const rp = voice.find((x) => x % 12 === chord.rootPc) ?? voice[0]
+      const lo = rp - 12 >= cr.low && rp > 64 ? rp - 12 : rp
+      const tones = [lo, lo + chord.thirdInt, lo + chord.fifthInt, lo + 12, lo + 12 + chord.thirdInt]
+      for (const h of patInSeg(plan.arpPat ?? [], barTicks, off, sg.len))
+        chordsT.notes.push(note(tones[h.n.tone], sg.t0 + h.t, Math.max(60, h.d - 10), h.cont ? 62 : h.n.t % PPQ === 0 ? 82 : 70))
+    } else if (plan.comp === 'custom') {
       for (const h of patInSeg(compPatOf(plan, barTicks), barTicks, off, sg.len))
         for (const p of voice) chordsT.notes.push(note(p, sg.t0 + h.t, Math.max(60, h.d - 20), h.cont ? 66 : h.n.t % PPQ === 0 ? 80 : 68))
     } else
@@ -543,8 +610,25 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
     const barStart = sg.t0 - ((sg.t0 - ranges.get(sec.id)!.start) % barTicks)
     const kicks = drumBar(plan.drum, beats, drumPatOf(plan)).filter((h) => h.pitch === K).map((h) => h.t - (sg.t0 - barStart)).filter((t) => t >= 0 && t < sg.len)
     const pat = plan.bass === 'custom' ? patInSeg(bassPatOf(plan, barTicks), barTicks, off, sg.len) : undefined
-    for (const h of bassSeg(plan.bass, sg.len, { rootP, thirdInt: chord.thirdInt, fifthInt: chord.fifthInt, nextRootP, kicks, barIndex: sg.bar, pat }))
-      bassT.notes.push(note(h.pitch, sg.t0 + h.t, h.d, h.vel))
+    const bassHits = bassSeg(plan.bass, sg.len, { rootP, thirdInt: chord.thirdInt, fifthInt: chord.fifthInt, nextRootP, kicks, barIndex: sg.bar, pat })
+    // 베이스 필: 다음 파트로 넘어가기 직전 반 박에 다음 근음 바로 아래(또는 위) 반음으로 ‘쓱’ 다가간다
+    const partEnd = !next || next.part !== sg.part
+    if (plan.fill && plan.bass !== 'none' && partEnd && next && plans[song.sections[next.part].id]?.bass !== 'none' && sg.len >= PPQ) {
+      const at = sg.len - PPQ / 2
+      const kept = bassHits.filter((h) => h.t < at).map((h) => (h.t + h.d > at ? { ...h, d: at - h.t } : h))
+      const ap = nextRootP - 1 >= br.low ? nextRootP - 1 : nextRootP + 1
+      for (const h of [...kept, { t: at, d: PPQ / 2 - 20, vel: 92, pitch: ap }]) bassT.notes.push(note(h.pitch, sg.t0 + h.t, h.d, h.vel))
+    } else
+      for (const h of bassHits) bassT.notes.push(note(h.pitch, sg.t0 + h.t, h.d, h.vel))
+
+    // 일렉 기타: 파워 코드(근음+5도(+옥타브)). 벌스 쪽은 팜 뮤트 8분음표, 코러스 쪽은 시원하게 울리는 오픈 파워 코드
+    if (guitarT && plan.comp !== 'none') {
+      const gr = rangeOf(guitarT.program)
+      let gRoot = 40 + ((chord.rootPc - 40) % 12 + 12) % 12 // 낮은 미(E2)부터 한 옥타브 안
+      if (gRoot < gr.low) gRoot += 12
+      for (const h of guitarSeg(sec.kind, sg.len, beats, off, gRoot, sg.sub === 0 && sg.bar === 0, i === segs.length - 1 || segs[i + 1].part !== sg.part))
+        for (const p of h.pitches) guitarT.notes.push(note(p, sg.t0 + h.t, h.d, h.vel))
+    }
   })
 
   // 드럼은 마디 단위
@@ -553,16 +637,61 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
     const plan = plans[sec.id]
     if (!plan || plan.drum === 'none') return
     const r = ranges.get(sec.id)!
+    const si = song.sections.indexOf(sec)
+    const hasNext = si < song.sections.length - 1
+    const prev = si > 0 ? plans[song.sections[si - 1].id] : undefined
+    // 앞 파트가 필인으로 넘어왔으면 첫 박에 크래시로 받아 준다
+    const crash = plan.crash || (!!prev && prev.fill && prev.drum !== 'none')
     for (let bar = 0; bar < sec.bars; bar++) {
       let hits = drumBar(plan.drum, beats, drumPatOf(plan))
-      if (plan.fill && bar === sec.bars - 1 && beats >= 2) hits = withFill(hits, beats)
-      if (plan.crash && bar === 0) hits = [...hits, { t: 0, d: 960, vel: 104, pitch: CR }]
+      // 필인은 다음 파트로 넘어갈 때만 (곡의 맨 끝에는 넣지 않는다)
+      if (plan.fill && hasNext && bar === sec.bars - 1 && beats >= 2) hits = withFill(hits, beats, plan.drum, plan.grid)
+      if (crash && bar === 0 && !hits.some((h) => h.t === 0 && h.pitch === CR)) hits = [...hits, { t: 0, d: 960, vel: 104, pitch: CR }]
       for (const h of hits) drumsT.notes.push(note(h.pitch, r.start + bar * barTicks + h.t, h.d, h.vel))
     }
   })
 
-  for (const t of [chordsT, bassT, drumsT]) t.notes.sort((a, b) => a.start - b.start)
+  for (const t of [chordsT, bassT, drumsT, ...(guitarT ? [guitarT] : [])]) t.notes.sort((a, b) => a.start - b.start)
   return { ...song, tracks }
+}
+
+/** 기타 한 구간: 파트 종류에 따라 팜 뮤트(짧게 끊는 8분음표) 또는 오픈 파워 코드 */
+export function guitarSeg(kind: SectionKind, len: number, beats: number, off: number, root: number, first: boolean, last: number | boolean): { t: number; d: number; vel: number; pitches: number[] }[] {
+  const out: { t: number; d: number; vel: number; pitches: number[] }[] = []
+  const five = [root, root + 7]
+  const full = [root, root + 7, root + 12]
+  const open = kind === 'chorus' || kind === 'b' || kind === 'bridge'
+  const ring = kind === 'intro' || kind === 'outro'
+  const barT = beats * PPQ
+  if (ring) {
+    // 인트로·아웃트로: 화음마다 한 번 길게 울리고, 첫 박 뒤 8분음표 두 번으로 살짝 밀어 준다
+    out.push({ t: 0, d: Math.min(len, barT) - 30, vel: first ? 100 : 90, pitches: full })
+    if (len > barT) out.push({ t: barT, d: len - barT - 30, vel: 84, pitches: full })
+    return out
+  }
+  if (open) {
+    // 코러스: 1박(길게) · 2박 반(당김) · 4박 반 짧게 — 마디마다
+    for (let b0 = 0; b0 < len; b0 += barT) {
+      const step = [{ t: 0, d: PPQ * 1.5 }, { t: PPQ * 1.5, d: PPQ * (beats - 1.5) }]
+      for (const s of step) {
+        const t = b0 + s.t
+        if (t >= len) break
+        out.push({ t, d: Math.min(s.d, len - t) - 30, vel: s.t === 0 ? 104 : 92, pitches: full })
+      }
+    }
+    return out
+  }
+  // 벌스·프리코러스·간주 등: 팜 뮤트 8분음표(근음+5도, 짧고 세게, 박 머리에 강세)
+  const eighth = PPQ / 2
+  for (let t = 0; t < len; t += eighth) {
+    const abs = off + t
+    const onBeat = abs % PPQ === 0
+    const down = abs % barT === 0
+    // 프리코러스는 마지막 마디에서 점점 세게 (코러스로 올라가는 느낌)
+    const build = kind === 'prechorus' && last && t >= len - barT ? 10 : 0
+    out.push({ t, d: Math.round(eighth * 0.42), vel: (down ? 96 : onBeat ? 86 : 74) + build, pitches: five })
+  }
+  return out
 }
 
 /**
@@ -593,6 +722,8 @@ export interface Rank { prog: Progression; score: number; reasons: string[] }
 export interface RankCtx {
   kind: SectionKind
   minor: boolean
+  /** 음계 종류(모드면 화음 이름이 그 모드 기준) */
+  mode?: ScaleType
   root: number
   bars: number
   prevLast: number | null
@@ -629,7 +760,7 @@ const PILLAR = new Set<SectionKind>(['a', 'b', 'verse', 'chorus', 'free'])
  *    아웃트로는 으뜸화음으로 끝나게
  */
 export function rankProgressions(c: RankCtx): Rank[] {
-  const nm = (d: number) => chordOf(c.root, c.minor, d, false).name
+  const nm = (d: number) => chordOf(c.root, c.mode ?? c.minor, d, false).name
   const kindLabel = (k: SectionKind) => KIND_LABEL[k]
   const list = progressionsFor(c.minor)
   // 대비를 따질 상대: 코러스는 벌스·A·자유, B는 A, 벌스는 앞의 코러스, 프리코러스·브릿지는 앞의 모든 기둥 파트
@@ -739,7 +870,7 @@ const KIND_LABEL: Record<SectionKind, string> = {
 export const CONNECT = new Set<SectionKind>(['intro', 'prechorus', 'bridge', 'outro', 'interlude'])
 
 /** 이 파트(index)의 이웃 파트 정보 */
-export function neighborCtx(song: Song, plans: Record<string, PartPlan>, index: number, minor: boolean, root: number): RankCtx {
+export function neighborCtx(song: Song, plans: Record<string, PartPlan>, index: number, minor: boolean, root: number, mode?: ScaleType): RankCtx {
   const secs = song.sections
   const sec = secs[index]
   const has = (i: number) => !!plans[secs[i].id]
@@ -760,6 +891,7 @@ export function neighborCtx(song: Song, plans: Record<string, PartPlan>, index: 
   return {
     kind: sec.kind,
     minor,
+    mode,
     root,
     bars: sec.bars,
     prevTurn: p >= 0 && lastChordOf(secs[p].bars, plans[secs[p].id], minor) !== lastChordOf(secs[p].bars, plans[secs[p].id], minor, secs[p].kind, p + 1 < secs.length ? secs[p + 1].kind : null),
@@ -793,7 +925,7 @@ export function autoPlans(song: Song, settings: Settings, existing: Record<strin
     const twin = twinOf(i)
     if (twin) { out[sec.id] = { ...twin, linked: true }; return }
     const base = defaultPlan(sec.kind, minor)
-    const best = rankProgressions(neighborCtx(song, out, i, minor, root))[0]
+    const best = rankProgressions(neighborCtx(song, out, i, minor, root, settings.scaleType === 'none' ? undefined : settings.scaleType))[0]
     out[sec.id] = { ...base, prog: best && best.score > 0 ? best.prog.id : base.prog, linked: true }
   }
   // 앞에서부터 차례로: 앞 파트를 보고 이어지게, 앞의 기둥 파트와는 대비되게

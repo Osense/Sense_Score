@@ -1,5 +1,5 @@
 import { L } from '../i18n'
-import { diatonicChords, NOTE_NAMES_KO, SCALES } from '../music'
+import { diatonicChords, isMinorType, NOTE_NAMES_KO, SCALES } from '../music'
 import type { ScaleType, Settings } from '../types'
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
 export function LearnPanel({ settings, drumTrack, onSettings, onChord, onProgression }: Props) {
   const on = settings.scaleType !== 'none'
   const chords = on ? diatonicChords(settings.scaleRoot, settings.scaleType) : []
-  const minor = settings.scaleType === 'minor' || settings.scaleType === 'minorPent'
+  const minor = isMinorType(settings.scaleType)
   return (
     <section className="panel">
       <h3>{L("음계 도우미")}</h3>

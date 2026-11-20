@@ -28,9 +28,11 @@ interface Props {
   getLive: () => Note[]
   liveOn: (pitch: number, vel: number) => void
   liveOff: (pitch: number) => void
-  onStart: (o: { replace: boolean; correction: Correction; countIn: boolean }) => void
+  onStart: (o: { replace: boolean; correction: Correction; countIn: boolean; copy: boolean }) => void
   /** 녹음이 시작되는 자리(먼저 세기 동안 카운트다운에 쓴다) */
   takeFrom: number | null
+  /** 파트 녹음일 때 그 파트가 끝나는 자리 (끝난 뒤 한 마디는 여음만 받고 마감) */
+  takeEnd: { end: number; name: string } | null
   onSeek: (tick: number) => void
   onStop: () => void
   onPlay: () => void
@@ -81,6 +83,7 @@ export function MelodyPage(p: Props) {
   const [whiteCount, setWhiteCount] = useState(21)
   const [assist, setAssist] = useState<Assist>('free')
   const [replace, setReplace] = useState(false)
+  const [copy, setCopy] = useState(true)
   const [corr, setCorr] = useState<Correction>(DEFAULT_CORRECTION)
   const [presetId, setPresetId] = useState('clean')
   const [down, setDown] = useState<Set<number>>(new Set())
@@ -243,8 +246,14 @@ export function MelodyPage(p: Props) {
   const rec = () => {
     ;(document.activeElement as HTMLElement | null)?.blur?.()
     if (p.taking) p.onStop()
-    else p.onStart({ replace, correction: corr, countIn })
+    else p.onStart({ replace, correction: corr, countIn, copy })
   }
+  // 파트 녹음: 고른 파트와 같은 종류(벌스 2…)는 한 번 녹음한 것을 다시 쓴다
+  const twins = curPart ? song.sections.filter((s) => s.kind === curPart.kind && s.id !== curPart.id) : []
+  const firstOfKind = song.sections.filter((s, i) => song.sections.findIndex((x) => x.kind === s.kind) === i)
+  const curIdx = curPart ? song.sections.indexOf(curPart) : -1
+  const nextPart = curPart ? firstOfKind.find((s) => song.sections.indexOf(s) > curIdx && s.kind !== curPart.kind) : firstOfKind[0]
+  const prevPart = curIdx > 0 ? song.sections[curIdx - 1] : null
 
   return (
     <div className={`melody ${drum ? 'drum-mode' : ''}`}>
@@ -330,12 +339,33 @@ export function MelodyPage(p: Props) {
         <button className={!loopOn ? 'chip on' : 'chip'} onClick={p.onAllParts} title={L("곡 전체 (지금 위치부터)")}>{L("전체")}</button>
         <SongStrip song={song} getTick={p.getTick} onSeek={p.onSeek} onPart={p.onFocusPart} activePart={curPart?.id ?? null} label={L("녹음할 곳")} />
       </div>
+      {!drum && (curPart || p.takeEnd) && !p.taking && (
+        <div className="mel-part">
+          <p>
+            <b>{L("「{0}」만 녹음해요.", curPart?.name ?? '')}</b>{' '}
+            {prevPart ? L("앞 파트({0}) 끝부분부터 반주가 나오니, 박을 세다가 미리 들어가는 음(못갖춘마디)도 쳐도 돼요.", prevPart.name) : L("예비박을 세고 시작해요.")}{' '}
+            {L("파트가 끝나도 한 마디 동안은 남은 소리를 받고 저절로 멈춰요.")}
+          </p>
+          {twins.length > 0 && (
+            <button type="button" role="switch" aria-checked={copy} className={`iv-switch ${copy ? 'on' : ''}`} onClick={() => setCopy(!copy)}>
+              <i /> <span>{L("{0}에도 똑같이 넣기", twins.map((t) => t.name).join(', '))}</span>
+            </button>
+          )}
+        </div>
+      )}
+      {!drum && !p.taking && p.lastTake && nextPart && (
+        <div className="mel-next">
+          <button type="button" className="mel-btn" onClick={() => p.onFocusPart(nextPart.id)}>
+            <Icon name="next" size={15} />{L("다음 파트 녹음하러 가기: {0}", nextPart.name)}
+          </button>
+        </div>
+      )}
 
       <div className="mel-stage">
         {drum
           ? <DrumRoll song={song} trackId={track?.id ?? ''} getTick={p.getTick} getLive={p.getLive} flash={flash} />
           : <LiveRoll song={song} trackId={track?.id ?? ''} base={base} whiteCount={whiteCount} root={settings.scaleRoot} scale={settings.scaleType} display={settings} getTick={p.getTick} getLive={p.getLive} />}
-        <Cue song={song} getTick={p.getTick} playing={p.playing} taking={p.taking} takeFrom={p.takeFrom} />
+        <Cue song={song} getTick={p.getTick} playing={p.playing} taking={p.taking} takeFrom={p.takeFrom} takeEnd={p.takeEnd} />
       </div>
 
       {drum ? (
@@ -380,16 +410,16 @@ export function MelodyPage(p: Props) {
  * 먼저 세기 동안: "첫 파트: 인트로 · 준비하세요!" + 4 3 2 1
  * 재생 중 다음 파트가 한 마디 안으로 다가오면: "다음 파트는 코러스입니다! 준비하세요!" + 남은 박
  */
-function Cue({ song, getTick, playing, taking, takeFrom }: { song: Song; getTick: () => number; playing: boolean; taking: boolean; takeFrom: number | null }) {
-  const [cue, setCue] = useState<{ n: number; text: string; color: string } | null>(null)
-  const latest = useRef({ song, getTick, playing, taking, takeFrom })
-  useEffect(() => { latest.current = { song, getTick, playing, taking, takeFrom } })
+function Cue({ song, getTick, playing, taking, takeFrom, takeEnd }: { song: Song; getTick: () => number; playing: boolean; taking: boolean; takeFrom: number | null; takeEnd: { end: number; name: string } | null }) {
+  const [cue, setCue] = useState<{ n: number; text: string; color: string; done?: boolean } | null>(null)
+  const latest = useRef({ song, getTick, playing, taking, takeFrom, takeEnd })
+  useEffect(() => { latest.current = { song, getTick, playing, taking, takeFrom, takeEnd } })
   useEffect(() => {
     let raf = 0
     let last = ''
     const loop = () => {
-      const { song, getTick, playing, taking, takeFrom } = latest.current
-      let next: { n: number; text: string; color: string } | null = null
+      const { song, getTick, playing, taking, takeFrom, takeEnd } = latest.current
+      let next: { n: number; text: string; color: string; done?: boolean } | null = null
       if (playing) {
         const t = getTick()
         const bar = song.beatsPerBar * PPQ
@@ -397,7 +427,15 @@ function Cue({ song, getTick, playing, taking, takeFrom }: { song: Song; getTick
         const partAt = (tick: number) => song.sections.find((s) => tick >= rg.get(s.id)!.start && tick < rg.get(s.id)!.end)
         if (taking && takeFrom !== null && t < takeFrom) {
           const p = partAt(takeFrom)
-          next = { n: Math.max(1, Math.ceil((takeFrom - t) / PPQ - 0.001)), text: p ? L("첫 파트는 {0}! 준비하세요", p.name) : L("준비하세요!"), color: p ? KINDS[p.kind].color : '' }
+          const n = Math.max(1, Math.ceil((takeFrom - t) / PPQ - 0.001))
+          next = takeEnd
+            ? { n, text: n <= song.beatsPerBar ? L("{0} 시작! 미리 들어가도 돼요", takeEnd.name) : L("{0}까지 박을 세요", takeEnd.name), color: p ? KINDS[p.kind].color : '' }
+            : { n, text: p ? L("첫 파트는 {0}! 준비하세요", p.name) : L("준비하세요!"), color: p ? KINDS[p.kind].color : '' }
+        } else if (taking && takeEnd && t >= takeEnd.end) {
+          next = { n: Math.max(1, Math.ceil((takeEnd.end + bar - t) / PPQ - 0.001)), text: L("{0} 끝! 남은 소리는 울려도 돼요", takeEnd.name), color: 'var(--muted)', done: true }
+        } else if (taking && takeEnd) {
+          const left = takeEnd.end - t
+          if (left <= bar) next = { n: Math.max(1, Math.ceil(left / PPQ - 0.001)), text: L("{0} 마무리까지", takeEnd.name), color: 'var(--accent)' }
         } else {
           const up = song.sections.map((s) => rg.get(s.id)!.start).find((st) => st > t && st - t <= bar)
           if (up !== undefined) {
