@@ -1606,7 +1606,6 @@ export const EN: Record<string, string> = {
   "스페인 플라멩코·메탈": "Spanish flamenco, metal",
   "신비롭고 웅장하게": "Mysterious and grand",
   "아다지오": "Adagio",
-  "아르페지오 (분산화음)": "Arpeggio (broken chord)",
   "아주 느리게": "Very slow",
   "아주 느리고 넓게": "very slow and broad",
   "아주 빠르고 생기 있게": "very fast and lively",
