@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { evaluate, evaluationText } from '../evaluate'
 import { keyOf, NOTE_NAMES_KO } from '../music'
 import { KINDS, noteCounts, rangesOf } from '../sections'
-import { PPQ, type Settings, type Song } from '../types'
+import { PPQ, type Settings, type Song, type Track } from '../types'
 import type { AudioFormat } from '../engine/export'
 
 interface Props {
@@ -126,21 +126,36 @@ export function DeliverPage({ song, settings, playing, exporting, getTick, onPla
             {playing && <button onClick={onStop}>{L("정지")}</button>}
             <span ref={nowRef} className="now" />
           </div>
-          <div
-            className="deliver-timeline"
-            onPointerDown={(e) => {
-              const r = e.currentTarget.getBoundingClientRect()
-              onSeek(Math.round(((e.clientX - r.left) / r.width) * song.bars) * barTicks)
-            }}
-            title={L("누르면 그 위치부터 들어요")}
-          >
-            {song.sections.map((s) => (
-              <div key={s.id} className="dl-block" style={{ flex: s.bars, background: KINDS[s.kind].color }}>
-                <b>{s.name}</b>
-                <small>{s.bars}{L("마디")}</small>
+          <div className="mt" title={L("누르면 그 위치부터 들어요")}>
+            <div className="mt-labels">
+              <span className="mt-lab mt-lab-parts">{L("구성")}</span>
+              {song.tracks.map((t) => (
+                <span key={t.id} className={`mt-lab ${t.mute ? 'off' : ''}`} style={{ ['--c' as string]: t.color }}>
+                  <i />{t.name}
+                </span>
+              ))}
+            </div>
+            <div
+              className="mt-lanes"
+              onPointerDown={(e) => {
+                const r = e.currentTarget.getBoundingClientRect()
+                onSeek(Math.round(((e.clientX - r.left) / r.width) * song.bars) * barTicks)
+              }}
+              style={{ ['--bars' as string]: song.bars, ['--beats' as string]: song.beatsPerBar }}
+            >
+              <div className="mt-parts">
+                {song.sections.map((s) => (
+                  <div key={s.id} className="mt-part" style={{ flex: s.bars, ['--c' as string]: KINDS[s.kind].color }}>
+                    <b>{s.name}</b>
+                  </div>
+                ))}
               </div>
-            ))}
-            <div className="dl-head" ref={headRef} />
+              {song.tracks.map((t) => <Lane key={t.id} track={t} total={totalTicks} />)}
+              {song.sections.slice(1).map((s) => (
+                <i key={s.id} className="mt-sec" style={{ left: `${(ranges.get(s.id)!.start / totalTicks) * 100}%` }} />
+              ))}
+              <div className="mt-head" ref={headRef} />
+            </div>
           </div>
           <section className="checklist">
             <h3>{L("파트별 점검")}</h3>
@@ -247,6 +262,30 @@ export function DeliverPage({ song, settings, playing, exporting, getTick, onPla
           </section>
         </div>
       )}
+    </div>
+  )
+}
+
+/** 한 트랙을 한 줄로: 음 높이는 무시하고 ‘언제 소리가 나는지’만. 겹치는 음(화음)은 하나로 합치고 이어지는 음은 살짝 띄운다 */
+function Lane({ track, total }: { track: Track; total: number }) {
+  const spans = useMemo(() => {
+    const gap = PPQ / 16
+    const iv = track.notes
+      .map((n) => [n.start, track.drum ? n.start + PPQ / 8 : Math.max(n.start + PPQ / 16, n.start + n.dur - gap)] as [number, number])
+      .sort((a, b) => a[0] - b[0])
+    const out: [number, number][] = []
+    for (const [a, b] of iv) {
+      const last = out[out.length - 1]
+      if (last && a < last[1]) last[1] = Math.max(last[1], b)
+      else out.push([a, b])
+    }
+    return out
+  }, [track.notes, track.drum])
+  return (
+    <div className={`mt-lane ${track.mute ? 'off' : ''}`} style={{ ['--c' as string]: track.color }}>
+      <svg viewBox={`0 0 ${total} 10`} preserveAspectRatio="none" aria-hidden>
+        {spans.map(([a, b], i) => <rect key={i} x={a} y={0} width={Math.max(b - a, PPQ / 16)} height={10} />)}
+      </svg>
     </div>
   )
 }
