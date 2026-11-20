@@ -26,15 +26,16 @@
   --accent-ink: oklch(0.99 0 0);
   --on-brand: oklch(0.99 0 0);
   --accent-bg: oklch(0.96 0.025 285);
-  --brand-grad: linear-gradient(100deg, var(--accent) 0%, var(--accent-2) 100%);
+  /* 그라데이션은 로고에만. 버튼·막대·선택 표시는 한 가지 바이올렛으로 차분하게 */
+  --brand-grad: var(--accent);
   --amber: oklch(0.66 0.15 62);
   --ok: oklch(0.62 0.15 160);
   --ring: oklch(0.6 0.17 285);
 
   --shadow: 0 1px 2px oklch(0.2 0.02 270 / 0.06);
-  --shadow-card: 0 1px 2px oklch(0.2 0.02 270 / 0.05), 0 8px 24px -12px oklch(0.2 0.02 270 / 0.12);
+  --shadow-card: none;
   --shadow-pop: 0 18px 50px -12px oklch(0.2 0.03 270 / 0.28);
-  --glow: 0 0 0 1px color-mix(in oklch, var(--accent) 22%, transparent), 0 16px 40px -18px color-mix(in oklch, var(--accent) 55%, transparent);
+  --glow: 0 0 0 1px var(--accent);
   --scrim: oklch(0.2 0.02 270 / 0.45);
 
   /* 건반 · 피아노 롤 */
@@ -66,12 +67,12 @@
   --note-ink: oklch(0.18 0.012 270);
   --staff-ink: oklch(0.45 0.015 270);
 
-  --radius: 12px;
+  --radius: 8px;
   --font-ui: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
   --font-mono: 'JetBrains Mono', 'Pretendard Variable', Pretendard, ui-monospace, SFMono-Regular, Menlo, monospace;
   --mono: var(--font-mono);
 
-  font: 15px/1.5 var(--font-ui);
+  font: 14px/1.5 var(--font-ui);
   font-feature-settings: 'ss01', 'ss02';
   color: var(--text);
   background: var(--bg);
@@ -99,7 +100,7 @@
   --amber: oklch(0.78 0.14 70);
   --ok: oklch(0.74 0.14 160);
   --shadow: none;
-  --shadow-card: 0 1px 0 oklch(1 0 0 / 4%) inset;
+  --shadow-card: none;
   --shadow-pop: 0 24px 60px -12px oklch(0 0 0 / 0.6);
   --scrim: oklch(0.08 0.01 270 / 0.7);
 
