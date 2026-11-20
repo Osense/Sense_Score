@@ -1,17 +1,18 @@
 import { L } from './i18n'
 import { bendAt, PPQ, uid, type Bend, type Note, type Section, type SectionKind, type Song } from './types'
 
+// 블록 코딩 블록처럼 밝고 또렷한 색 (흰 글자가 읽히는 밝기). 브랜드 바이올렛·시안 계열을 중심으로
 export const KINDS: Record<SectionKind, { label: string; color: string; hint: string }> = {
-  a: { label: 'A', color: '#6f8fb3', hint: L("곡의 얼굴이 되는 첫 번째 가락(주제)") },
-  b: { label: 'B', color: '#e0605c', hint: L("A와 다른 분위기로 이야기를 이어 가는 가락(대비)") },
-  intro: { label: L("인트로"), color: '#7d6a6c', hint: L("곡의 시작! 분위기를 살짝 보여줘요") },
-  verse: { label: L("벌스"), color: '#6f8fb3', hint: L("이야기를 풀어가는 부분 (노래의 1절, 2절)") },
-  prechorus: { label: L("프리코러스"), color: '#5f9e98', hint: L("후렴으로 올라가기 전에 긴장감을 만드는 부분") },
-  chorus: { label: L("코러스"), color: '#e0605c', hint: L("가장 신나고 기억에 남는 후렴") },
-  bridge: { label: L("브릿지"), color: '#9c7bb5', hint: L("분위기를 확 바꾸는 부분") },
-  interlude: { label: L("간주"), color: '#7fa77f', hint: L("노래 사이에 연주만 나오는 부분") },
-  outro: { label: L("아웃트로"), color: '#c99a45', hint: L("곡을 마무리하는 부분") },
-  free: { label: L("자유"), color: '#8a7a7c', hint: L("정해진 역할 없이 마음대로") },
+  a: { label: 'A', color: '#4f8ef7', hint: L("곡의 얼굴이 되는 첫 번째 가락(주제)") },
+  b: { label: 'B', color: '#f2547d', hint: L("A와 다른 분위기로 이야기를 이어 가는 가락(대비)") },
+  intro: { label: L("인트로"), color: '#8b7cf6', hint: L("곡의 시작! 분위기를 살짝 보여줘요") },
+  verse: { label: L("벌스"), color: '#4f8ef7', hint: L("이야기를 풀어가는 부분 (노래의 1절, 2절)") },
+  prechorus: { label: L("프리코러스"), color: '#17b3c9', hint: L("후렴으로 올라가기 전에 긴장감을 만드는 부분") },
+  chorus: { label: L("코러스"), color: '#f2547d', hint: L("가장 신나고 기억에 남는 후렴") },
+  bridge: { label: L("브릿지"), color: '#b55fe6', hint: L("분위기를 확 바꾸는 부분") },
+  interlude: { label: L("간주"), color: '#2bb673', hint: L("노래 사이에 연주만 나오는 부분") },
+  outro: { label: L("아웃트로"), color: '#f08c1a', hint: L("곡을 마무리하는 부분") },
+  free: { label: L("자유"), color: '#7c8aa5', hint: L("정해진 역할 없이 마음대로") },
 }
 
 export const KIND_ORDER: SectionKind[] = ['a', 'b', 'intro', 'verse', 'prechorus', 'chorus', 'bridge', 'interlude', 'outro', 'free']

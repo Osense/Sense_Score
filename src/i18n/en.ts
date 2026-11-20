@@ -1655,4 +1655,9 @@ export const EN: Record<string, string> = {
   "화성단음계": "Harmonic minor",
   "화음 (블록 코드)": "Chord (block chord)",
   "화음이 바뀌면 같은 자리의 음도 새 화음의 근음·3음·5음으로 따라 바뀌어요. 위아래로 오가며 나만의 분산화음을 만들어 보세요.": "When the chord changes, each note follows to the new chord's root, 3rd or 5th. Move up and down to make your own broken-chord pattern.",
+  "필인": "Fill",
+  "{0} 끝의 필인 빼기": "Remove the fill at the end of {0}",
+  "{0} 끝에 필인 넣기": "Add a fill at the end of {0}",
+  "{0}에는 드럼이 없어서 필인을 넣을 수 없어요": "{0} has no drums, so it can't have a fill",
+  "블록 사이의 작은 조각이 필인 자리예요. 누르면 넣고 다시 누르면 빼요. 필인은 다음 블록으로 넘어가기 직전에 드럼이 ‘두구두구’ 채워 주는 거예요.": "The small pieces between blocks are fill spots. Tap to add one, tap again to remove it. A fill is the drum roll that leads into the next block.",
 }

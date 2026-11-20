@@ -1,5 +1,5 @@
 import { isEn, L } from '../i18n'
-import { useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { Icon, type IconName } from './Icon'
 import type { Workspace } from './WorkspaceTabs'
 import { guessGrid, PatternEditor, PatternView, type Lane, type PatValue, type PlayMark } from './PatternView'
@@ -790,7 +790,15 @@ export function Interview(p: Props) {
       case 'order':
         return <Order song={song} onPlan={p.onPlan} onPlayPart={p.onPlayPart} onAdd={() => setAddPop(true)} />
       case 'built':
-        return <Built song={song} plans={p.plans} minor={minor} harm={harm} root={root} playing={p.playing} built={p.built} onPlayAll={p.onPlayAll} onPlayPart={p.onPlayPart} />
+        return <Built song={song} plans={p.plans} minor={minor} harm={harm} root={root} playing={p.playing} built={p.built} onPlayAll={p.onPlayAll} onPlayPart={p.onPlayPart}
+          onFill={(id, on) => {
+            // 이 자리 하나만 바꾼다: 같은 종류 파트(벌스 2…)가 따라 바뀌지 않게 지금 계획 그대로 고정해 둔다
+            const kind = song.sections.find((x) => x.id === id)?.kind
+            const next = { ...p.plans }
+            for (const x of song.sections) if (x.kind === kind && next[x.id]) next[x.id] = { ...next[x.id], picked: true }
+            if (next[id]) next[id] = { ...next[id], fill: on, picked: true }
+            p.onPlans(autoPlans(song, settings, pickedOnly(next)))
+          }} />
       case 'melody':
         return (
           <>
@@ -1201,8 +1209,9 @@ function AddPart({ song, onClose, onAdd }: { song: Song; onClose: () => void; on
   )
 }
 
-function Built({ song, plans, minor, harm, root, playing, built, onPlayAll, onPlayPart }: {
+function Built({ song, plans, minor, harm, root, playing, built, onPlayAll, onPlayPart, onFill }: {
   song: Song; plans: Record<string, PartPlan>; minor: boolean; harm: Harmony; root: number; playing: boolean; built: boolean; onPlayAll: () => void; onPlayPart: (id: string) => void
+  onFill: (id: string, on: boolean) => void
 }) {
   const seen = new Map<SectionKind, string>()
   const term = <T extends string>(list: Style<T>[], id: T) => (id === 'custom' ? L("직접 만든 리듬") : list.find((x) => x.id === id)?.term ?? '')
@@ -1212,13 +1221,30 @@ function Built({ song, plans, minor, harm, root, playing, built, onPlayAll, onPl
       <button type="button" className="iv-primary big iv-listen" onClick={onPlayAll}>
         <Icon name={playing ? 'stop' : 'play'} size={20} />{playing ? L("멈추기") : L("처음부터 끝까지 듣기")}
       </button>
-      <div className="iv-strip">
-        {song.sections.map((s) => (
-          <button key={s.id} type="button" style={{ flexGrow: s.bars, ['--c' as string]: KINDS[s.kind].color }} onClick={() => onPlayPart(s.id)} title={L("{0}만 듣기", s.name)}>
-            {s.name}
-          </button>
-        ))}
+      <div className="iv-strip blocks">
+        {song.sections.map((s, i) => {
+          const pl = plans[s.id]
+          const last = i === song.sections.length - 1
+          const can = !!pl && pl.drum !== 'none'
+          const on = can && pl.fill
+          return (
+            <Fragment key={s.id}>
+              <button type="button" className="blk" style={{ flexGrow: s.bars, ['--c' as string]: KINDS[s.kind].color }} onClick={() => onPlayPart(s.id)} title={L("{0}만 듣기", s.name)}>
+                <span>{s.name}</span><small>{s.bars}</small>
+              </button>
+              {!last && (
+                <button type="button" className={`joint ${on ? 'on' : ''}`} disabled={!can} aria-pressed={on}
+                  title={can ? (on ? L("{0} 끝의 필인 빼기", s.name) : L("{0} 끝에 필인 넣기", s.name)) : L("{0}에는 드럼이 없어서 필인을 넣을 수 없어요", s.name)}
+                  onClick={() => onFill(s.id, !on)}>
+                  <Icon name={on ? 'drum' : 'plus'} size={13} />
+                  <small>{L("필인")}</small>
+                </button>
+              )}
+            </Fragment>
+          )
+        })}
       </div>
+      <p className="iv-blocks-hint">{L("블록 사이의 작은 조각이 필인 자리예요. 누르면 넣고 다시 누르면 빼요. 필인은 다음 블록으로 넘어가기 직전에 드럼이 ‘두구두구’ 채워 주는 거예요.")}</p>
       <ul className="iv-summary">
         {song.sections.map((s) => {
           const pl = plans[s.id]
