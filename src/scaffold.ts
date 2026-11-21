@@ -1,6 +1,6 @@
 import { L } from './i18n'
 import { fitGroup, soundRangeOf as rangeOf } from './instruments'
-import { isMinorType, NOTE_NAMES_EN, SCALES } from './music'
+import { isMinorType, keyOf, NOTE_NAMES_EN, SCALES } from './music'
 import { rangesOf } from './sections'
 import { newTrack } from './storage'
 import { PPQ, uid, type Note, type ScaleType, type TrackRole, type SectionKind, type Settings, type Song, type Track } from './types'
@@ -105,6 +105,12 @@ export interface Progression {
   degrees: number[]
   mood: string
   theory: string
+  /** 이 모드에서만 추천하는 진행(모드 특색 화음이 들어 있음) */
+  modes?: ScaleType[]
+  /** 7화음을 켰을 때 추천하는 진행 */
+  seventh?: boolean
+  /** 7화음 진행 가운데 단조용 */
+  minor?: boolean
 }
 
 export const PROG_MAJOR: Progression[] = [
@@ -118,6 +124,9 @@ export const PROG_MAJOR: Progression[] = [
   { id: 'canon', name: L("캐논 Ⅰ–Ⅴ–ⅵ–ⅲ–Ⅳ–Ⅰ–Ⅳ–Ⅴ"), degrees: [0, 4, 5, 2, 3, 0, 3, 4], mood: L("차분하게 흘러가는 8마디"), theory: L("파헬벨의 캐논에서 온 진행. 베이스가 계단처럼 내려와요.") },
   { id: 'royal', name: 'Ⅳ–Ⅴ–ⅲ–ⅵ', degrees: [3, 4, 2, 5], mood: L("벅차오르다 촉촉해지는 후렴"), theory: L("버금딸림(Ⅳ)에서 딸림(Ⅴ)으로 올라갔다가 단조 화음으로 내려앉아요. 일본·한국 가요 후렴에 정말 많아요.") },
   { id: 'soar', name: 'Ⅳ–Ⅴ–Ⅰ–ⅵ', degrees: [3, 4, 0, 5], mood: L("올라가서 활짝 터지는 후렴"), theory: L("Ⅳ→Ⅴ로 한 칸씩 올라가 3마디째에 으뜸화음(Ⅰ)이 쾅 하고 터져요. 후렴 한가운데에 ‘도착’이 있어서 시원해요.") },
+  { id: 'v-push', name: 'Ⅴ–ⅵ–Ⅳ–Ⅰ', degrees: [4, 5, 3, 0], mood: L("딸림화음부터 밀고 나가는 후렴"), theory: L("딸림화음(Ⅴ)으로 시작해서 처음부터 ‘앞으로 간다’는 힘이 있어요. 마지막에 으뜸화음(Ⅰ)에 도착해서 후렴 한 바퀴가 깔끔하게 닫혀요.") },
+  { id: 'v-fall', name: 'Ⅴ–Ⅳ–ⅵ–Ⅰ', degrees: [4, 3, 5, 0], mood: L("높이 시작해 내려앉는 후렴"), theory: L("Ⅴ에서 시작해 Ⅳ, ⅵ로 내려오며 감정이 풀리고 Ⅰ에서 쉬어요. 벌스가 Ⅰ로 시작했다면 후렴이 확 달라져요.") },
+  { id: 'vi-rise', name: 'ⅵ–Ⅳ–Ⅴ–Ⅰ', degrees: [5, 3, 4, 0], mood: L("촉촉하게 시작해 환하게 끝나는 후렴"), theory: L("단조 화음(ⅵ)으로 시작해 Ⅳ→Ⅴ로 올라가 Ⅰ에 ‘쾅’ 도착해요. 발라드·아이돌 곡 후렴에 많아요.") },
   { id: 'climb', name: 'Ⅳ–Ⅴ–Ⅰ–Ⅰ', degrees: [3, 4, 0, 0], mood: L("계단을 올라 활짝 도착"), theory: L("Ⅳ→Ⅴ→Ⅰ로 한 칸씩 올라가 으뜸화음에 도착해요. 마무리나 후렴 끝에 시원해요.") },
 ]
 
@@ -131,10 +140,55 @@ export const PROG_MINOR: Progression[] = [
   { id: 'm-build', name: 'ⅳ–Ⅵ–Ⅶ–Ⅶ', degrees: [3, 5, 6, 6], mood: L("긴장을 키우는 진행"), theory: L("Ⅶ에서 멈춰서 으뜸(ⅰ)으로 돌아가고 싶게 만들어요.") },
   { id: 'm-pop', name: 'Ⅵ–Ⅲ–Ⅶ–ⅰ', degrees: [5, 2, 6, 0], mood: L("어둠 속에서 환하게 열리는 후렴"), theory: L("밝은 Ⅵ로 시작해서 마지막에야 ⅰ로 돌아와요. 단조 노래의 후렴에서 아주 흔해요.") },
   { id: 'm-major', name: 'Ⅲ–Ⅶ–Ⅵ–Ⅶ', degrees: [2, 6, 5, 6], mood: L("잠깐 장조처럼 밝아지는 진행"), theory: L("Ⅲ은 나란한조(같은 음을 쓰는 장조)의 으뜸화음이에요. 단조 곡 안에서 분위기가 확 밝아져요.") },
+  { id: 'm-circle', name: 'ⅳ–Ⅶ–Ⅲ–Ⅵ', degrees: [3, 6, 2, 5], mood: L("돌고 돌며 넓어지는 후렴"), theory: L("4도씩 건너뛰는 ‘5도권’ 진행이에요. 으뜸화음(ⅰ)이 아닌 곳에서 시작해 후렴이 확 다르게 들려요.") },
   { id: 'm-v', name: 'ⅰ–ⅳ–ⅴ–Ⅵ', degrees: [0, 3, 4, 5], mood: L("한 계단씩 차분히 올라가는 진행"), theory: L("ⅰ에서 ⅳ, ⅴ로 차례로 올라가다 Ⅵ에 걸쳐 다음으로 넘겨줘요.") },
 ]
 
-export const progressionsFor = (minor: boolean) => (minor ? PROG_MINOR : PROG_MAJOR)
+/** 모드마다 그 모드의 색깔이 드러나는 진행 (화음 이름은 chordOf가 그 모드 7음으로 만든다) */
+export const PROG_MODES: Progression[] = [
+  { id: 'dor-iv', name: 'ⅰ–Ⅳ–ⅰ–Ⅳ', degrees: [0, 3, 0, 3], modes: ['dorian'], mood: L("도리안의 밝은 Ⅳ가 반짝이는 진행"), theory: L("단조인데 Ⅳ가 장화음이에요. 도리안의 올라간 6음이 이 화음 안에 들어 있어서 어둡지만 세련되게 들려요. 펑크·게임 음악에 많아요.") },
+  { id: 'dor-flow', name: 'ⅰ–ⅱ–Ⅳ–ⅰ', degrees: [0, 1, 3, 0], modes: ['dorian'], mood: L("부드럽게 오르내리는 도리안"), theory: L("ⅰ→ⅱ→Ⅳ로 한 칸씩 올라갔다 돌아와요. ⅱ와 Ⅳ 모두 도리안의 6음을 품고 있어요.") },
+  { id: 'dor-rock', name: 'ⅰ–Ⅶ–Ⅳ–ⅰ', degrees: [0, 6, 3, 0], modes: ['dorian'], mood: L("묵직하게 굴러가는 록 도리안"), theory: L("Ⅶ(내려간 7음 화음)과 장화음 Ⅳ를 오가요. 록 기타 리프에 아주 잘 어울려요.") },
+  { id: 'phr-2', name: 'ⅰ–♭Ⅱ–ⅰ–♭Ⅱ', degrees: [0, 1, 0, 1], modes: ['phrygian'], mood: L("반음 위로 흔들리는 긴장감"), theory: L("으뜸화음 바로 반음 위의 ♭Ⅱ가 프리지안의 상징이에요. 오가기만 해도 스페인·메탈 느낌이 나요.") },
+  { id: 'phr-down', name: 'ⅰ–♭ⅶ–♭Ⅵ–♭Ⅱ', degrees: [0, 6, 5, 1], modes: ['phrygian'], mood: L("어둡게 내려앉는 메탈 진행"), theory: L("한 계단씩 내려가다 ♭Ⅱ에서 멈춰 다시 ⅰ로 떨어지고 싶게 만들어요.") },
+  { id: 'phr-flam', name: 'ⅰ–♭Ⅱ–♭Ⅲ–♭Ⅱ', degrees: [0, 1, 2, 1], modes: ['phrygian'], mood: L("플라멩코처럼 오르내리는"), theory: L("ⅰ에서 반음, 온음씩 올라갔다 내려와요. 기타 플라멩코에서 흔한 움직임이에요.") },
+  { id: 'lyd-2', name: 'Ⅰ–Ⅱ–Ⅰ–Ⅱ', degrees: [0, 1, 0, 1], modes: ['lydian'], mood: L("둥실 떠오르는 꿈의 진행"), theory: L("장조에서는 ⅱ가 단화음인데 리디안에서는 Ⅱ가 장화음이에요. 올라간 4음이 이 화음 안에 있어서 영화 음악처럼 신비해요.") },
+  { id: 'lyd-sky', name: 'Ⅰ–Ⅱ–ⅲ–Ⅱ', degrees: [0, 1, 2, 1], modes: ['lydian'], mood: L("하늘로 올라가는 듯한 진행"), theory: L("Ⅰ→Ⅱ→ⅲ로 계단처럼 올라갔다 돌아와요. 끝나지 않고 떠 있는 느낌이에요.") },
+  { id: 'lyd-film', name: 'Ⅰ–Ⅱ–ⅵ–Ⅴ', degrees: [0, 1, 5, 4], modes: ['lydian'], mood: L("영화 첫 장면 같은 진행"), theory: L("밝은 Ⅱ로 떠올랐다가 ⅵ, Ⅴ로 차분히 내려와요.") },
+  { id: 'mix-7', name: 'Ⅰ–♭Ⅶ–Ⅳ–Ⅰ', degrees: [0, 6, 3, 0], modes: ['mixolydian'], mood: L("시원한 록 진행"), theory: L("믹솔리디안의 내려간 7음으로 만든 ♭Ⅶ 화음이 핵심이에요. 록·컨트리에서 정말 많이 써요.") },
+  { id: 'mix-rock', name: 'Ⅰ–Ⅳ–♭Ⅶ–Ⅳ', degrees: [0, 3, 6, 3], modes: ['mixolydian'], mood: L("흔들흔들 굴러가는 리프"), theory: L("Ⅰ·Ⅳ·♭Ⅶ 세 장화음만 오가요. 기타 파워 코드로 치기 딱 좋아요.") },
+  { id: 'mix-v', name: 'Ⅰ–ⅴ–♭Ⅶ–Ⅳ', degrees: [0, 4, 6, 3], modes: ['mixolydian'], mood: L("느긋하게 풀리는 진행"), theory: L("장조라면 Ⅴ가 장화음이지만 믹솔리디안에서는 ⅴ가 단화음이라 덜 긴장되고 여유로워요.") },
+  { id: 'hm-v', name: 'ⅰ–ⅳ–Ⅴ–ⅰ', degrees: [0, 3, 4, 0], modes: ['harmonicMinor'], mood: L("클래식처럼 꽉 닫히는 단조"), theory: L("화성단음계의 이끈음 덕분에 Ⅴ가 장화음이 되어 ⅰ로 강하게 돌아가요.") },
+  { id: 'hm-epic', name: 'ⅰ–Ⅵ–ⅳ–Ⅴ', degrees: [0, 5, 3, 4], modes: ['harmonicMinor'], mood: L("웅장하게 긴장을 쌓는 진행"), theory: L("장화음 Ⅴ로 끝나서 다음 파트의 ⅰ이 극적으로 들려요. 영화·게임 보스 음악 느낌이에요.") },
+]
+/** 7화음(maj7·m7·7)으로 쌓았을 때 예쁜 진행 */
+export const PROG_SEVENTH: Progression[] = [
+  { id: 'j-251', name: 'ⅱ7–Ⅴ7–Ⅰmaj7–Ⅰmaj7', degrees: [1, 4, 0, 0], seventh: true, mood: L("재즈의 기본, 포근하게 도착"), theory: L("ⅱ7→Ⅴ7→Ⅰmaj7은 재즈에서 가장 많이 쓰는 ‘투파이브원’이에요. maj7 화음에 도착하면 따뜻하게 풀려요.") },
+  { id: 'j-city', name: 'Ⅰmaj7–ⅵ7–ⅱ7–Ⅴ7', degrees: [0, 5, 1, 4], seventh: true, mood: L("시티팝처럼 세련된 순환"), theory: L("Ⅰ→ⅵ→ⅱ→Ⅴ를 계속 돌아요. Ⅴ7이 다시 Ⅰmaj7로 끌어당겨서 끝없이 이어지는 느낌이에요.") },
+  { id: 'j-soft', name: 'Ⅳmaj7–ⅲ7–ⅱ7–Ⅰmaj7', degrees: [3, 2, 1, 0], seventh: true, mood: L("한 계단씩 내려오는 부드러움"), theory: L("Ⅳ부터 한 칸씩 내려와 Ⅰ에 닿아요. 모든 화음이 7화음이라 계단이 매끄러워요.") },
+  { id: 'j-float', name: 'Ⅰmaj7–Ⅳmaj7–Ⅰmaj7–Ⅳmaj7', degrees: [0, 3, 0, 3], seventh: true, mood: L("몽글몽글 떠 있는 로파이"), theory: L("maj7 두 개만 오가요. 단순하지만 7음이 겹쳐서 꿈꾸는 듯한 로파이·보사노바 느낌이 나요.") },
+  { id: 'j-royal', name: 'Ⅳmaj7–Ⅴ7–ⅲ7–ⅵ7', degrees: [3, 4, 2, 5], seventh: true, mood: L("감성 가득한 7화음 후렴"), theory: L("‘왕도 진행’을 7화음으로 쌓았어요. 한국·일본 가요 후렴의 촉촉한 느낌이 더 진해져요.") },
+  { id: 'jm-dream', name: 'ⅰ7–Ⅵmaj7–ⅰ7–Ⅵmaj7', degrees: [0, 5, 0, 5], seventh: true, minor: true, mood: L("어둡고 몽환적인 로파이"), theory: L("ⅰ7과 Ⅵmaj7만 오가요. 단조인데도 부드럽고 몽환적이에요.") },
+  { id: 'jm-neo', name: 'Ⅵmaj7–ⅴ7–ⅳ7–ⅰ7', degrees: [5, 4, 3, 0], seventh: true, minor: true, mood: L("네오소울처럼 내려앉는"), theory: L("밝은 Ⅵmaj7에서 시작해 한 칸씩 내려와 ⅰ7에 닿아요.") },
+  { id: 'jm-lofi', name: 'ⅰ7–ⅳ7–Ⅶ7–Ⅲmaj7', degrees: [0, 3, 6, 2], seventh: true, minor: true, mood: L("깊고 따뜻한 단조 순환"), theory: L("4도씩 건너뛰는 진행을 7화음으로 쌓아 재즈·로파이처럼 따뜻해져요.") },
+  { id: 'jm-rise', name: 'ⅳ7–ⅴ7–Ⅵmaj7–Ⅶ7', degrees: [3, 4, 5, 6], seventh: true, minor: true, mood: L("한 칸씩 차오르는 7화음"), theory: L("한 칸씩 올라가며 긴장을 쌓아요. Ⅶ7에서 멈춰서 ⅰ로 돌아가고 싶게 해요.") },
+]
+const familyOk = (p: Progression, minor: boolean) => (p.modes ? p.modes.some((m) => isMinorType(m) === minor) : !!p.minor === minor)
+/**
+ * 추천에 쓰는 진행 목록: 장조/단조 기본 진행 + 고른 모드의 특색 진행(앞에) + 7화음을 켰으면 7화음 진행(앞에).
+ * 모드는 화음 이름이 그 모드 7음으로 바뀌어서, 같은 진행이라도 다른 색깔로 들린다.
+ */
+export function progressionsFor(minor: boolean, opts: { mode?: ScaleType; seventh?: boolean } = {}): Progression[] {
+  const base = minor ? PROG_MINOR : PROG_MAJOR
+  const mode = opts.mode ? PROG_MODES.filter((p) => p.modes!.includes(opts.mode!)) : []
+  const sev = opts.seventh ? PROG_SEVENTH.filter((p) => familyOk(p, minor)) : []
+  return [...sev, ...mode, ...base]
+}
+/** id로 진행 찾기 (모드·7화음 진행도) */
+export function findProg(minor: boolean, id: string | undefined): Progression {
+  const base = minor ? PROG_MINOR : PROG_MAJOR
+  return base.find((p) => p.id === id) ?? PROG_MODES.find((p) => p.id === id) ?? PROG_SEVENTH.find((p) => p.id === id) ?? base[0]
+}
 
 /** 이 음계에서 장조 계열인지 단조 계열인지 */
 export const isMinorScale = (t: Settings['scaleType']) => isMinorType(t)
@@ -153,6 +207,9 @@ export interface ChordInfo {
   fifthInt: number
 }
 
+const FLAT_NAMES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B']
+/** 올림표 조표를 쓰는 장조의 으뜸음 (사·라·가·마·나·올림바) */
+const SHARP_KEYS = new Set([7, 2, 9, 4, 11, 6])
 export function chordOf(root: number, minor: Harmony, degree: number, seventh: boolean): ChordInfo {
   let st = stepsOf(minor)
   if (typeof minor !== 'boolean' && st !== SCALES.major.hept && st !== SCALES.minor.hept) {
@@ -169,7 +226,10 @@ export function chordOf(root: number, minor: Harmony, degree: number, seventh: b
   const pcs = [0, third, fifth, ...(seventh ? [sev] : [])].map((i) => (rootPc + i) % 12)
   let q = third === 3 ? (fifth === 6 ? 'dim' : 'm') : ''
   if (seventh) q = third === 3 ? (fifth === 6 ? 'm7♭5' : 'm7') : sev === 11 ? 'maj7' : '7'
-  return { degree, rootPc, pcs, name: `${NOTE_NAMES_EN[rootPc]}${q}`, thirdInt: third, fifthInt: fifth }
+  // 조표에 내림표가 있는 조(바장조, 레 도리안 등)는 A# 대신 B♭처럼 내림으로 적는다
+  // 올림표 조(사·라·가·마장조 …)가 아니면 검은건반 화음은 내림(B♭·E♭·A♭)으로 적는다
+  const flat = typeof minor !== 'boolean' ? keyOf(root, minor).fifths <= 0 : !SHARP_KEYS.has((root + (minor ? 3 : 0)) % 12)
+  return { degree, rootPc, pcs, name: `${(flat ? FLAT_NAMES : NOTE_NAMES_EN)[rootPc]}${q}`, thirdInt: third, fifthInt: fifth }
 }
 
 /** 한 파트가 어떤 화음들로 이어지는지 (속도에 따라 한 마디에 하나, 둘, 또는 두 마디에 하나) */
@@ -546,7 +606,7 @@ export function generate(song: Song, settings: Settings, plans: Record<string, P
   song.sections.forEach((sec, pi) => {
     const plan = plans[sec.id]
     if (!plan) return
-    const prog = progressionsFor(minor).find((p) => p.id === plan.prog) ?? progressionsFor(minor)[0]
+    const prog = findProg(minor, plan.prog)
     const degs = chordSegments(sec.bars, prog, plan.speed)
     const per = plan.speed === 'fast' ? 2 : 1
     const nextSec = song.sections[pi + 1]
@@ -708,7 +768,7 @@ export function turnaroundOf(kind: SectionKind, nextKind: SectionKind | null | u
 
 /** 파트의 마지막 화음(다음 파트 추천용). nextKind를 주면 턴어라운드까지 따진다 */
 export function lastChordOf(bars: number, plan: PartPlan, minor: boolean, kind?: SectionKind, nextKind?: SectionKind | null): number {
-  const prog = progressionsFor(minor).find((p) => p.id === plan.prog) ?? progressionsFor(minor)[0]
+  const prog = findProg(minor, plan.prog)
   const d = chordSegments(bars, prog, plan.speed)
   const last = d[d.length - 1]
   return (kind && turnaroundOf(kind, nextKind, last, minor)) ?? last
@@ -736,6 +796,8 @@ export interface RankCtx {
   speed?: ChordSpeed
   /** 앞 파트의 끝이 턴어라운드(마지막 반 마디를 딸림화음으로)로 바뀌었는지 */
   prevTurn?: boolean
+  /** 이 파트가 7화음을 쓰는지 */
+  seventh?: boolean
 }
 
 /** 진행 b가 진행 a의 고리를 시작만 바꾼 것인지 (C G Am F ↔ F C G Am). 같은 고리라 결국 같은 진행으로 들린다 */
@@ -745,10 +807,10 @@ function isRotation(a: number[], b: number[]): boolean {
   return false
 }
 
-const BUILD = new Set(['build', 'm-build', 'm-v'])
+const BUILD = new Set(['build', 'm-build', 'm-v', 'jm-rise'])
 const CONTRAST = new Set(['emo', 'jazz', 'm-dark', 'm-sad', 'andalus', 'm-major', 'royal'])
-const HOME = new Set(['basic', 'm-basic', 'climb'])
-const LIFT = new Set(['lift', 'royal', 'soar', 'm-lift', 'm-pop', 'm-major'])
+const HOME = new Set(['basic', 'm-basic', 'climb', 'hm-v', 'j-251', 'mix-7'])
+const LIFT = new Set(['lift', 'royal', 'soar', 'm-lift', 'm-pop', 'm-major', 'v-push', 'v-fall', 'vi-rise', 'm-circle', 'j-royal', 'hm-epic'])
 const PILLAR = new Set<SectionKind>(['a', 'b', 'verse', 'chorus', 'free'])
 
 /**
@@ -759,10 +821,16 @@ const PILLAR = new Set<SectionKind>(['a', 'b', 'verse', 'chorus', 'free'])
  * 3) 역할: 벌스·A는 으뜸화음으로 ‘집’을 먼저 들려주고, 연결 파트는 딸림화음으로 끝나 다음을 기다리게,
  *    아웃트로는 으뜸화음으로 끝나게
  */
+/** 이 모드의 이 자리 화음이 감·증화음이라 기본 화음으로 바꿔 치는지 */
+const clashIn = (m: ScaleType, d: number) => {
+  const st = SCALES[m].hept
+  return (st[(d + 4) % 7] - st[d] + 12) % 12 !== 7
+}
+const modeName = (m?: ScaleType) => (m ? SCALES[m].label.split(' (')[0] : '')
 export function rankProgressions(c: RankCtx): Rank[] {
-  const nm = (d: number) => chordOf(c.root, c.mode ?? c.minor, d, false).name
+  const nm = (d: number) => chordOf(c.root, c.mode ?? c.minor, d, !!c.seventh).name
   const kindLabel = (k: SectionKind) => KIND_LABEL[k]
-  const list = progressionsFor(c.minor)
+  const list = progressionsFor(c.minor, { mode: c.mode, seventh: c.seventh })
   // 대비를 따질 상대: 코러스는 벌스·A·자유, B는 A, 벌스는 앞의 코러스, 프리코러스·브릿지는 앞의 모든 기둥 파트
   const rivals = c.peers.filter((p) => {
     if (c.kind === 'chorus') return p.kind === 'verse' || p.kind === 'a' || p.kind === 'free' || p.kind === 'b'
@@ -805,7 +873,7 @@ export function rankProgressions(c: RankCtx): Rank[] {
     }
     // 2) 대비
     for (const r of rivals) {
-      const rp = list.find((x) => x.id === r.prog)
+      const rp = findProg(c.minor, r.prog)
       if (r.prog === prog.id) {
         score -= 46
         reasons.push(L("{0}와 똑같은 진행이라 {1}가 새롭게 들리지 않아요", r.name, kindLabel(c.kind)))
@@ -821,12 +889,26 @@ export function rankProgressions(c: RankCtx): Rank[] {
       }
     }
     if ((c.kind === 'chorus' || c.kind === 'b' || c.kind === 'bridge') && rivals.length) {
-      const used = new Set(rivals.flatMap((r) => list.find((x) => x.id === r.prog)?.degrees ?? []))
+      const used = new Set(rivals.flatMap((r) => findProg(c.minor, r.prog).degrees))
       const fresh = [...new Set(prog.degrees)].filter((d) => !used.has(d))
       if (fresh.length) { score += 8 + 4 * Math.min(2, fresh.length - 1); reasons.push(L("{0}에 없던 {1} 화음이 나와 색깔이 바뀌어요", rivals[0].name, fresh.map(nm).join('·'))) }
       // 후렴 안에서 딸림→으뜸으로 ‘도착’하는 순간이 있으면 시원하다
       const ds = prog.degrees
       if (c.kind !== 'bridge' && ds.some((d, i) => i > 0 && d === 0 && dom(ds[i - 1]))) { score += 8; reasons.push(L("진행 안에서 딸림화음에서 으뜸화음으로 ‘쾅’ 도착해요")) }
+    }
+    // 모드에서 감·증화음이 되는 자리(리디안 Ⅳ, 믹솔리디안 ⅲ, 도리안 ⅵ, 프리지안 ⅴ 등)는 기본 화음으로 바꿔 치는데,
+    // 그러면 모드의 특색음과 부딪히므로 그런 화음이 든 진행은 뒤로
+    if (c.mode && SCALES[c.mode].mode && prog.degrees.some((d) => clashIn(c.mode!, d))) score -= 45
+    else if (c.mode === 'harmonicMinor' && prog.degrees.some((d) => clashIn('harmonicMinor', d))) score -= 8
+    // 모드 특색 진행·7화음 진행은 고른 색깔이 잘 드러나므로 앞쪽에
+    if (prog.modes) { score += 18; reasons.push(L("{0}의 색깔이 잘 드러나는 진행이에요", modeName(c.mode))) }
+    if (prog.seventh) { score += 14; reasons.push(L("7화음으로 쌓았을 때 특히 예쁜 진행이에요")) }
+    // 후렴은 꼭 으뜸화음으로 시작하지 않는다: Ⅴ로 밀고 나가며 시작하는 후렴도 많다
+    if ((c.kind === 'chorus' || c.kind === 'b') && !c.minor && first === 4 && c.prevLast !== 4) {
+      score += 12; reasons.push(L("딸림화음({0})으로 시작해서 후렴이 처음부터 힘 있게 밀고 나가요", nm(4)))
+    }
+    if ((c.kind === 'chorus' || c.kind === 'b') && prog.degrees[prog.degrees.length - 1] === 0 && first !== 0) {
+      score += 6; reasons.push(L("다른 화음에서 출발해 마지막에 {0}(으뜸화음)에 도착해요", nm(0)))
     }
     if (c.kind === 'chorus' || c.kind === 'b') {
       const bright = c.minor ? first === 2 || first === 5 : first === 3 || first === 5
@@ -878,7 +960,7 @@ export function neighborCtx(song: Song, plans: Record<string, PartPlan>, index: 
   while (p >= 0 && !has(p)) p--
   let n = index + 1
   while (n < secs.length && (!has(n) || secs[n].kind === sec.kind)) n++
-  const progOf = (pl: PartPlan) => progressionsFor(minor).find((x) => x.id === pl.prog) ?? progressionsFor(minor)[0]
+  const progOf = (pl: PartPlan) => findProg(minor, pl.prog)
   // 앞에 나온 다른 종류의 기둥 파트 (종류마다 가장 가까운 것 하나)
   const peers: RankCtx['peers'] = []
   for (let i = index - 1; i >= 0; i--) {
@@ -901,6 +983,7 @@ export function neighborCtx(song: Song, plans: Record<string, PartPlan>, index: 
     nextKind: (() => { let m = index + 1; while (m < secs.length && secs[m].kind === sec.kind) m++; return m < secs.length ? secs[m].kind : null })(),
     peers,
     speed: plans[sec.id]?.speed ?? DEFAULT_PLAN[sec.kind].speed,
+    seventh: plans[sec.id]?.seventh ?? false,
   }
 }
 

@@ -2212,3 +2212,5 @@ button.primary:hover:not(:disabled), .t-btn.play:hover:not(:disabled) { filter: 
   .mt-part b { font-size: 10px; }
   .mt-part { padding: 0 3px; }
 }
+.iv-seventh { margin: 0 0 12px; }
+.iv-switch, .iv-switch:hover:not(:disabled) { background: none; }

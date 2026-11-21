@@ -3,7 +3,7 @@ import { useEffect, useMemo } from 'react'
 import { NOTE_NAMES_KO } from '../music'
 import { KINDS, noteCounts } from '../sections'
 import {
-  autoPlans, type Harmony, BASS_STYLES, chordOf, COMP_STYLES, DRUM_STYLES, isMinorScale, neighborCtx, progressionsFor, rankProgressions,
+  autoPlans, type Harmony, BASS_STYLES, chordOf, COMP_STYLES, DRUM_STYLES, findProg, isMinorScale, neighborCtx, progressionsFor, rankProgressions,
   sampleBar, siblingsOf, type BassStyle, type ChordRhythm, type ChordSpeed, type DrumStyle, type PartPlan,
 } from '../scaffold'
 import type { SectionKind, Settings, Song } from '../types'
@@ -81,7 +81,7 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
   const sec = song.sections[idx]
   const plan = full[sec.id]
   const prev = idx > 0 ? song.sections[idx - 1] : null
-  const progs = progressionsFor(minor)
+  const progs = progressionsFor(minor, { mode: settings.scaleType === 'none' ? undefined : settings.scaleType, seventh: plan.seventh })
   const sample = sampleBar(beats)
 
   // 앞·뒤 파트와 이웃 파트의 진행을 보고 센스 있게 추천 (프리코러스·브릿지는 코러스로 이어지는지도 따진다)
@@ -144,7 +144,7 @@ export function ScaffoldMenu({ song, settings, plans, onPlans, selectedId, onSel
               <i style={{ background: KINDS[s.kind].color }}>{i + 1}</i>
               <span>
                 <b>{s.name}</b>
-                <small>{s.bars}{L("마디 ·")} {chordNames(progs.find((p) => p.id === full[s.id]?.prog)?.degrees.slice(0, 4) ?? [])}</small>
+                <small>{s.bars}{L("마디 ·")} {chordNames(findProg(minor, full[s.id]?.prog).degrees.slice(0, 4))}</small>
               </span>
               {siblingsOf(song, s.id).length > 0 && full[s.id]?.linked !== false && <em className="lnk" title={L("같은 종류 파트와 설정이 함께 바뀌어요")}></em>}
               {done && <em title={L("이미 음표가 있어요")}>✓</em>}

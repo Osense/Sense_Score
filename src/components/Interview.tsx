@@ -7,7 +7,7 @@ import { NOTE_NAMES_EN, NOTE_NAMES_KO, SCALES } from '../music'
 import type { Answers } from '../template'
 import { autoName, KINDS, planOf, stepBars, STRUCTURES, TYPICAL_BARS, type PlanItem } from '../sections'
 import {
-  autoPlans, type Harmony, bassPatOf, chordOf, chordSegments, compPatOf, DEFAULT_PLAN, drumPatOf, findRoleTrack, isMinorScale, neighborCtx, progressionsFor, rankProgressions, sampleBar,
+  autoPlans, type Harmony, bassPatOf, chordOf, chordSegments, compPatOf, DEFAULT_PLAN, drumPatOf, findProg, findRoleTrack, isMinorScale, neighborCtx, progressionsFor, rankProgressions, sampleBar,
   type ArpTone, type BassNote, type BassStyle, type ChordRhythm, type ChordSpeed, type DrumPat, type DrumStyle, type PartPlan, type PatNote,
 } from '../scaffold'
 import { PPQ, type ScaleType, type SectionKind, type Settings, type Song } from '../types'
@@ -424,7 +424,7 @@ export function Interview(p: Props) {
       if (DR[lane]) p.onTap('drums', [DR[lane]])
       return
     }
-    const prog = progressionsFor(minor).find((x) => x.id === pl.prog) ?? progressionsFor(minor)[0]
+    const prog = findProg(minor, pl.prog)
     const ch = chordOf(root, harm, prog.degrees[0], false)
     if (sub === 'bass') {
       const r = 36 + ((ch.rootPc - 36) % 12 + 12) % 12
@@ -441,8 +441,9 @@ export function Interview(p: Props) {
     const sec = firstSec(k)
     const plan = sec && p.plans[sec.id]
     if (!sec || !plan) return <p className="iv-say">{L("준비하는 중…")}</p>
-    const all = progressionsFor(minor)
-    const prog = all.find((x) => x.id === plan.prog) ?? all[0]
+    const mode = settings.scaleType === 'none' ? undefined : settings.scaleType
+    const all = progressionsFor(minor, { mode, seventh: plan.seventh })
+    const prog = findProg(minor, plan.prog)
     const twins = song.sections.filter((s) => s.kind === k).slice(1)
     const name = KINDS[k].label === 'A' || KINDS[k].label === 'B' ? L("{0} 가락", KINDS[k].label) : KINDS[k].label
     const reuse = twins.length > 0 && (
@@ -453,7 +454,17 @@ export function Interview(p: Props) {
     if (sub === 'chord') {
       const others = Object.fromEntries(Object.entries(p.plans).filter(([id]) => song.sections.find((s) => s.id === id)?.kind !== k))
       const i = song.sections.indexOf(sec)
-      const ranks = rankProgressions(neighborCtx(song, others, i, minor, root, settings.scaleType === 'none' ? undefined : settings.scaleType))
+      const ctx = { ...neighborCtx(song, others, i, minor, root, mode), seventh: plan.seventh }
+      const ranks = rankProgressions(ctx)
+      // 7화음 켜고 끄기: 켜면 7화음으로 예쁜 진행을, 끄면(지금 진행이 7화음 전용이면) 3화음 추천으로 바꿔 준다
+      const toggleSeventh = () => {
+        const on = !plan.seventh
+        const top = rankProgressions({ ...ctx, seventh: on })[0]
+        const keep = on ? false : !findProg(minor, plan.prog).seventh
+        const id = keep || noChords ? plan.prog : top.prog.id
+        setKind(k, { seventh: on, prog: id })
+        if (!noChords) listen(`chord-${id}`, k, { seventh: on, prog: id }, 8)
+      }
       const list = ranks.slice(0, 3)
       if (!list.some((r) => r.prog.id === plan.prog)) {
         const cur = ranks.find((r) => r.prog.id === plan.prog)
@@ -476,6 +487,14 @@ export function Interview(p: Props) {
             </div>
           </div>
           <Q n={<>「{name}{L("」에는 어떤 화음 진행이 어울릴까요?")}</>} say={L("앞에서 정한 파트와 어울리는지 따져서 골라 봤어요. 눌러서 들어 보세요.")} />
+          <div className="iv-fill iv-seventh">
+            <button type="button" role="switch" aria-checked={!!plan.seventh} className={`iv-switch ${plan.seventh ? 'on' : ''}`} onClick={toggleSeventh}>
+              <i /> <b>{L("7화음 넣기")}</b>
+            </button>
+            <span>{plan.seventh
+              ? L("화음마다 음 하나(7음)를 더 쌓아 maj7·m7·7 화음이 돼요. 7화음으로 특히 예쁜 진행을 먼저 추천해요.")
+              : L("켜면 화음에 7음을 더해 재즈·시티팝처럼 부드럽고 세련된 소리가 나요.")}</span>
+          </div>
           <div className="iv-grid">
             {list.map((r, n) => {
               const why = r.reasons.find((x) => !isWarn(x))
@@ -483,7 +502,7 @@ export function Interview(p: Props) {
               return (
                 <Card key={r.prog.id} on={!noChords && plan.prog === r.prog.id} badge={n === 0 ? L("잘 어울려요") : undefined} onClick={() => pick(r.prog.id)}>
                   <span className="iv-play"><Icon name="play" size={14} />{L("들어보기")}</span>
-                  <span className="iv-chords big">{r.prog.degrees.slice(0, 4).map((d) => chordOf(root, harm, d, false).name).join(' → ')}</span>
+                  <span className="iv-chords big">{r.prog.degrees.slice(0, 4).map((d) => chordOf(root, harm, d, !!plan.seventh).name).join(' → ')}</span>
                   <b>{r.prog.mood}</b>
                   {why && <small>{why}</small>}
                   {warn && <small className="iv-warn">{warn}</small>}
@@ -505,7 +524,7 @@ export function Interview(p: Props) {
             <div className="iv-chips">
               {all.filter((x) => !list.some((r) => r.prog.id === x.id)).map((x) => (
                 <button key={x.id} type="button" className={!noChords && plan.prog === x.id ? 'on' : ''} onClick={() => pick(x.id)}>
-                  <b>{x.degrees.slice(0, 4).map((d) => chordOf(root, harm, d, false).name).join(' → ')}</b> {x.mood}
+                  <b>{x.degrees.slice(0, 4).map((d) => chordOf(root, harm, d, !!plan.seventh).name).join(' → ')}</b> {x.mood}
                 </button>
               ))}
             </div>
@@ -1249,7 +1268,7 @@ function Built({ song, plans, minor, harm, root, playing, built, onPlayAll, onPl
         {song.sections.map((s) => {
           const pl = plans[s.id]
           if (!pl) return null
-          const prog = progressionsFor(minor).find((x) => x.id === pl.prog) ?? progressionsFor(minor)[0]
+          const prog = findProg(minor, pl.prog)
           const same = seen.get(s.kind)
           if (!same) seen.set(s.kind, s.name)
           return (
